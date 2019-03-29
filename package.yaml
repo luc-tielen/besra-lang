@@ -1,0 +1,48 @@
+name:                x1
+version:             0.1.0.0
+homepage:            https://github.com/luc-tielen/x1-lang#README.md
+license:             BSD3
+author:              Luc Tielen
+maintainer:          luc.tielen@gmail.com
+copyright:           2019 Luc Tielen
+category:            Web
+extra-source-files:
+- README.md
+- CONTRIBUTING.md
+- CHANGELOG.md
+- LICENSE
+
+
+dependencies:
+  - base >= 4.9 && < 5
+
+default-extensions:
+  - LambdaCase
+
+ghc-options:
+  - -Wall
+  - -Weverything
+  - -Wno-missing-import-lists
+  - -Wno-type-defaults
+  - -Wno-missing-local-signatures
+  - -Wno-monox1ism-restriction
+  - -optP-Wno-nonportable-include-path
+  # TODO turn on clearer error messages
+
+library:
+  source-dirs:        lib
+
+executables:
+  x1:
+    source-dirs:      src
+    main:             Main.hs
+    dependencies:
+      - x1
+
+tests:
+  x1-test:
+    main:             test.hs
+    source-dirs:      tests
+    dependencies:
+      - x1
+
