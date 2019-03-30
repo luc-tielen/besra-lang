@@ -16,8 +16,8 @@ in
         pkgs.gnupg
         cabal-install
         hlint
-        #ghcid
-        #neovim
+        ghcid
+        neovim
       ];
       withHoogle = true;
     };

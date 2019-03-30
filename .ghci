@@ -1,0 +1,8 @@
+--import Protolude
+:set prompt "λ> "
+:set -fwarn-unused-binds -fwarn-unused-imports
+:set -isrc
+:set -ilib
+:set -itests
+:load Main
+
