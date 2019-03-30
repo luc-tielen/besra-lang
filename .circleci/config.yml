@@ -1,0 +1,14 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: nixorg/nix:circleci
+
+    steps:
+      - checkout
+      - run:
+          name: Linting
+          command: nix-shell --run "make lint"
+      - run:
+          name: Unit tests
+          command: nix-shell --run "make tests"

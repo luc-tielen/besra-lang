@@ -11,13 +11,13 @@ in
     x1-shell = haskellPkgs.shellFor {
       packages = p: [ drv ];
       buildInputs = with haskellPkgs; [
+        neovim
         pkgs.git
         pkgs.less
         pkgs.gnupg
         cabal-install
         hlint
         ghcid
-        neovim
       ];
       withHoogle = true;
     };
