@@ -16,6 +16,7 @@ in
         pkgs.less
         pkgs.gnupg
         cabal-install
+        hpack
         hlint
         ghcid
       ];
