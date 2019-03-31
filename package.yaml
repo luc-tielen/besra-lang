@@ -25,7 +25,7 @@ ghc-options:
   - -Wno-missing-import-lists
   - -Wno-type-defaults
   - -Wno-missing-local-signatures
-  - -Wno-monox1ism-restriction
+  - -Wno-monomorphism-restriction
   - -optP-Wno-nonportable-include-path
   # TODO turn on clearer error messages
 
