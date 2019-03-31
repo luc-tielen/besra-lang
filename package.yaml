@@ -1,7 +1,7 @@
 name:                x1
 version:             0.0.1
 homepage:            https://github.com/luc-tielen/x1-lang#README.md
-license:             BSD3
+license:             MIT
 author:              Luc Tielen
 maintainer:          luc.tielen@gmail.com
 copyright:           2019 Luc Tielen
@@ -12,9 +12,8 @@ extra-source-files:
 - CHANGELOG.md
 - LICENSE
 
-
 dependencies:
-  - base >= 4.9 && < 5
+  - base >= 4.11.0 && < 5
 
 default-extensions:
   - LambdaCase
@@ -27,7 +26,6 @@ ghc-options:
   - -Wno-missing-local-signatures
   - -Wno-monomorphism-restriction
   - -optP-Wno-nonportable-include-path
-  # TODO turn on clearer error messages
 
 library:
   source-dirs:        lib
@@ -44,5 +42,8 @@ tests:
     main:             test.hs
     source-dirs:      tests
     dependencies:
+      - tasty >= 1.1.0 && < 2
+      - tasty-hspec >= 1.1.5 && < 2
+      - tasty-discover >= 4.2.1 && < 5
       - x1
 

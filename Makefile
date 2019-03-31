@@ -1,19 +1,20 @@
 
-hoogle:
-	hoogle server --local -p 8080
-
-lint:
-	@hlint .
-
-tests:
-	echo "Placeholder!"
-
-# The following are only meant to be used during development:
+build:
+		@cabal build
 
 configure:
-	hpack && cabal configure
+		@hpack && cabal configure --enable-tests
 
-build:
-	cabal build
+lint:
+		@hlint .
 
-.PHONY: hoogle lint configure build tests
+tests:
+		@cabal test
+
+hoogle:
+		hoogle server --local -p 8080
+
+continuous_tests:
+		@ghcid --command="cabal repl x1-test"
+
+.PHONY: hoogle lint configure build tests continuous_tests
