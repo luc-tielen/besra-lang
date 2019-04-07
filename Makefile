@@ -3,7 +3,7 @@ build:
 		@cabal build
 
 configure:
-		@hpack && cabal configure --enable-tests
+		@hpack --force && cabal configure --enable-tests
 
 lint:
 		@hlint .

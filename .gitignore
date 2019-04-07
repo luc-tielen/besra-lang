@@ -1,2 +1,8 @@
 dist/
+dist-newstyle/
 *.cabal
+cabal.project.local
+cabal.project.local~
+.ghc.*
+result
+result-2
