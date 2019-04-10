@@ -4,6 +4,7 @@ module X1.Parser.Helpers ( Parser
                          , ParseError
                          , ParseResult
                          , lexeme
+                         , between
                          , betweenParens
                          , digitChar
                          , hexDigitChar
