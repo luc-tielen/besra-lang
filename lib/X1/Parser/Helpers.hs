@@ -1,14 +1,20 @@
 
 module X1.Parser.Helpers ( Parser
+                         , ParseErr
                          , ParseError
                          , ParseResult
                          , lexeme
                          , betweenParens
+                         , digitChar
                          , hexDigitChar
                          , binDigitChar
                          , keyword
                          , identifier
                          , capitalIdentifier
+                         , char
+                         , oneOf
+                         , notFollowedBy
+                         , (<?>)
                          ) where
 
 import Protolude hiding (many, first)

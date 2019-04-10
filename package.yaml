@@ -56,5 +56,6 @@ tests:
       - tasty >= 1.1.0 && < 2
       - tasty-hspec >= 1.1.5 && < 2
       - tasty-discover >= 4.2.1 && < 5
+      - hspec-megaparsec >= 2.0.0 && < 3
       - x1
 
