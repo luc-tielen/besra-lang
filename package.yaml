@@ -15,11 +15,14 @@ extra-source-files:
 dependencies:
   - base >= 4.11.0 && < 5
   - protolude >= 0.2.2 && < 1
+  - text >= 1.2.3.1 && < 2
+  - megaparsec >= 7.0.4 && < 8
   - parallel >= 3.2.2.0 && < 4
 
 default-extensions:
   - NoImplicitPrelude
   - OverloadedStrings
+  - FlexibleContexts
   - LambdaCase
 
 ghc-options:
@@ -27,6 +30,8 @@ ghc-options:
   - -Weverything
   - -Wno-safe
   - -Wno-unsafe
+  - -Wno-missed-specializations
+  - -Wno-all-missed-specializations
   - -Wno-missing-import-lists
   - -Wno-type-defaults
   - -Wno-missing-local-signatures
