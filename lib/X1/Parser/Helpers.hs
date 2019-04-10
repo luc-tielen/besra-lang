@@ -6,6 +6,7 @@ module X1.Parser.Helpers ( Parser
                          , lexeme
                          , between
                          , betweenParens
+                         , singleQuote
                          , digitChar
                          , hexDigitChar
                          , binDigitChar
@@ -15,6 +16,7 @@ module X1.Parser.Helpers ( Parser
                          , char
                          , oneOf
                          , notFollowedBy
+                         , satisfy
                          , (<?>)
                          ) where
 
