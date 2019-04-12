@@ -6,16 +6,19 @@ module X1.Parser.Helpers ( Parser
                          , lexeme
                          , between
                          , betweenParens
+                         , betweenOptionalParens
                          , singleQuote
                          , digitChar
                          , hexDigitChar
                          , binDigitChar
                          , keyword
+                         , chunk
                          , identifier
                          , capitalIdentifier
                          , char
                          , oneOf
                          , notFollowedBy
+                         , sepBy1
                          , satisfy
                          , try
                          , (<?>)
@@ -54,6 +57,9 @@ blockCommentParser = L.skipBlockComment "{-" "-}"
 
 betweenParens :: Parser a -> Parser a
 betweenParens = between (lexeme $ char '(') (char ')') . lexeme
+
+betweenOptionalParens :: Parser a -> Parser a
+betweenOptionalParens p = betweenParens p <|> p
 
 char :: Char -> Parser Char
 char = single
