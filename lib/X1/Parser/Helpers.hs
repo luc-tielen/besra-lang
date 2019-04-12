@@ -17,10 +17,11 @@ module X1.Parser.Helpers ( Parser
                          , oneOf
                          , notFollowedBy
                          , satisfy
+                         , try
                          , (<?>)
                          ) where
 
-import Protolude hiding (many, first)
+import Protolude hiding (many, first, try)
 import qualified Data.Text as T
 import qualified Text.Megaparsec.Char.Lexer as L (lexeme, skipBlockComment,
                                                   skipLineComment, space)

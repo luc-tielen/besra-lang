@@ -17,6 +17,7 @@ dependencies:
   - protolude >= 0.2.2 && < 1
   - text >= 1.2.3.1 && < 2
   - megaparsec >= 7.0.4 && < 8
+  - parser-combinators >= 1.0.1 && < 2
   - parallel >= 3.2.2.0 && < 4
 
 default-extensions:
