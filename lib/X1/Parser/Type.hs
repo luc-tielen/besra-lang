@@ -7,7 +7,7 @@ import qualified X1.Parser.Tycon as Tycon
 import qualified X1.Parser.Tyvar as Tyvar
 import X1.Parser.Types.Type
 import X1.Parser.Helpers
-import X1.Types
+import X1.Types.Id
 import Control.Monad.Combinators.Expr
 
 

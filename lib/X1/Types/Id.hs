@@ -1,5 +1,5 @@
 
-module X1.Types ( Id(..) ) where
+module X1.Types.Id ( Id(..) ) where
 
 import Protolude
 
