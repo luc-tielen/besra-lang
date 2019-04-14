@@ -30,8 +30,9 @@ spec_charParseTest = describe "char parser" $ parallel $ do
     --[text|"a\nb"|] ==> "a\nb"
 
   it "fails with readable error message" $ do
-    (parse, "'ab'") `shouldFailWith` err 2 (utok 'b' <> elabel "single quote (')")
-    (parse, "'a '") `shouldFailWith` err 2 (utok ' ' <> elabel "single quote (')")
-    (parse, "'a") `shouldFailWith` err 2 (ueof <> elabel "single quote (')")
-    (parse, "a'") `shouldFailWith` err 0 (utok 'a' <> elabel "single quote (')")
+    (parse, "''") `shouldFailWith` err 1 (utok '\'' <> elabel "character literal")
+    (parse, "'ab'") `shouldFailWith` err 2 (utok 'b' <> elabel "closing single quote (')")
+    (parse, "'a '") `shouldFailWith` err 2 (utok ' ' <> elabel "closing single quote (')")
+    (parse, "'a") `shouldFailWith` err 2 (ueof <> elabel "closing single quote (')")
+    (parse, "a'") `shouldFailWith` err 0 (utok 'a' <> elabel "character literal")
 
