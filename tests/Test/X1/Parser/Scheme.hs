@@ -9,12 +9,11 @@ import X1.Parser.Types.Type
 import X1.Types.Id
 import Test.Hspec.Megaparsec hiding (shouldFailWith)
 import Test.X1.Parser.Helpers
-import X1.Parser.Helpers
 import Test.Tasty.Hspec
 
 
 parser' :: Text -> ParseResult Scheme
-parser' = mkParser (parser whitespace)
+parser' = mkParser parser
 
 (==>) :: Text -> Scheme -> IO ()
 a ==> b = parser' a `shouldParse` b

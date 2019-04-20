@@ -7,26 +7,23 @@ import qualified X1.Parser.Pred as Pred
 import qualified X1.Parser.Type as Type
 import X1.Parser.Types.Scheme
 import X1.Parser.Types.Pred
-import qualified Text.Megaparsec.Char.Lexer as L
 
 
-parser :: Parser () -> Parser Scheme
-parser ws' = parser' <?> "typescheme" where
-  lexeme' = L.lexeme ws'
+parser :: Parser Scheme
+parser = parser' <?> "typescheme" where
   parser' = try schemeWithPredicates <|> schemeWithoutPredicates
-  schemeWithoutPredicates = Scheme [] <$> Type.parser ws'
+  schemeWithoutPredicates = Scheme [] <$> Type.parser
   schemeWithPredicates = do
-    preds <- predicates ws'
+    preds <- predicates
     lexeme' . void $ chunk "=>"
-    Scheme preds <$> Type.parser ws'
+    Scheme preds <$> Type.parser
 
-predicates :: Parser () -> Parser [Pred]
-predicates ws' =
+predicates :: Parser [Pred]
+predicates =
   lexeme' $ nPredicates <|> singlePredicate
     where
-      lexeme' = L.lexeme ws'
       nPredicates = betweenParens $ predParser `sepBy1` comma
       singlePredicate = pure <$> betweenOptionalParens predParser
-      predParser = lexeme' $ betweenParens predParser <|> Pred.parser ws'
+      predParser = lexeme' $ betweenParens predParser <|> Pred.parser
       comma = lexeme' $ char ','
 

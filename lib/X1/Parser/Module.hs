@@ -6,7 +6,6 @@ import X1.Types.Module
 import X1.Types.Id
 import X1.Parser.Helpers
 import qualified X1.Parser.Scheme as Scheme
-import qualified Text.Megaparsec.Char.Lexer as L
 
 
 parser :: Parser (Module Decl)
@@ -20,9 +19,8 @@ decl :: Parser Decl
 decl = typeDecl <?> "type declaration"
 
 typeDecl :: Parser Decl
-typeDecl = withLineFold $ \ws' -> do
-  let lexeme' = L.lexeme ws'
+typeDecl = withLineFold $ do
   var <- Id <$> lexeme' identifier <?> "variable"
   void . lexeme' $ char ':'
-  TypeDecl var <$> Scheme.parser ws'
+  TypeDecl var <$> Scheme.parser
 

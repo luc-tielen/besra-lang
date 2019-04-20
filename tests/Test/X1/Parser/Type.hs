@@ -3,7 +3,6 @@ module Test.X1.Parser.Type ( module Test.X1.Parser.Type ) where
 
 import Protolude hiding ( Type )
 import Test.X1.Parser.Helpers
-import X1.Parser.Helpers
 import Test.Hspec.Megaparsec hiding (shouldFailWith)
 import Test.Tasty.Hspec
 import X1.Parser.Type (parser)
@@ -12,7 +11,7 @@ import X1.Types.Id
 
 
 parser' :: Text -> ParseResult Type
-parser' = mkParser (parser whitespace)
+parser' = mkParser parser
 
 (==>) :: Text -> Type -> IO ()
 a ==> b = parser' a `shouldParse` b

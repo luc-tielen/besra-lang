@@ -3,9 +3,10 @@ module X1.Parser.Helpers ( Parser
                          , ParseErr
                          , ParseError
                          , ParseResult
-                         , Lexeme
                          , lexeme
+                         , lexeme'
                          , whitespace
+                         , whitespace'
                          , withLineFold
                          , eof
                          , between
@@ -34,33 +35,45 @@ module X1.Parser.Helpers ( Parser
 import Protolude hiding (many, first, try)
 import qualified Data.Text as T
 import qualified Text.Megaparsec.Char.Lexer as L ( lexeme, skipBlockComment
-                                                 , skipLineComment, space, lineFold )
+                                                 , skipLineComment, space, indentLevel, indentGuard )
 import Text.Megaparsec hiding (ParseError)
 import qualified Text.Megaparsec as P (ParseErrorBundle)
 import Text.Megaparsec.Char (digitChar, lowerChar, upperChar)
 
 
 type ParseErr = Void
-type Parser = Parsec ParseErr Text
+type IndentLevel = Pos
+type Parser = ParsecT ParseErr Text (Reader IndentLevel)
 type ParseError = P.ParseErrorBundle Text ParseErr
 type ParseResult = Either ParseError
-type Lexeme = forall a. Show a => Parser a -> Parser a
 
 
-lexeme :: Parser a -> Parser a  -- TODO remove entirely, needs to be provided by monad
+-- Higher order parser that parses all trailing whitespace after the given parser.
+lexeme :: Parser a -> Parser a
 lexeme = L.lexeme whitespace
 
+-- | Same as lexeme, but takes last indent level into account (for example in a linefold)
+lexeme' :: Parser a -> Parser a
+lexeme' = L.lexeme whitespace'
+
+-- | Parser that consumes whitespace in general.
 whitespace :: Parser ()
 whitespace = L.space spaceParser commentParser blockCommentParser where
   spaceParser = skipSome wsChar
 
+-- | Same as whitespace, but takes last indent level into account (e.g. in a line fold)
+whitespace' :: Parser ()
+whitespace' = try $ do
+  lastIndentLvl <- ask
+  void $ L.indentGuard whitespace GT lastIndentLvl
+
 -- | Helper for parsing a line fold (parser spanning multiple lines, with lines after
 --   beginning line requiring greater indentation). Tries to parse whitespace after the linefold.
-withLineFold :: (Parser () -> Parser a) -> Parser a
-withLineFold f = lexeme $ L.lineFold whitespace $ \whitespace' ->
-  f (try whitespace')
-  -- TODO monad transformer to clean up awkward signature (extra reader?)
-  -- TODO clean up this entire file
+withLineFold :: Parser a -> Parser a
+withLineFold p = lexeme $ do
+  whitespace
+  currentIndent <- L.indentLevel
+  local (const currentIndent) p
 
 wsChar :: Parser ()
 wsChar = void (oneOf [' ', '\n'] <?> "whitespace")
