@@ -1,33 +1,13 @@
 
-module X1.Parser.Helpers ( Parser
-                         , ParseErr
-                         , ParseError
-                         , ParseResult
-                         , lexeme
-                         , lexeme'
-                         , whitespace
-                         , whitespace'
-                         , withLineFold
-                         , eof
-                         , between
-                         , betweenParens
-                         , betweenOptionalParens
-                         , singleQuote
-                         , digitChar
-                         , hexDigitChars
-                         , binDigitChars
-                         , keyword
-                         , chunk
-                         , identifier
-                         , capitalIdentifier
-                         , char
+module X1.Parser.Helpers ( Parser, ParseErr, ParseError, ParseResult
+                         , lexeme, lexeme', whitespace, whitespace', withLineFold
+                         , eof, between, betweenParens, betweenOptionalParens
+                         , singleQuote, digitChar, hexDigitChars, binDigitChars
+                         , keyword, chunk, char
+                         , identifier, capitalIdentifier
                          , notFollowedBy
-                         , sepBy
-                         , sepBy1
-                         , endBy
-                         , endBy1
-                         , satisfy
-                         , takeWhileP
+                         , sepBy, sepBy1, endBy, endBy1
+                         , satisfy, takeWhileP
                          , try
                          , (<?>)
                          ) where
@@ -36,7 +16,8 @@ import Protolude hiding (try)
 import qualified Data.Vector as V
 import qualified Data.Text as T
 import qualified Text.Megaparsec.Char.Lexer as L ( lexeme, skipBlockComment
-                                                 , skipLineComment, space, indentLevel, indentGuard )
+                                                 , skipLineComment, space
+                                                 , indentLevel, indentGuard )
 import Text.Megaparsec hiding (ParseError)
 import qualified Text.Megaparsec as P (ParseErrorBundle)
 import Text.Megaparsec.Char (digitChar, lowerChar, upperChar)
