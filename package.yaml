@@ -25,6 +25,7 @@ default-extensions:
   - OverloadedStrings
   - FlexibleContexts
   - LambdaCase
+  - RankNTypes
 
 ghc-options:
   - -Wall
@@ -38,6 +39,7 @@ ghc-options:
   - -Wno-missing-local-signatures
   - -Wno-monomorphism-restriction
   - -optP-Wno-nonportable-include-path
+  - -fhide-source-paths
 
 library:
   source-dirs:        lib

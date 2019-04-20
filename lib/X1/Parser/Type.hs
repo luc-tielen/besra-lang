@@ -13,19 +13,25 @@ import Control.Monad.Combinators.Expr
 
 -- TODO: upgrade the parsing of types for better precedence handling
 
-parser :: Parser Type
+parser :: Parser () -> Parser Type
 parser = typeExpr
 
-typeExpr :: Parser Type
-typeExpr = typeExpr' <?> "type"
+typeExpr :: Parser () -> Parser Type
+typeExpr ws' = typeExpr' <?> "type"
   where
-    typeExpr' = makeExprParser typeTerm typeOperators
+    typeExpr' = makeExprParser (typeTerm ws') typeOperators
 
-typeTerm :: Parser Type
-typeTerm = computeType =<< typeParser <?> "type"
+typeTerm :: Parser () -> Parser Type
+typeTerm ws' = computeType =<< typeParser' <?> "type"
   where
-    typeParser = some $ lexeme typeParser'
-    typeParser' = betweenParens typeExpr <|> concreteType <|> typeVar
+    typeParser' = typeParser ws' `sepBy1` ws'
+
+typeParser :: Parser () -> Parser Type
+typeParser ws' =
+  lexeme $  betweenParens (typeExpr ws')
+        <|> concreteType
+        <|> typeVar
+  where
     concreteType = TCon <$> Tycon.parser
     typeVar = TVar <$> Tyvar.parser
 

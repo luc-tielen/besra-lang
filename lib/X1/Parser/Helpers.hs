@@ -3,7 +3,11 @@ module X1.Parser.Helpers ( Parser
                          , ParseErr
                          , ParseError
                          , ParseResult
+                         , Lexeme
                          , lexeme
+                         , whitespace
+                         , withLineFold
+                         , eof
                          , between
                          , betweenParens
                          , betweenOptionalParens
@@ -18,7 +22,10 @@ module X1.Parser.Helpers ( Parser
                          , char
                          , oneOf
                          , notFollowedBy
+                         , sepBy
                          , sepBy1
+                         , endBy
+                         , endBy1
                          , satisfy
                          , try
                          , (<?>)
@@ -26,8 +33,8 @@ module X1.Parser.Helpers ( Parser
 
 import Protolude hiding (many, first, try)
 import qualified Data.Text as T
-import qualified Text.Megaparsec.Char.Lexer as L (lexeme, skipBlockComment,
-                                                  skipLineComment, space)
+import qualified Text.Megaparsec.Char.Lexer as L ( lexeme, skipBlockComment
+                                                 , skipLineComment, space, lineFold )
 import Text.Megaparsec hiding (ParseError)
 import qualified Text.Megaparsec as P (ParseErrorBundle)
 import Text.Megaparsec.Char (digitChar, lowerChar, upperChar)
@@ -37,14 +44,23 @@ type ParseErr = Void
 type Parser = Parsec ParseErr Text
 type ParseError = P.ParseErrorBundle Text ParseErr
 type ParseResult = Either ParseError
+type Lexeme = forall a. Show a => Parser a -> Parser a
 
 
-lexeme :: Parser a -> Parser a
+lexeme :: Parser a -> Parser a  -- TODO remove entirely, needs to be provided by monad
 lexeme = L.lexeme whitespace
 
 whitespace :: Parser ()
 whitespace = L.space spaceParser commentParser blockCommentParser where
   spaceParser = skipSome wsChar
+
+-- | Helper for parsing a line fold (parser spanning multiple lines, with lines after
+--   beginning line requiring greater indentation). Tries to parse whitespace after the linefold.
+withLineFold :: (Parser () -> Parser a) -> Parser a
+withLineFold f = lexeme $ L.lineFold whitespace $ \whitespace' ->
+  f (try whitespace')
+  -- TODO monad transformer to clean up awkward signature (extra reader?)
+  -- TODO clean up this entire file
 
 wsChar :: Parser ()
 wsChar = void (oneOf [' ', '\n'] <?> "whitespace")

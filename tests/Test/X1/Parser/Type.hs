@@ -3,6 +3,7 @@ module Test.X1.Parser.Type ( module Test.X1.Parser.Type ) where
 
 import Protolude hiding ( Type )
 import Test.X1.Parser.Helpers
+import X1.Parser.Helpers
 import Test.Hspec.Megaparsec hiding (shouldFailWith)
 import Test.Tasty.Hspec
 import X1.Parser.Type (parser)
@@ -11,7 +12,7 @@ import X1.Types.Id
 
 
 parser' :: Text -> ParseResult Type
-parser' = mkParser parser
+parser' = mkParser (parser whitespace)
 
 (==>) :: Text -> Type -> IO ()
 a ==> b = parser' a `shouldParse` b
@@ -65,6 +66,10 @@ spec_typeParseTest = describe "parsing types" $ parallel $ do
     "Either String Int" ==> app tEither [con "String", con "Int"]
     "f a" ==> app (var "f") [var "a"]
     "Maybe (Maybe Int)" ==> app tMaybe [app tMaybe [con "Int"]]
+
+  it "can parse a type signature spanning across multiple lines" $ do
+    "Maybe a ->\n Maybe String" ==> app tMaybe [var "a"] --> app tMaybe [con "String"]
+    "Maybe a ->\n  Maybe String" ==> app tMaybe [var "a"] --> app tMaybe [con "String"]
 
   it "can parse a mix of everything" $ do
     "Maybe a -> Maybe String" ==> app tMaybe [var "a"] --> app tMaybe [con "String"]
