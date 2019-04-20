@@ -14,31 +14,33 @@ module X1.Parser.Helpers ( Parser
                          , betweenOptionalParens
                          , singleQuote
                          , digitChar
-                         , hexDigitChar
-                         , binDigitChar
+                         , hexDigitChars
+                         , binDigitChars
                          , keyword
                          , chunk
                          , identifier
                          , capitalIdentifier
                          , char
-                         , oneOf
                          , notFollowedBy
                          , sepBy
                          , sepBy1
                          , endBy
                          , endBy1
                          , satisfy
+                         , takeWhileP
                          , try
                          , (<?>)
                          ) where
 
-import Protolude hiding (many, first, try)
+import Protolude hiding (try)
+import qualified Data.Vector as V
 import qualified Data.Text as T
 import qualified Text.Megaparsec.Char.Lexer as L ( lexeme, skipBlockComment
                                                  , skipLineComment, space, indentLevel, indentGuard )
 import Text.Megaparsec hiding (ParseError)
 import qualified Text.Megaparsec as P (ParseErrorBundle)
 import Text.Megaparsec.Char (digitChar, lowerChar, upperChar)
+import GHC.Unicode (isLower, isUpper, isDigit)
 
 
 type ParseErr = Void
@@ -76,7 +78,7 @@ withLineFold p = lexeme $ do
   local (const currentIndent) p
 
 wsChar :: Parser ()
-wsChar = void (oneOf [' ', '\n'] <?> "whitespace")
+wsChar = void (char ' ' <|> char '\n') <?> "whitespace"
 
 commentParser :: Parser ()
 commentParser = L.skipLineComment "--"
@@ -93,12 +95,12 @@ betweenOptionalParens p = betweenParens p <|> p
 char :: Char -> Parser Char
 char = single
 
-hexDigitChar :: Parser Char
-hexDigitChar = oneOf hexChars <?> "hex digit" where
-  hexChars = ['0'..'9'] ++ ['a'..'f'] ++ ['A'..'F']
+hexDigitChars :: Parser Text
+hexDigitChars = takeWhile1P (Just "hex digit") (`V.elem` hexChars) where
+  hexChars = ['0'..'9'] V.++ ['a'..'f'] V.++ ['A'..'F']
 
-binDigitChar :: Parser Char
-binDigitChar = oneOf ['0', '1'] <?> "binary digit"
+binDigitChars :: Parser Text
+binDigitChars = takeWhile1P (Just "binary digit") (\c -> c == '0' || c == '1')
 
 keyword :: Text -> Parser ()
 keyword s = lexeme (chunk s <* lookAhead wsChar) $> ()
@@ -107,20 +109,17 @@ identifier :: Parser Text
 identifier = do
   -- TODO forbid keywords
   firstChar <- lowerChar
-  rest <- many (identifierChar <?> "rest of identifier" )
-  pure $ T.pack $ [firstChar] <> rest
+  rest <- takeWhileP (Just "rest of identifier") isIdentifierChar
+  pure $ T.cons firstChar rest
 
 capitalIdentifier :: Parser Text
 capitalIdentifier = do
   firstChar <- upperChar
-  rest <- many (identifierChar <?> "rest of identifier" )
-  pure $ T.pack $ [firstChar] <> rest
+  rest <- takeWhileP (Just "rest of identifier") isIdentifierChar
+  pure $ T.cons firstChar rest
 
-identifierChar :: Parser Char
-identifierChar =  lowerChar
-              <|> upperChar
-              <|> digitChar
-              <|> singleQuote
+isIdentifierChar :: Char -> Bool
+isIdentifierChar c = isLower c || isUpper c || isDigit c || c == '\''
 
 singleQuote :: Parser Char
 singleQuote = char '\''

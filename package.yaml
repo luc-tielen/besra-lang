@@ -16,6 +16,7 @@ dependencies:
   - base >= 4.11.0 && < 5
   - protolude >= 0.2.2 && < 1
   - text >= 1.2.3.1 && < 2
+  - vector >= 0.12.0.2 && < 1
   - megaparsec >= 7.0.4 && < 8
   - parser-combinators >= 1.0.1 && < 2
   - parallel >= 3.2.2.0 && < 4
@@ -23,6 +24,7 @@ dependencies:
 default-extensions:
   - NoImplicitPrelude
   - OverloadedStrings
+  - OverloadedLists
   - FlexibleContexts
   - LambdaCase
   - RankNTypes
