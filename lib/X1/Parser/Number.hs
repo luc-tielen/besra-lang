@@ -8,7 +8,6 @@ import qualified Data.Vector as V
 import X1.Parser.Types.Number
 import X1.Parser.Helpers
 import GHC.Unicode ( isDigit )
-import Control.Monad.Fail
 
 
 decimal :: Parser Number
@@ -17,7 +16,7 @@ decimal = SInt <$> do
   digits <- takeWhileP Nothing isDigit
   case TR.decimal $ T.cons firstDigit digits of
     Right (result, _) -> pure result
-    Left err -> fail $ "Error occurred during parsing of decimal number: " <> err
+    Left err -> panic . T.pack $ "Error occurred during parsing of decimal number: " <> err
 
 -- NOTE: the parser below is bigger than you would expect for more detailed error reporting
 parser :: Parser Number

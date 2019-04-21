@@ -2,7 +2,6 @@
 module X1.Parser.Type ( parser ) where
 
 import Protolude hiding ( Type, try )
-import Control.Monad ( fail )
 import qualified X1.Parser.Tycon as Tycon
 import qualified X1.Parser.Tyvar as Tyvar
 import X1.Parser.Types.Type
@@ -17,10 +16,10 @@ parser :: Parser Type
 parser = typeExpr
 
 typeExpr :: Parser Type
-typeExpr = (makeExprParser typeTerm typeOperators) <?> "type"
+typeExpr = makeExprParser typeTerm typeOperators <?> "type"
 
 typeTerm :: Parser Type
-typeTerm = computeType =<< typeParser' <?> "type"
+typeTerm = computeType <$> typeParser' <?> "type"
   where
     typeParser' = typeParser `sepBy1` whitespace'
 
@@ -40,8 +39,8 @@ typeOperators =
     arrow :: Type -> Type -> Type
     arrow t1 t2 = TApp (TCon (Tycon (Id "->"))) [t1, t2]
 
-computeType :: [Type] -> Parser Type
-computeType [] = fail "Parse error when parsing type signature."
-computeType [t] = pure t
-computeType (t:ts) = pure $ TApp t ts
+computeType :: [Type] -> Type
+computeType [] = panic "Parse error when parsing type signature."
+computeType [t] = t
+computeType (t:ts) = TApp t ts
 
