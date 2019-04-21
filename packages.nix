@@ -1,10 +1,10 @@
 let
+  commit = "454eea84a757ca5f733c4ec0f234eba2281c74eb";
   nixpkgs = builtins.fetchTarball {
-    name = "nixos-18.09";
-    url = https://github.com/nixos/nixpkgs/archive/18.09.tar.gz;
-    sha256 = "1ib96has10v5nr6bzf7v8kw7yzww8zanxgw2qi1ll1sbv6kj6zpd";
+    name = "nixpkgs-19.03";
+    url = "https://github.com/nixos/nixpkgs/archive/${commit}.tar.gz";
+    sha256 = "1k9jbix4w43brqlfmvwy218pf5fbmzsnc08shaww9qfdl1rdlaxy";
   };
-  #pkgs = import nixpkgs;
-  pkgs = import <nixpkgs>;
+  pkgs = import nixpkgs;
 in
   pkgs
