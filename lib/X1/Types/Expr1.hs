@@ -5,6 +5,7 @@ import Protolude
 import X1.Types.Lit
 
 
-newtype Expr1 = E1Lit Lit
-  deriving (Eq, Show)
+data Expr1 = E1Lit Lit
+           | E1If Expr1 Expr1 Expr1  -- condition, true clause, false clause
+           deriving (Eq, Show)
 

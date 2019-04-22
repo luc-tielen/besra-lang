@@ -84,7 +84,7 @@ binDigitChars :: Parser Text
 binDigitChars = takeWhile1P (Just "binary digit") (\c -> c == '0' || c == '1')
 
 keyword :: Text -> Parser ()
-keyword s = lexeme (chunk s <* lookAhead wsChar) $> ()
+keyword s = lexeme' (chunk s <* lookAhead wsChar) $> ()
 
 identifier :: Parser Text
 identifier = do
