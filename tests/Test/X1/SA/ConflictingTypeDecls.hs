@@ -70,7 +70,7 @@ spec_conflictingTypeDecls = describe "SA: ConflictingTypeDecls" $ parallel $ do
       ==> Err [ conflict "x" [c "Int" --> c "Int", c "String"]
               , conflict "y" [c "Bool", c "Int" --> c "String"]]
 
-  it "reports multiple errors for each conflict for a specific ID" $
+  it "reports multiple errors for each conflict for a specific var" $
     "x : Int -> Int\nx : String\nx : a -> String"
       ==> Err [conflict "x" [ c "Int" --> c "Int"
                             , c "String"
