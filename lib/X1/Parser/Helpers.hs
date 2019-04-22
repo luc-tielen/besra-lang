@@ -13,7 +13,7 @@ module X1.Parser.Helpers ( Parser, ParseErr, ParseError, ParseResult
                          ) where
 
 import Protolude hiding (try)
-import qualified Data.Vector as V
+import qualified Data.Vector.Unboxed as V
 import qualified Data.Text as T
 import qualified Text.Megaparsec.Char.Lexer as L ( lexeme, skipBlockComment
                                                  , skipLineComment, space

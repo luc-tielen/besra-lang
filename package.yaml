@@ -28,6 +28,7 @@ default-extensions:
   - FlexibleContexts
   - LambdaCase
   - RankNTypes
+  - GADTs
 
 ghc-options:
   - -Wall
