@@ -15,23 +15,33 @@ extra-source-files:
 dependencies:
   - base >= 4.11.0 && < 5
   - protolude >= 0.2.2 && < 1
+  - text >= 1.2.3.1 && < 2
+  - vector >= 0.12.0.2 && < 1
+  - megaparsec >= 7.0.4 && < 8
+  - parser-combinators >= 1.0.1 && < 2
   - parallel >= 3.2.2.0 && < 4
 
 default-extensions:
   - NoImplicitPrelude
   - OverloadedStrings
+  - OverloadedLists
+  - FlexibleContexts
   - LambdaCase
+  - RankNTypes
 
 ghc-options:
   - -Wall
   - -Weverything
   - -Wno-safe
   - -Wno-unsafe
+  - -Wno-missed-specializations
+  - -Wno-all-missed-specializations
   - -Wno-missing-import-lists
   - -Wno-type-defaults
   - -Wno-missing-local-signatures
   - -Wno-monomorphism-restriction
   - -optP-Wno-nonportable-include-path
+  - -fhide-source-paths
 
 library:
   source-dirs:        lib
@@ -51,5 +61,7 @@ tests:
       - tasty >= 1.1.0 && < 2
       - tasty-hspec >= 1.1.5 && < 2
       - tasty-discover >= 4.2.1 && < 5
+      - hspec-megaparsec >= 2.0.0 && < 3
+      - neat-interpolation >= 0.3.2.4 && < 1
       - x1
 

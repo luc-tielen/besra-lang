@@ -1,20 +1,23 @@
 
 build:
-		@cabal build
+		@cabal new-build
 
 configure:
-		@hpack --force && cabal configure --enable-tests
+		@hpack --force && cabal new-configure --enable-tests
+
+repl:
+		@cabal new-repl lib:x1
 
 lint:
 		@hlint .
 
 tests:
-		@cabal test
+		@cabal new-test
 
 hoogle:
 		hoogle server --local -p 8080
 
 continuous_tests:
-		@ghcid --command="cabal repl x1-test"
+		@ghcid --command="cabal new-repl x1-test"
 
-.PHONY: hoogle lint configure build tests continuous_tests
+.PHONY: hoogle lint configure build repl tests continuous_tests
