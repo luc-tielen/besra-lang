@@ -4,7 +4,7 @@ module X1.Parser.Number ( parser ) where
 import Protolude
 import qualified Data.Text as T
 import qualified Data.Text.Read as TR
-import qualified Data.Vector as V
+import qualified Data.Vector.Unboxed as V
 import X1.Parser.Types.Number
 import X1.Parser.Helpers
 import GHC.Unicode ( isDigit )

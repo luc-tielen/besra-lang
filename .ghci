@@ -4,5 +4,6 @@ import Protolude
 :set -isrc
 :set -ilib
 :set -itests
+:set +t
 :load Main
 

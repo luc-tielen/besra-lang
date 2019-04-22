@@ -1,6 +1,6 @@
-module Test.X1.SemanticAnalysis ( module Test.X1.SemanticAnalysis ) where
+module Test.X1.SA ( module Test.X1.SA ) where
 
-import           X1.SemanticAnalysis
+import           X1.SA
 import           Protolude
 import           Test.Tasty.Hspec
 

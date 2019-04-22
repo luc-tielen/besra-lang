@@ -1,10 +1,10 @@
-module X1.Parser ( Parser, parse, parseFile ) where
+module X1.Parser ( Parser, ParseError, parse, parseFile ) where
 
 -- Mostly based on https://www.haskell.org/onlinereport/lexemes.html,
 -- with some minor variations.
 
 import Protolude
-import X1.Parser.Helpers ( Parser, ParseResult )
+import X1.Parser.Helpers ( Parser, ParseError, ParseResult )
 import qualified X1.Parser.Module as Module
 import X1.Types.Module
 import qualified Text.Megaparsec as P
