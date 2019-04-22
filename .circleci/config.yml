@@ -8,7 +8,7 @@ jobs:
       - checkout
       - run:
           name: Linting
-          command: nix-shell --run "make lint"
+          command: nix-shell --option sandbox false --run "make lint"
       - run:
           name: Unit tests
-          command: nix-shell --run "make configure tests"
+          command: nix-shell --option sandbox false --run "make configure tests"
