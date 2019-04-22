@@ -1,5 +1,5 @@
 
-module X1.SA.MissingTopLevelTypeDecls ( validate ) where
+module X1.SA.MissingTopLevelDecls ( validate ) where
 
 import Protolude
 import X1.SA.Helpers
@@ -37,11 +37,12 @@ checkConflict :: FilePath -> [Decl] -> ValidationResult [SAError]
 checkConflict path decls =
   let maybeTypeDecl = List.find isTypeDecl decls
       maybeBindingDecl = List.find isBindingDecl decls
-      err = MissingTopLevelTypeDeclErr . MissingTopLevelTypeDecl path
+      missingType = MissingTopLevelTypeDeclErr . MissingTopLevelTypeDecl path
+      missingBinding = MissingTopLevelBindingDeclErr . MissingTopLevelBindingDecl path
       result = case (maybeTypeDecl, maybeBindingDecl) of
-        (Just _ty, Just _binding) -> Ok
-        (Just _, Nothing) -> Err []  -- TODO missing top level binding <== fuse checks together!
-        (Nothing, Just binding) -> Err [err binding]
+        (Just _, Just _) -> Ok
         (Nothing, Nothing) -> Ok
+        (Just ty, Nothing) -> Err [missingBinding ty]
+        (Nothing, Just binding) -> Err [missingType binding]
      in result
 
