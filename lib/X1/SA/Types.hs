@@ -2,7 +2,9 @@ module X1.SA.Types ( ConflictingTypeDecl(..)
                    , ConflictingBindingDecl(..)
                    , MissingTopLevelTypeDecl(..)
                    , MissingTopLevelBindingDecl(..)
-                   , SAError(..) ) where
+                   , SAError(..)
+                   , SemanticError(..)
+                   ) where
 
 import Protolude
 import X1.Types.Module
@@ -24,5 +26,8 @@ data SAError = ConflictingTypeDeclErr ConflictingTypeDecl
              | ConflictingBindingDeclErr ConflictingBindingDecl
              | MissingTopLevelTypeDeclErr MissingTopLevelTypeDecl
              | MissingTopLevelBindingDeclErr MissingTopLevelBindingDecl
+  deriving (Eq, Show)
+
+newtype SemanticError = SemanticError [SAError]
   deriving (Eq, Show)
 

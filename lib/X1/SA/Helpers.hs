@@ -7,7 +7,7 @@ import Control.Parallel.Strategies
 -- | A validation check can return either no errors,
 --   or an error value.
 data ValidationResult e = Ok | Err e
-  deriving (Eq, Show)
+  deriving (Eq, Show, Functor)
 
 -- | A validation is a function that takes a program as input,
 --   and either returns ok or some kind of error.

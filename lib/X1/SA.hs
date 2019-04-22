@@ -1,4 +1,10 @@
-module X1.SA ( runSA, analyze, Validation, ValidationResult(..) ) where
+module X1.SA ( runSA
+             , analyze
+             , Validation
+             , ValidationResult(..)
+             , SAError(..)
+             , SemanticError(..)
+             ) where
 
 import Protolude
 import X1.Types.Module
@@ -17,6 +23,6 @@ validations path =
     , MissingTopLevelDecls.validate
     ]
 
-runSA :: FilePath -> Module Decl -> ValidationResult [SAError]
-runSA path = analyze (validations path)
+runSA :: FilePath -> Module Decl -> ValidationResult SemanticError
+runSA path decls = SemanticError <$> analyze (validations path) decls
 

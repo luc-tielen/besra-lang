@@ -1,5 +1,5 @@
 
-module X1.Parser.Helpers ( Parser, ParseErr, ParseError, ParseResult
+module X1.Parser.Helpers ( Parser, ParseError, ParseErr, ParseResult
                          , lexeme, lexeme', whitespace, whitespace', withLineFold
                          , eof, between, betweenParens, betweenOptionalParens
                          , singleQuote, digitChar, hexDigitChars, binDigitChars
