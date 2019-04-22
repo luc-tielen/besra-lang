@@ -45,7 +45,7 @@ semanticAnalysis path decls =
 
 compile :: FilePath -> IO ()
 compile path = runExceptT pipeline $> () where
-  pipeline = pipeline path
+  pipeline = runPipeline path
   runPipeline = parse
              >-> semanticAnalysis path
   --         >-> typeCheck
