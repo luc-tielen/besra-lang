@@ -22,10 +22,10 @@ analyze' :: Validation [SAError] (Module Decl)
 analyze' = analyze [validate file]
 
 conflict :: Text -> [Expr1] -> SAError
-conflict var types =
+conflict var exprs =
   let toBindingDecls = map (BindingDecl (Id var))
       err = ConflictingBindingDeclErr . ConflictingBindingDecl file . toBindingDecls
-   in err types
+   in err exprs
 
 num :: Int -> Expr1
 num = E1Lit . LNumber . SInt
