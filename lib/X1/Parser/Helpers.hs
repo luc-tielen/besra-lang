@@ -6,7 +6,8 @@ module X1.Parser.Helpers ( Parser, ParseError, ParseErr, ParseResult
                          , keyword, chunk, char
                          , identifier, capitalIdentifier
                          , notFollowedBy
-                         , sepBy, sepBy1, endBy, endBy1
+                         , sepBy, sepBy1, endBy, endBy1, sepEndBy1
+                         , L.indentLevel, withIndent, sameLine
                          , satisfy, takeWhileP
                          , try
                          , (<?>)
@@ -57,6 +58,12 @@ withLineFold p = lexeme $ do
   whitespace
   currentIndent <- L.indentLevel
   local (const currentIndent) p
+
+withIndent :: Pos -> Parser a -> Parser a
+withIndent indent p = L.indentGuard whitespace EQ indent *> p
+
+sameLine :: Parser a -> Parser a
+sameLine p = skipMany (satisfy (== ' ')) *> p
 
 wsChar :: Parser ()
 wsChar = void (char ' ' <|> char '\n') <?> "whitespace"

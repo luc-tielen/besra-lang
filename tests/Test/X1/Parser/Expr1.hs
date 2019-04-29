@@ -1,16 +1,22 @@
 
 module Test.X1.Parser.Expr1 ( module Test.X1.Parser.Expr1 ) where
 
-import Protolude
+import Protolude hiding ( Type )
 import Test.Tasty.Hspec
 import Test.X1.Parser.Helpers
 import X1.Types.Expr1
 import X1.Types.Lit
+import X1.Types.Id
 import X1.Parser.Expr1 (parser)
 import X1.Parser.Types.String
+import X1.Parser.Types.Type
+import X1.Parser.Types.Scheme
 import X1.Parser.Types.Number
 import Test.Hspec.Megaparsec hiding (shouldFailWith)
 
+
+c :: Text -> Type
+c = TCon . Tycon . Id
 
 parse :: Text -> ParseResult Expr1
 parse = mkParser parser
@@ -19,7 +25,9 @@ parse = mkParser parser
 spec_exprParseTest :: Spec
 spec_exprParseTest = describe "expression parser" $ parallel $ do
   describe "literals" $ parallel $ do
-    let labels = mconcat $ elabel <$> ["number", "character literal", "string", "if expression"]
+    let labels = mconcat $ elabel <$> [ "number", "character literal"
+                                      , "string", "if expression"
+                                      , "let expression", "variable"]
         num = E1Lit . LNumber
         str = E1Lit . LString . String
         char = E1Lit . LChar
@@ -42,23 +50,25 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       "'0'" ==> '0'
       "'a'" ==> 'a'
 
-    it "fails with readable error message for strings" $ do
-      (parse, "abc") `shouldFailWith` err 0 (utoks "ab" <> labels)
+    it "fails with readable error message for strings" $
       (parse, "\"abc") `shouldFailWith` err 4 (ueof <> etok '"')
-      (parse, "abc") `shouldFailWith` err 0 (utoks "ab" <> labels)
 
     it "fails with readable error message for characters" $ do
       (parse, "''") `shouldFailWith` err 1 (utok '\'' <> elabel "character literal")
       (parse, "'ab'") `shouldFailWith` err 2 (utok 'b' <> elabel "closing single quote (')")
       (parse, "'a '") `shouldFailWith` err 2 (utok ' ' <> elabel "closing single quote (')")
       (parse, "'a") `shouldFailWith` err 2 (ueof <> elabel "closing single quote (')")
-      (parse, "a'") `shouldFailWith` err 0 (utoks "a'" <> labels)
 
     it "fails with readable error message for numbers" $ do
-      (parse, "-0b0") `shouldFailWith` err 0 (utoks "-0" <> labels)
+      (parse, "-0b0") `shouldFailWith` err 0 (utoks "-0b" <> labels)
       (parse, "0b2") `shouldFailWith` err 2 (utok '2' <> elabel "binary digit")
       (parse, "0bb1") `shouldFailWith` err 2 (utok 'b' <> elabel "binary digit")
       (parse, "0b") `shouldFailWith` err 2 (ueof <> elabel "binary digit")
+
+  it "can parse variables" $ do
+    let a ==> b = parse a `shouldParse` E1Var (Id b)
+    "abc123" ==> "abc123"
+    "a'" ==> "a'"
 
   describe "if expressions" $ parallel $ do
     -- NOTE: does not take typesystem into account, only parsing.
@@ -100,5 +110,67 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       (parse, "if \n 1\n then\n 2\n else\n3") `shouldFailWith` errFancy 22 (badIndent 1 1)
       (parse, "if 1 then if 2\nthen 3 else 4 else 5") `shouldFailWith` errFancy 15 (badIndent 11 1)
 
-      -- error with line fold (indents after each part)
-      -- nested example
+  describe "let expressions" $ parallel $ do
+    let let' = E1Let
+        num = E1Lit . LNumber . SInt
+        binding x = ExprBindingDecl (Id x)
+        sig x ty = ExprTypeDecl (Id x) (Scheme [] ty)
+        var = E1Var . Id
+        a ==> b = parse a `shouldParse` b
+
+    it "can parse single-line let expressions" $ do
+      "let x = 1 in x" ==> let' [binding "x" (num 1)] (var "x")
+      "let x = 1; y = 2 in x" ==> let' [binding "x" (num 1), binding "y" (num 2)] (var "x")
+      "let x = 1  ; y = 2 in x" ==> let' [binding "x" (num 1), binding "y" (num 2)] (var "x")
+
+    it "can parse multi-line let expressions" $ do
+      "let x = 1\nin x" ==> let' [binding "x" (num 1)] (var "x")
+      "let x = 1\nin\n x" ==> let' [binding "x" (num 1)] (var "x")
+      "let x = 1\n    y = 2\nin x" ==> let' [binding "x" (num 1), binding "y" (num 2)] (var "x")
+      "let x = 1\n    y = 2\nin\n x" ==> let' [binding "x" (num 1), binding "y" (num 2)] (var "x")
+      "let\n  x = 1\n  y = 2\nin\n x" ==> let' [binding "x" (num 1), binding "y" (num 2)] (var "x")
+
+    it "can parse nested let expressions" $ do
+      "let x = 1 in let y = 2 in y"
+        ==> let' [binding "x" (num 1)] (let' [binding "y" (num 2)] (var "y"))
+      "let x = let y = 2 in y in x"
+        ==> let' [binding "x" (let' [binding "y" (num 2)] (var "y"))] (var "x")
+      "let x = let y = 2\n         in y in x"  -- TODO force same indentation in second in
+        ==> let' [binding "x" (let' [binding "y" (num 2)] (var "y"))] (var "x")
+
+    it "can parse type signature in let expressions" $ do
+      "let x : Int; x = 1 in x" ==> let' [sig "x" (c "Int"), binding "x" (num 1)] (var "x")
+      "let x : Int\n    x = 1 in x" ==> let' [sig "x" (c "Int"), binding "x" (num 1)] (var "x")
+
+    it "fails with readable error message for single line lets" $ do
+      (parse, "let") `shouldFailWith` err 3 (ueof <> elabel "whitespace")
+      (parse, "let ") `shouldFailWith` err 4 (ueof <> elabel "declaration")
+      (parse, "let x") `shouldFailWith` err 5
+        (ueof <> elabel "rest of assignment" <> elabel "rest of identifier"
+        <> elabel "rest of type declaration")
+      (parse, "let x = 1") `shouldFailWith` err 9 (ueof <> etoks "in" <> etok ';')
+      (parse, "let x = 1 in") `shouldFailWith` err 12 (ueof <> elabel "whitespace")
+      (parse, "let x = 1 y = 2 in x") `shouldFailWith` err 10 (utoks "y " <> etoks "in" <> etok ';')
+      (parse, "let x = 1 inx") `shouldFailWith` err 12 (utok 'x' <> elabel "whitespace")
+      (parse, "let x = 1\n    y = 2 in ") `shouldFailWith` err 23
+        (ueof <> elabel "if expression" <> elabel "let expression"
+        <> elabel "character literal" <> elabel "string"
+        <> elabel "number" <> elabel "variable")
+
+    it "fails with readable error for mismatching indent in bindings" $ do
+      (parse, "let x = 1\n;    y = 2 in x") `shouldFailWith` err 12
+        (elabel "mismatched indentation")
+{-
+      (parse, "let x = 1\n y = 2 in x") `shouldFailWith` err 12
+        (elabel "mismatched indentation")
+      (parse, "let x = 1\n       y = 2 in x") `shouldFailWith` err 12
+        (elabel "mismatched indentation")
+      (parse, "let x = 1\n in x") `shouldFailWith` err 12
+        (elabel "mismatched indentation")
+-}
+  it "can parse variables" $ do
+    let a ==> b = parse a `shouldParse` E1Var (Id b)
+    "a" ==> "a"
+    "abc123" ==> "abc123"
+    "a'" ==> "a'"
+    "a'b" ==> "a'b"
