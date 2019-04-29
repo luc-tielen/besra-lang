@@ -118,12 +118,8 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
         var = E1Var . Id
         a ==> b = parse a `shouldParse` b
 
-    it "can parse single-line let expressions" $ do
-      "let x = 1 in x" ==> let' [binding "x" (num 1)] (var "x")
-      "let x = 1; y = 2 in x" ==> let' [binding "x" (num 1), binding "y" (num 2)] (var "x")
-      "let x = 1  ; y = 2 in x" ==> let' [binding "x" (num 1), binding "y" (num 2)] (var "x")
-
     it "can parse multi-line let expressions" $ do
+      "let x = 1 in x" ==> let' [binding "x" (num 1)] (var "x")  -- special case, for now
       "let x = 1\nin x" ==> let' [binding "x" (num 1)] (var "x")
       "let x = 1\nin\n x" ==> let' [binding "x" (num 1)] (var "x")
       "let x = 1\n    y = 2\nin x" ==> let' [binding "x" (num 1), binding "y" (num 2)] (var "x")
@@ -138,36 +134,35 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       "let x = let y = 2\n         in y in x"  -- TODO force same indentation in second in
         ==> let' [binding "x" (let' [binding "y" (num 2)] (var "y"))] (var "x")
 
-    it "can parse type signature in let expressions" $ do
-      "let x : Int; x = 1 in x" ==> let' [sig "x" (c "Int"), binding "x" (num 1)] (var "x")
+    it "can parse type signature in let expressions" $
       "let x : Int\n    x = 1 in x" ==> let' [sig "x" (c "Int"), binding "x" (num 1)] (var "x")
 
-    it "fails with readable error message for single line lets" $ do
+    it "fails with readable error message for let expressions" $ do
       (parse, "let") `shouldFailWith` err 3 (ueof <> elabel "whitespace")
       (parse, "let ") `shouldFailWith` err 4 (ueof <> elabel "declaration")
       (parse, "let x") `shouldFailWith` err 5
         (ueof <> elabel "rest of assignment" <> elabel "rest of identifier"
         <> elabel "rest of type declaration")
-      (parse, "let x = 1") `shouldFailWith` err 9 (ueof <> etoks "in" <> etok ';')
+      (parse, "let x = 1") `shouldFailWith` err 9
+        (ueof <> elabel "properly indented declaration or 'in' keyword")
       (parse, "let x = 1 in") `shouldFailWith` err 12 (ueof <> elabel "whitespace")
-      (parse, "let x = 1 y = 2 in x") `shouldFailWith` err 10 (utoks "y " <> etoks "in" <> etok ';')
+      (parse, "let x = 1 y = 2 in x") `shouldFailWith` err 10
+        (utoks "y " <> elabel "properly indented declaration or 'in' keyword")
       (parse, "let x = 1 inx") `shouldFailWith` err 12 (utok 'x' <> elabel "whitespace")
       (parse, "let x = 1\n    y = 2 in ") `shouldFailWith` err 23
         (ueof <> elabel "if expression" <> elabel "let expression"
         <> elabel "character literal" <> elabel "string"
         <> elabel "number" <> elabel "variable")
+      (parse, "let x = 1in") `shouldFailWith` err 9 (utok 'i')
 
     it "fails with readable error for mismatching indent in bindings" $ do
-      (parse, "let x = 1\n;    y = 2 in x") `shouldFailWith` err 12
-        (elabel "mismatched indentation")
-{-
-      (parse, "let x = 1\n y = 2 in x") `shouldFailWith` err 12
-        (elabel "mismatched indentation")
-      (parse, "let x = 1\n       y = 2 in x") `shouldFailWith` err 12
-        (elabel "mismatched indentation")
-      (parse, "let x = 1\n in x") `shouldFailWith` err 12
-        (elabel "mismatched indentation")
--}
+      (parse, "let x = 1\n y = 2 in x") `shouldFailWith` err 11
+        (utoks "y " <> elabel "properly indented declaration or 'in' keyword")
+      (parse, "let x = 1\n       y = 2 in x") `shouldFailWith` err 17
+        (utoks "y " <> elabel "properly indented declaration or 'in' keyword")
+      (parse, "let   x = 1\n    y = 2\nin x") `shouldFailWith` err 16
+        (utoks "y " <> elabel "properly indented declaration or 'in' keyword")
+
   it "can parse variables" $ do
     let a ==> b = parse a `shouldParse` E1Var (Id b)
     "a" ==> "a"

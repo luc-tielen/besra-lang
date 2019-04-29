@@ -9,11 +9,11 @@ import X1.Parser.Types.Number
 import X1.Parser.Helpers
 import GHC.Unicode ( isDigit )
 
-
 decimal :: Parser Number
 decimal = SInt <$> do
   firstDigit <- satisfy (`V.elem` ['1'..'9']) <?> "non-zero digit"
   digits <- takeWhileP Nothing isDigit
+  notFollowedBy letterChar
   case TR.decimal $ T.cons firstDigit digits of
     Right (result, _) -> pure result
     Left err -> panic . T.pack $ "Error occurred during parsing of decimal number: " <> err

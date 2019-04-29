@@ -7,7 +7,7 @@ import X1.Types.Expr1
 import X1.Parser.Helpers
 import qualified X1.Parser.Lit as Lit
 import qualified X1.Parser.Scheme as Scheme
-import Text.Megaparsec.Debug
+--import Text.Megaparsec.Debug
 
 
 parser :: Parser Expr1
@@ -30,22 +30,15 @@ ifParser = ifParser' <?> "if expression" where
     E1If cond trueClause <$> lexeme' parser
 
 letParser :: Parser Expr1
-letParser = (try letBlockParser <|> letLineParser) <?> "let expression" where
-  letBlockParser = do
+letParser = letParser' <?> "let expression" where
+  inLabel = "properly indented declaration or 'in' keyword"
+  letParser' = do
     bindings <- withLineFold $ do
       keyword "let"
       indentation <- indentLevel
-      let declParser' = dbg "indented decl" ( withIndent indentation declParser <?> "declaration")
+      let declParser' = withIndent indentation declParser <?> "declaration"
       lexeme declParser' `sepBy1` (whitespace' <* notFollowedBy (keyword "in"))
-    result <- withLineFold $ keyword "in" *> parser
-    pure $ E1Let bindings result
-  semiColon = lexeme' $ sameLine (char ';')
-  singleLineDecl = lexeme declParser <?> "declaration"
-  letLineParser = dbg "let line" $ withLineFold $ do
-    keyword "let"
-    bindings <- singleLineDecl `sepBy1` (semiColon <* notFollowedBy (keyword "in"))
-    keyword "in"
-    result <- parser
+    result <- withLineFold $ (keyword "in" <?> inLabel) *> parser
     pure $ E1Let bindings result
 
 declParser :: Parser ExprDecl

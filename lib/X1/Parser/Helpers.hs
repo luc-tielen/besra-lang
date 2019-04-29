@@ -3,11 +3,12 @@ module X1.Parser.Helpers ( Parser, ParseError, ParseErr, ParseResult
                          , lexeme, lexeme', whitespace, whitespace', withLineFold
                          , eof, between, betweenParens, betweenOptionalParens
                          , singleQuote, digitChar, hexDigitChars, binDigitChars
+                         , letterChar
                          , keyword, chunk, char
                          , identifier, capitalIdentifier
-                         , notFollowedBy
-                         , sepBy, sepBy1, endBy, endBy1, sepEndBy1
-                         , L.indentLevel, withIndent, sameLine
+                         , notFollowedBy, lookAhead
+                         , sepBy, sepBy1, endBy, endBy1
+                         , L.indentLevel, withIndent
                          , satisfy, takeWhileP
                          , try
                          , (<?>)
@@ -21,7 +22,7 @@ import qualified Text.Megaparsec.Char.Lexer as L ( lexeme, skipBlockComment
                                                  , indentLevel, indentGuard )
 import Text.Megaparsec hiding (ParseError)
 import qualified Text.Megaparsec as P (ParseErrorBundle)
-import Text.Megaparsec.Char (digitChar, lowerChar, upperChar)
+import Text.Megaparsec.Char (digitChar, letterChar, lowerChar, upperChar)
 import GHC.Unicode (isLower, isUpper, isDigit)
 
 
@@ -61,9 +62,6 @@ withLineFold p = lexeme $ do
 
 withIndent :: Pos -> Parser a -> Parser a
 withIndent indent p = L.indentGuard whitespace EQ indent *> p
-
-sameLine :: Parser a -> Parser a
-sameLine p = skipMany (satisfy (== ' ')) *> p
 
 wsChar :: Parser ()
 wsChar = void (char ' ' <|> char '\n') <?> "whitespace"
