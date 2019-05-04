@@ -25,11 +25,7 @@ parse = mkParser parser
 spec_exprParseTest :: Spec
 spec_exprParseTest = describe "expression parser" $ parallel $ do
   describe "literals" $ parallel $ do
-    let labels = mconcat $ elabel <$> [ "number", "character literal"
-                                      , "string", "if expression"
-                                      , "let expression", "variable"
-                                      , "lambda expression" ]
-        num = E1Lit . LNumber
+    let num = E1Lit . LNumber
         str = E1Lit . LString . String
         char = E1Lit . LChar
 
@@ -61,7 +57,7 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       (parse, "'a") `shouldFailWith` err 2 (ueof <> elabel "closing single quote (')")
 
     it "fails with readable error message for numbers" $ do
-      (parse, "-0b0") `shouldFailWith` err 0 (utoks "-0b" <> labels)
+      (parse, "-0b0") `shouldFailWith` err 0 (utoks "-0b" <> elabel "expression")
       (parse, "0b2") `shouldFailWith` err 2 (utok '2' <> elabel "binary digit")
       (parse, "0bb1") `shouldFailWith` err 2 (utok 'b' <> elabel "binary digit")
       (parse, "0b") `shouldFailWith` err 2 (ueof <> elabel "binary digit")
@@ -150,10 +146,7 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       (parse, "let x = 1 y = 2 in x") `shouldFailWith` err 10
         (utoks "y " <> elabel "properly indented declaration or 'in' keyword")
       (parse, "let x = 1 inx") `shouldFailWith` err 12 (utok 'x' <> elabel "whitespace")
-      (parse, "let x = 1\n    y = 2 in ") `shouldFailWith` err 23
-        (ueof <> elabel "if expression" <> elabel "let expression"
-        <> elabel "character literal" <> elabel "string"
-        <> elabel "number" <> elabel "variable" <> elabel "lambda expression")
+      (parse, "let x = 1\n    y = 2 in ") `shouldFailWith` err 23 (ueof <> elabel "expression")
       (parse, "let x = 1in") `shouldFailWith` err 9 (utok 'i')
 
     it "fails with readable error for mismatching indent in bindings" $ do
@@ -167,8 +160,10 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
   describe "lambdas" $ parallel $ do
     let a ==> b = parse a `shouldParse` b
         lam vars = E1Lam (Id <$> vars)
-        var = E1Var . Id
+        let' = E1Let
+        binding x = ExprBindingDecl (Id x)
         num = E1Lit . LNumber . SInt
+        var = E1Var . Id
 
     it "can parse lambda with 1 argument" $ do
       "\\x -> 1" ==> lam ["x"] (num 1)
@@ -182,15 +177,23 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
 
     it "can parse lambda over multiple lines" $ do
       "\\a b -> \n a" ==> lam ["a", "b"] (var "a")
-      -- TODO thinks in is a variable: upgrade keyword parser
-      "let x = \\a b ->\n     a\nin x" ==> lam ["a", "b"] (var "a")
+      "let x = \\a b ->\n         a\nin x"
+        ==> let' [binding "x" (lam ["a", "b"] (var "a"))] (var "x")
+
+    it "can parse nested lambdas" $ do
+      "\\a -> \\b -> a" ==> lam ["a"] (lam ["b"] (var "a"))
+      "\\a -> \n \\b -> a" ==> lam ["a"] (lam ["b"] (var "a"))
+      "\\a -> \n \\b ->\n  a" ==> lam ["a"] (lam ["b"] (var "a"))
 
     it "fails with readable error message" $ do
+      let expected = elabel "lambda arrow" <> elabel "variable"
       (parse, "\\ -> 1") `shouldFailWith` err 2 (utok '-' <> elabel "variable")
-      (parse, "\\a \nb -> a") `shouldFailWith` err 4 (utoks "b " <> elabel "lambda arrow")
-      (parse, "\\a \n b -> a") `shouldFailWith` err 6
-        (utoks "b " <> elabel "lambda arrow")
-      (parse, "\\a \n -> a") `shouldFailWith` err 2 (utok '-' <> elabel "variable")
+      (parse, "\\\n -> 1") `shouldFailWith` err 1 (utok '\n' <> elabel "variable")
+      (parse, "\\a \nb -> a") `shouldFailWith` err 3 (utoks "\nb" <> expected)
+      (parse, "\\a \n b -> a") `shouldFailWith` err 3 (utoks "\n " <> expected)
+      (parse, "\\a \n -> a") `shouldFailWith` err 3 (utoks "\n " <> expected)
+      (parse, "\\a ->\na") `shouldFailWith` errFancy 6 (badIndent 1 1)
+
 
   it "can parse variables" $ do
     let a ==> b = parse a `shouldParse` E1Var (Id b)
@@ -198,4 +201,3 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
     "abc123" ==> "abc123"
     "a'" ==> "a'"
     "a'b" ==> "a'b"
-

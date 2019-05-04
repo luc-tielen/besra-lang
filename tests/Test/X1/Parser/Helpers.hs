@@ -27,7 +27,8 @@ succeedsLeaving :: Show a
                 -> IO ()
 succeedsLeaving (parser, text) restOfText =
   let parser' = P.runParserT' parser (TP.initialState text)
-   in runReader parser' (P.mkPos 1) `TP.succeedsLeaving` restOfText
+      beginState = ParseState (P.mkPos 1) Normal
+   in runReader parser' beginState `TP.succeedsLeaving` restOfText
 
 shouldFailWith :: Show a
                => (Text -> ParseResult a, Text) -> P.ParseError Text ParseErr

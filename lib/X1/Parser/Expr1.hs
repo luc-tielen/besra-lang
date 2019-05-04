@@ -7,26 +7,28 @@ import X1.Types.Expr1
 import X1.Parser.Helpers
 import qualified X1.Parser.Lit as Lit
 import qualified X1.Parser.Scheme as Scheme
---import Text.Megaparsec.Debug
 
 
 parser :: Parser Expr1
-parser =  E1Lit <$> Lit.parser
-      <|> lamParser
-      <|> ifParser  -- TODO try needed because of linefold?
-      <|> letParser
-      <|> varParser
+parser = parser' <?> "expression" where
+  parser' =  E1Lit <$> Lit.parser
+         <|> lineFoldedExprs
+         <|> letParser
+         <|> varParser
+  lineFoldedExprs = withLineFold $ lamParser <|> ifParser
 
 varParser :: Parser Expr1
-varParser = E1Var . Id <$> lexeme' identifier <?> "variable"
+varParser = E1Var . Id <$> lexeme identifier <?> "variable"
 
 lamParser :: Parser Expr1
 lamParser = lamParser' <?> "lambda expression" where
+  lambdaHead = sameLine $ do
+    void . lexeme $ char '\\'
+    vars <- some $ lexeme arg
+    void $ lexeme (chunk "->" <?> "lambda arrow")
+    pure vars
   lamParser' = do
-    void . lexeme' $ char '\\'
-    -- TODO vars on same line
-    vars <- lexeme arg `sepBy1` whitespace'
-    void $ lexeme' (chunk "->" <?> "lambda arrow")
+    vars <- lexeme' lambdaHead
     body <- lexeme parser
     pure $ E1Lam vars body
 
@@ -36,7 +38,7 @@ arg = Id <$> identifier <?> "variable"
 
 ifParser :: Parser Expr1
 ifParser = ifParser' <?> "if expression" where
-  ifParser' = withLineFold $ do
+  ifParser' = do
     keyword "if"
     cond <- lexeme' parser
     keyword "then"
@@ -52,7 +54,7 @@ letParser = letParser' <?> "let expression" where
       keyword "let"
       indentation <- indentLevel
       let declParser' = withIndent indentation declParser <?> "declaration"
-      lexeme declParser' `sepBy1` (whitespace' <* notFollowedBy (keyword "in"))
+      lexeme declParser' `sepBy1` whitespace'
     result <- withLineFold $ (keyword "in" <?> inLabel) *> parser
     pure $ E1Let bindings result
 
