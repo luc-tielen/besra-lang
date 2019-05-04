@@ -14,8 +14,18 @@ parser = parser' <?> "expression" where
   parser' =  E1Lit <$> Lit.parser
          <|> lineFoldedExprs
          <|> letParser
+         <|> try funcParser
          <|> varParser
   lineFoldedExprs = withLineFold $ lamParser <|> ifParser
+
+funcParser :: Parser Expr1
+funcParser = funcParser' <?> "function application" where
+  -- NOTE: next line is to prevent wrong order of parentheses in nested applications
+  funcNameParser = E1Var . Id <$> lexeme (identifier <|> capitalIdentifier)
+  funcParser' = sameLine $ do
+    funcName <- funcNameParser
+    args <- some $ lexeme (funcNameParser <|> parser)
+    pure $ E1App funcName args
 
 varParser :: Parser Expr1
 varParser = E1Var . Id <$> lexeme identifier <?> "variable"

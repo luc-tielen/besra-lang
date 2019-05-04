@@ -6,6 +6,7 @@ module Test.X1.Parser.Helpers ( module Test.X1.Parser.Helpers
                               ) where
 
 import Protolude
+import Prelude ( String )
 import X1.Parser
 import X1.Parser.Helpers
 import qualified Test.Hspec.Megaparsec as TP ( initialState, shouldFailWith
@@ -21,6 +22,9 @@ mkParser = flip parse ""
 
 badIndent :: Int -> Int -> EF ParseErr
 badIndent refLvl actualLvl = fancy $ ErrorIndentation GT (mkPos refLvl) (mkPos actualLvl)
+
+failMsg :: String -> EF ParseErr
+failMsg = fancy . ErrorFail
 
 succeedsLeaving :: Show a
                 => (Parser a, Text) -> Text

@@ -12,7 +12,7 @@ import X1.Parser.Types.String
 import X1.Parser.Types.Type
 import X1.Parser.Types.Scheme
 import X1.Parser.Types.Number
-import Test.Hspec.Megaparsec hiding (shouldFailWith)
+import Test.Hspec.Megaparsec hiding (shouldFailWith, succeedsLeaving)
 
 
 c :: Text -> Type
@@ -194,6 +194,25 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       (parse, "\\a \n -> a") `shouldFailWith` err 3 (utoks "\n " <> expected)
       (parse, "\\a ->\na") `shouldFailWith` errFancy 6 (badIndent 1 1)
 
+  describe "function application" $ parallel $ do
+    let a ==> b = parse a `shouldParse` b
+        app func = E1App (var func)
+        num = E1Lit . LNumber . SInt
+        var = E1Var . Id
+
+    it "can parse application with 1 argument" $ do
+      "f 1" ==> app "f" [num 1]
+      "f abc" ==> app "f" [var "abc"]
+      "DataCon abc" ==> app "DataCon" [var "abc"]
+
+    it "can parse application with more than 1 argument" $ do
+      "f 1 2" ==> app "f" [num 1, num 2]
+      "f abc def" ==> app "f" [var "abc", var "def"]
+      "DataCon abc def" ==> app "DataCon" [var "abc", var "def"]
+
+    it "fails with readable error message" $ do
+      (parser, "f\n a") `succeedsLeaving` "a"  -- parses variable only
+      (parse, "in a") `shouldFailWith` errFancy 2 (failMsg "Reserved keyword: in")
 
   it "can parse variables" $ do
     let a ==> b = parse a `shouldParse` E1Var (Id b)
