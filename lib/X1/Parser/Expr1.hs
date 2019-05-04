@@ -16,6 +16,7 @@ parser = parser' <?> "expression" where
          <|> letParser
          <|> try funcParser
          <|> varParser
+         <|> betweenParens parser
   lineFoldedExprs = withLineFold $ lamParser <|> ifParser
 
 funcParser :: Parser Expr1

@@ -234,3 +234,13 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
     "abc123" ==> "abc123"
     "a'" ==> "a'"
     "a'b" ==> "a'b"
+
+  it "can parse expressions inside parentheses" $ do
+    let a ==> b = parse a `shouldParse` b
+        app func = E1App (var func)
+        num = E1Lit . LNumber . SInt
+        var = E1Var . Id
+    "f (1)" ==> app "f" [num 1]
+    "f (a 1)" ==> app "f" [app "a" [num 1]]
+    "f a (b 1)" ==> app "f" [var "a", app "b" [num 1]]
+    "(((1)))" ==> num 1
