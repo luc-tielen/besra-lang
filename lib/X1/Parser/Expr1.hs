@@ -12,12 +12,27 @@ import qualified X1.Parser.Scheme as Scheme
 
 parser :: Parser Expr1
 parser =  E1Lit <$> Lit.parser
+      <|> lamParser
       <|> ifParser  -- TODO try needed because of linefold?
       <|> letParser
       <|> varParser
 
 varParser :: Parser Expr1
 varParser = E1Var . Id <$> lexeme' identifier <?> "variable"
+
+lamParser :: Parser Expr1
+lamParser = lamParser' <?> "lambda expression" where
+  lamParser' = do
+    void . lexeme' $ char '\\'
+    -- TODO vars on same line
+    vars <- lexeme arg `sepBy1` whitespace'
+    void $ lexeme' (chunk "->" <?> "lambda arrow")
+    body <- lexeme parser
+    pure $ E1Lam vars body
+
+-- TODO pattern
+arg :: Parser Id
+arg = Id <$> identifier <?> "variable"
 
 ifParser :: Parser Expr1
 ifParser = ifParser' <?> "if expression" where

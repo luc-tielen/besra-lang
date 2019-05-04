@@ -13,6 +13,7 @@ data ExprDecl = ExprTypeDecl Id Scheme
 
 data Expr1 = E1Lit Lit
            | E1Var Id
+           | E1Lam [Id] Expr1
            | E1If Expr1 Expr1 Expr1  -- condition, true clause, false clause
            | E1Let [ExprDecl] Expr1     -- bindings end result
            deriving (Eq, Show)

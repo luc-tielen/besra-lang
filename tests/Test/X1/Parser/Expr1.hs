@@ -27,7 +27,8 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
   describe "literals" $ parallel $ do
     let labels = mconcat $ elabel <$> [ "number", "character literal"
                                       , "string", "if expression"
-                                      , "let expression", "variable"]
+                                      , "let expression", "variable"
+                                      , "lambda expression" ]
         num = E1Lit . LNumber
         str = E1Lit . LString . String
         char = E1Lit . LChar
@@ -152,7 +153,7 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       (parse, "let x = 1\n    y = 2 in ") `shouldFailWith` err 23
         (ueof <> elabel "if expression" <> elabel "let expression"
         <> elabel "character literal" <> elabel "string"
-        <> elabel "number" <> elabel "variable")
+        <> elabel "number" <> elabel "variable" <> elabel "lambda expression")
       (parse, "let x = 1in") `shouldFailWith` err 9 (utok 'i')
 
     it "fails with readable error for mismatching indent in bindings" $ do
@@ -163,9 +164,38 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       (parse, "let   x = 1\n    y = 2\nin x") `shouldFailWith` err 16
         (utoks "y " <> elabel "properly indented declaration or 'in' keyword")
 
+  describe "lambdas" $ parallel $ do
+    let a ==> b = parse a `shouldParse` b
+        lam vars = E1Lam (Id <$> vars)
+        var = E1Var . Id
+        num = E1Lit . LNumber . SInt
+
+    it "can parse lambda with 1 argument" $ do
+      "\\x -> 1" ==> lam ["x"] (num 1)
+      "\\x -> x" ==> lam ["x"] (var "x")
+      "\\ x -> x" ==> lam ["x"] (var "x")
+      "\\x->x" ==> lam ["x"] (var "x")
+
+    it "can parse lambda with more than 1 argument" $ do
+      "\\a b -> a" ==> lam ["a", "b"] (var "a")
+      "\\ a b c -> 1" ==> lam ["a", "b", "c"] (num 1)
+
+    it "can parse lambda over multiple lines" $ do
+      "\\a b -> \n a" ==> lam ["a", "b"] (var "a")
+      -- TODO thinks in is a variable: upgrade keyword parser
+      "let x = \\a b ->\n     a\nin x" ==> lam ["a", "b"] (var "a")
+
+    it "fails with readable error message" $ do
+      (parse, "\\ -> 1") `shouldFailWith` err 2 (utok '-' <> elabel "variable")
+      (parse, "\\a \nb -> a") `shouldFailWith` err 4 (utoks "b " <> elabel "lambda arrow")
+      (parse, "\\a \n b -> a") `shouldFailWith` err 6
+        (utoks "b " <> elabel "lambda arrow")
+      (parse, "\\a \n -> a") `shouldFailWith` err 2 (utok '-' <> elabel "variable")
+
   it "can parse variables" $ do
     let a ==> b = parse a `shouldParse` E1Var (Id b)
     "a" ==> "a"
     "abc123" ==> "abc123"
     "a'" ==> "a'"
     "a'b" ==> "a'b"
+
