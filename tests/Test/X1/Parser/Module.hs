@@ -44,6 +44,10 @@ str = E1Lit . LString . String
 char :: Char -> Expr1
 char = E1Lit . LChar
 
+lam :: [Text] -> Expr1 -> Expr1
+lam vars = E1Lam (Id <$> vars)
+
+
 infixr 2 -->
 infixr 1 ==>
 
@@ -112,8 +116,22 @@ spec_exprParseTest = describe "module parser" $ parallel $ do
                                                   , BindingDecl (Id "y") $ str "abc123"
                                                   , BindingDecl (Id "z") $ char 'a']
 
+    it "can parse top level named functions" $ do
+      "f x = 5" ==> Module [BindingDecl (Id "f") $ lam ["x"] (num 5)]
+      "f x y = \"abc123\"" ==> Module [BindingDecl (Id "f") $ lam ["x", "y"] (str "abc123")]
+
+    it "can parse a named function spanning multiple lines" $ do
+      "f x =\n 5" ==> Module [BindingDecl (Id "f") $ lam ["x"] (num 5)]
+      "f x y =\n \"abc123\"" ==> Module [BindingDecl (Id "f") $ lam ["x", "y"] (str "abc123")]
+
+    it "can parse multiple named functions" $
+      "f x = 5\ng x y = \"abc123\""
+        ==> Module [ BindingDecl (Id "f") $ lam ["x"] (num 5)
+                   , BindingDecl (Id "g") $ lam ["x", "y"] (str "abc123")
+                   ]
+
   it "fails with readable error message" $ do
-    let labels = elabel "rest of assignment" <> elabel "rest of type declaration"
-    (parse, "x -") `shouldFailWith` err 2 (utok '-' <> labels)
+    let labels = elabel <$> [ "rest of assignment", "rest of type declaration", "variable" ]
+    (parse, "x -") `shouldFailWith` err 2 (utok '-' <> mconcat labels)
     (parse, "1") `shouldFailWith` err 0 (utok '1' <> elabel "type or binding declaration" <> eeof)
 

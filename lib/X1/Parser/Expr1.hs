@@ -69,12 +69,26 @@ letParser = letParser' <?> "let expression" where
     pure $ E1Let bindings result
 
 declParser :: Parser ExprDecl
-declParser = withLineFold $ do
-  var <- Id <$> lexeme' identifier <?> "variable"
-  separator <- lexeme' $  (char ':' <?> "rest of type declaration")
-                      <|> (char '=' <?> "rest of assignment")
-  case separator of
-    ':' -> ExprTypeDecl var <$> Scheme.parser
-    '=' -> ExprBindingDecl var <$> parser
-    _ -> panic "Parse error when parsing declaration."
+declParser = withLineFold declParser' where
+  declParser' = try namedFunctionDecl <|> typeOrBindingDecl
+  assign = char '=' <?> "rest of assignment"
+  typeSeparator = char ':' <?> "rest of type declaration"
+
+  functionHead = sameLine $ do
+    funcName <- Id <$> lexeme identifier
+    vars <- some $ lexeme arg
+    void $ lexeme assign
+    pure (funcName, vars)
+  namedFunctionDecl = do
+    (funcName, vars) <- lexeme' functionHead
+    body <- E1Lam vars <$> parser
+    pure $ ExprBindingDecl funcName body
+
+  typeOrBindingDecl = do
+    var <- Id <$> lexeme' identifier <?> "variable"
+    separator <- lexeme' $ typeSeparator <|> assign
+    case separator of
+      ':' -> ExprTypeDecl var <$> Scheme.parser
+      '=' -> ExprBindingDecl var <$> parser
+      _ -> panic "Parse error when parsing declaration."
 

@@ -113,6 +113,7 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
         binding x = ExprBindingDecl (Id x)
         sig x ty = ExprTypeDecl (Id x) (Scheme [] ty)
         var = E1Var . Id
+        lam vars = E1Lam (Id <$> vars)
         a ==> b = parse a `shouldParse` b
 
     it "can parse multi-line let expressions" $ do
@@ -122,6 +123,17 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       "let x = 1\n    y = 2\nin x" ==> let' [binding "x" (num 1), binding "y" (num 2)] (var "x")
       "let x = 1\n    y = 2\nin\n x" ==> let' [binding "x" (num 1), binding "y" (num 2)] (var "x")
       "let\n  x = 1\n  y = 2\nin\n x" ==> let' [binding "x" (num 1), binding "y" (num 2)] (var "x")
+
+    it "can parse named functions with 1 arg in let block" $ do
+      let expected = let' [binding "f" (lam ["x"] (num 1))] (var "f")
+      "let f x = 1 in f" ==> expected  -- special case, for now
+      "let f x = 1\nin f" ==> expected
+      "let f x =\n      1\nin f" ==> expected
+
+    it "can parse named functions with multiple args in let block" $ do
+      let expected = let' [binding "f" (lam ["x", "y"] (num 1))] (var "f")
+      "let f x y = 1 in f" ==> expected  -- special case, for now
+      "let f x y =\n      1\nin f" ==> expected
 
     it "can parse nested let expressions" $ do
       "let x = 1 in let y = 2 in y"
@@ -139,7 +151,7 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       (parse, "let ") `shouldFailWith` err 4 (ueof <> elabel "declaration")
       (parse, "let x") `shouldFailWith` err 5
         (ueof <> elabel "rest of assignment" <> elabel "rest of identifier"
-        <> elabel "rest of type declaration")
+        <> elabel "rest of type declaration" <> elabel "variable")
       (parse, "let x = 1") `shouldFailWith` err 9
         (ueof <> elabel "properly indented declaration or 'in' keyword")
       (parse, "let x = 1 in") `shouldFailWith` err 12 (ueof <> elabel "whitespace")
@@ -148,6 +160,8 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       (parse, "let x = 1 inx") `shouldFailWith` err 12 (utok 'x' <> elabel "whitespace")
       (parse, "let x = 1\n    y = 2 in ") `shouldFailWith` err 23 (ueof <> elabel "expression")
       (parse, "let x = 1in") `shouldFailWith` err 9 (utok 'i')
+      (parse, "let x\n      a = 1\nin x") `shouldFailWith` err 12
+        (utok 'a' <> elabel "rest of assignment" <> elabel "rest of type declaration")
 
     it "fails with readable error for mismatching indent in bindings" $ do
       (parse, "let x = 1\n y = 2 in x") `shouldFailWith` err 11
