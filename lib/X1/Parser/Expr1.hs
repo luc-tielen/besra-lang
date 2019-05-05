@@ -17,13 +17,16 @@ parser = parser' <?> "expression" where
          <|> letParser
          <|> try funcParser
          <|> varParser
+         <|> conParser
          <|> betweenParens parser
   lineFoldedExprs = withLineFold $ lamParser <|> ifParser <|> caseParser
 
 funcParser :: Parser Expr1
 funcParser = funcParser' <?> "function application" where
+  variable = E1Var . Id <$> lexeme identifier
+  constructor = E1Con . Id <$> lexeme capitalIdentifier
   -- NOTE: next line is to prevent wrong order of parentheses in nested applications
-  funcNameParser = E1Var . Id <$> lexeme (identifier <|> capitalIdentifier)
+  funcNameParser = variable <|> constructor
   funcParser' = sameLine $ do
     funcName <- funcNameParser
     args <- some $ lexeme (funcNameParser <|> parser)
@@ -31,6 +34,9 @@ funcParser = funcParser' <?> "function application" where
 
 varParser :: Parser Expr1
 varParser = E1Var . Id <$> lexeme identifier <?> "variable"
+
+conParser :: Parser Expr1
+conParser = E1Con . Id <$> lexeme capitalIdentifier <?> "constructor"
 
 lamParser :: Parser Expr1
 lamParser = lamParser' <?> "lambda expression" where

@@ -217,28 +217,29 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
 
   describe "function application" $ parallel $ do
     let a ==> b = parse a `shouldParse` b
-        app func = E1App (var func)
+        app = E1App
         num = E1Lit . LNumber . SInt
         var = E1Var . Id
+        con = E1Con . Id
 
     it "can parse application with 1 argument" $ do
-      "f 1" ==> app "f" [num 1]
-      "f abc" ==> app "f" [var "abc"]
-      "DataCon abc" ==> app "DataCon" [var "abc"]
+      "f 1" ==> app (var "f") [num 1]
+      "f abc" ==> app (var "f") [var "abc"]
+      "DataCon abc" ==> app (con "DataCon") [var "abc"]
 
     it "can parse application with more than 1 argument" $ do
-      "f 1 2" ==> app "f" [num 1, num 2]
-      "f abc def" ==> app "f" [var "abc", var "def"]
-      "DataCon abc def" ==> app "DataCon" [var "abc", var "def"]
+      "f 1 2" ==> app (var "f") [num 1, num 2]
+      "f abc def" ==> app (var "f") [var "abc", var "def"]
+      "DataCon abc def" ==> app (con "DataCon") [var "abc", var "def"]
 
     it "fails with readable error message" $ do
       (parser, "f\n a") `succeedsLeaving` "a"  -- parses variable only
       (parse, "in a") `shouldFailWith` errFancy 2 (failMsg "Reserved keyword: in")
 
     it "can parse expressions inside parentheses" $ do
-      "f (1)" ==> app "f" [num 1]
-      "f (a 1)" ==> app "f" [app "a" [num 1]]
-      "f a (b 1)" ==> app "f" [var "a", app "b" [num 1]]
+      "f (1)" ==> app (var "f") [num 1]
+      "f (a 1)" ==> app (var "f") [app (var "a") [num 1]]
+      "f a (b 1)" ==> app (var "f") [var "a", app (var "b") [num 1]]
       "(((1)))" ==> num 1
 
   describe "case expressions" $ parallel $ do
@@ -284,4 +285,14 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
     "abc123" ==> "abc123"
     "a'" ==> "a'"
     "a'b" ==> "a'b"
+
+  it "can parse constructors" $ do
+    let a ==> b = parse a `shouldParse` b
+        con = E1Con . Id
+        var = E1Var . Id
+        app = E1App
+    "True" ==> con "True"
+    "X y" ==> app (con "X") [var "y"]
+    "Abc123 y" ==> app (con "Abc123") [var "y"]
+    "Abc123 y z" ==> app (con "Abc123") [var "y", var "z"]
 

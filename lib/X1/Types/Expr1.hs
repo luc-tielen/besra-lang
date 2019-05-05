@@ -14,6 +14,7 @@ data ExprDecl = ExprTypeDecl Id Scheme
 
 data Expr1 = E1Lit Lit
            | E1Var Id
+           | E1Con Id
            | E1Lam [Pattern] Expr1
            | E1App Expr1 [Expr1]
            | E1If Expr1 Expr1 Expr1           -- condition, true clause, false clause
