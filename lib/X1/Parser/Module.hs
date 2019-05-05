@@ -3,10 +3,9 @@ module X1.Parser.Module ( parser ) where
 
 import Protolude
 import X1.Types.Module
-import X1.Types.Id
-import X1.Parser.Helpers
-import qualified X1.Parser.Scheme as Scheme
+import X1.Types.Expr1
 import qualified X1.Parser.Expr1 as Expr1
+import X1.Parser.Helpers
 
 
 parser :: Parser (Module Decl)
@@ -20,12 +19,8 @@ decl :: Parser Decl
 decl = typeOrBindingDecl <?> "type or binding declaration"
 
 typeOrBindingDecl :: Parser Decl
-typeOrBindingDecl = withLineFold $ do
-  var <- Id <$> lexeme' identifier <?> "variable"
-  separator <- lexeme' $  (char ':' <?> "rest of type declaration")
-                      <|> (char '=' <?> "rest of assignment")
-  case separator of
-    ':' -> TypeDecl var <$> Scheme.parser
-    '=' -> BindingDecl var <$> Expr1.parser
-    _ -> panic "Parse error when parsing top level declaration."
-
+typeOrBindingDecl = do
+  result <- Expr1.declParser
+  case result of
+    ExprTypeDecl id scheme -> pure $ TypeDecl id scheme
+    ExprBindingDecl id expr -> pure $ BindingDecl id expr

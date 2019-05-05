@@ -1,39 +1,53 @@
 
 module X1.Parser.Helpers ( Parser, ParseError, ParseErr, ParseResult
+                         , ParseState(..), ParseMode(..)
                          , lexeme, lexeme', whitespace, whitespace', withLineFold
                          , eof, between, betweenParens, betweenOptionalParens
                          , singleQuote, digitChar, hexDigitChars, binDigitChars
+                         , letterChar
                          , keyword, chunk, char
                          , identifier, capitalIdentifier
-                         , notFollowedBy
+                         , notFollowedBy, lookAhead
                          , sepBy, sepBy1, endBy, endBy1
+                         , L.indentLevel, withIndent, sameLine
                          , satisfy, takeWhileP
                          , try
                          , (<?>)
                          ) where
 
 import Protolude hiding (try)
-import qualified Data.Vector.Unboxed as V
+import Control.Monad ( fail )
+import qualified Data.Vector.Unboxed as VU
+import qualified Data.Vector as V
 import qualified Data.Text as T
 import qualified Text.Megaparsec.Char.Lexer as L ( lexeme, skipBlockComment
                                                  , skipLineComment, space
                                                  , indentLevel, indentGuard )
 import Text.Megaparsec hiding (ParseError)
 import qualified Text.Megaparsec as P (ParseErrorBundle)
-import Text.Megaparsec.Char (digitChar, lowerChar, upperChar)
+import Text.Megaparsec.Char (digitChar, letterChar, lowerChar, upperChar)
 import GHC.Unicode (isLower, isUpper, isDigit)
 
 
-type ParseErr = Void
 type IndentLevel = Pos
-type Parser = ParsecT ParseErr Text (Reader IndentLevel)
+
+data ParseMode = Normal | SameLine
+  deriving (Eq, Show)
+
+data ParseState = ParseState { psIndentLevel :: IndentLevel, psParseMode :: ParseMode }
+  deriving (Eq, Show)
+
+type ParseErr = Void
+type Parser = ParsecT ParseErr Text (Reader ParseState)
 type ParseError = P.ParseErrorBundle Text ParseErr
 type ParseResult = Either ParseError
 
 
 -- Higher order parser that parses all trailing whitespace after the given parser.
 lexeme :: Parser a -> Parser a
-lexeme = L.lexeme whitespace
+lexeme p = asks psParseMode >>= \case
+  Normal -> L.lexeme whitespace p
+  SameLine -> L.lexeme whitespaceSameLine p
 
 -- | Same as lexeme, but takes last indent level into account (for example in a linefold)
 lexeme' :: Parser a -> Parser a
@@ -43,12 +57,24 @@ lexeme' = L.lexeme whitespace'
 whitespace :: Parser ()
 whitespace = L.space spaceParser commentParser blockCommentParser where
   spaceParser = skipSome wsChar
+  commentParser = L.skipLineComment "--"
+  blockCommentParser = L.skipBlockComment "{-" "-}"
 
 -- | Same as whitespace, but takes last indent level into account (e.g. in a line fold)
 whitespace' :: Parser ()
 whitespace' = try $ do
-  lastIndentLvl <- ask
+  lastIndentLvl <- asks psIndentLevel
   void $ L.indentGuard whitespace GT lastIndentLvl
+
+whitespaceSameLine :: Parser ()
+whitespaceSameLine = L.space (skipSome ws) empty empty where
+  ws = char ' ' <?> "whitespace"
+
+-- | Helper for parsing a chunk of text, with everything on same line.
+sameLine :: Parser a -> Parser a
+sameLine p = do
+  parseState <- ask
+  local (const $ parseState { psParseMode = SameLine }) p
 
 -- | Helper for parsing a line fold (parser spanning multiple lines, with lines after
 --   beginning line requiring greater indentation). Tries to parse whitespace after the linefold.
@@ -56,16 +82,14 @@ withLineFold :: Parser a -> Parser a
 withLineFold p = lexeme $ do
   whitespace
   currentIndent <- L.indentLevel
-  local (const currentIndent) p
+  parseState <- ask
+  local (const $ parseState { psIndentLevel = currentIndent }) p
+
+withIndent :: Pos -> Parser a -> Parser a
+withIndent indent p = L.indentGuard whitespace EQ indent *> p
 
 wsChar :: Parser ()
 wsChar = void (char ' ' <|> char '\n') <?> "whitespace"
-
-commentParser :: Parser ()
-commentParser = L.skipLineComment "--"
-
-blockCommentParser :: Parser ()
-blockCommentParser = L.skipBlockComment "{-" "-}"
 
 betweenParens :: Parser a -> Parser a
 betweenParens = between (lexeme $ char '(') (char ')') . lexeme
@@ -77,21 +101,25 @@ char :: Char -> Parser Char
 char = single
 
 hexDigitChars :: Parser Text
-hexDigitChars = takeWhile1P (Just "hex digit") (`V.elem` hexChars) where
-  hexChars = ['0'..'9'] V.++ ['a'..'f'] V.++ ['A'..'F']
+hexDigitChars = takeWhile1P (Just "hex digit") (`VU.elem` hexChars) where
+  hexChars = ['0'..'9'] VU.++ ['a'..'f'] VU.++ ['A'..'F']
 
 binDigitChars :: Parser Text
 binDigitChars = takeWhile1P (Just "binary digit") (\c -> c == '0' || c == '1')
 
 keyword :: Text -> Parser ()
-keyword s = lexeme (chunk s <* lookAhead wsChar) $> ()
+keyword s = lexeme' (chunk s <* lookAhead wsChar) $> ()
 
 identifier :: Parser Text
 identifier = do
-  -- TODO forbid keywords
   firstChar <- lowerChar
   rest <- takeWhileP (Just "rest of identifier") isIdentifierChar
-  pure $ T.cons firstChar rest
+  let parsed = T.cons firstChar rest
+  when (parsed `V.elem` reserved) (fail . T.unpack $ "Reserved keyword: " <> parsed)
+  pure parsed
+  where reserved = [ "module", "type", "data", "trait", "impl"
+                   , "do", "let", "in", "where", "if", "else", "case", "of"
+                   ]
 
 capitalIdentifier :: Parser Text
 capitalIdentifier = do
