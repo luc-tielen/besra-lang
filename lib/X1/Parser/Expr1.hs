@@ -13,80 +13,81 @@ import qualified X1.Parser.Pattern as Pattern
 parser :: Parser Expr1
 parser = parser' <?> "expression" where
   parser' =  E1Lit <$> Lit.parser
-         <|> lineFoldedExprs
+         <|> withLineFold lineFoldedExprs
          <|> letParser
          <|> try funcParser
          <|> varParser
          <|> conParser
          <|> betweenParens parser
-  lineFoldedExprs = withLineFold $ lamParser <|> ifParser <|> caseParser
+  lineFoldedExprs =  lamParser
+                 <|> ifParser
+                 <|> caseParser
 
 funcParser :: Parser Expr1
-funcParser = funcParser' <?> "function application" where
-  variable = E1Var . Id <$> lexeme identifier
-  constructor = E1Con . Id <$> lexeme capitalIdentifier
+funcParser = sameLine $ do
+  funcName <- funcNameParser
   -- NOTE: next line is to prevent wrong order of parentheses in nested applications
-  funcNameParser = variable <|> constructor
-  funcParser' = sameLine $ do
-    funcName <- funcNameParser
-    args <- some $ lexeme (funcNameParser <|> parser)
-    pure $ E1App funcName args
+  args <- some $ lexeme (funcNameParser <|> parser)
+  pure $ E1App funcName args
+  where
+    variable = E1Var . Id <$> lexeme identifier
+    constructor = E1Con . Id <$> lexeme capitalIdentifier
+    funcNameParser = variable <|> constructor
 
 varParser :: Parser Expr1
-varParser = E1Var . Id <$> lexeme identifier <?> "variable"
+varParser = E1Var . Id <$> lexeme identifier
 
 conParser :: Parser Expr1
-conParser = E1Con . Id <$> lexeme capitalIdentifier <?> "constructor"
+conParser = E1Con . Id <$> lexeme capitalIdentifier
 
 lamParser :: Parser Expr1
-lamParser = lamParser' <?> "lambda expression" where
-  lambdaHead = sameLine $ do
-    void . lexeme $ char '\\'
-    vars <- some $ lexeme Pattern.parser
-    void $ lexeme (chunk "->" <?> "lambda arrow")
-    pure vars
-  lamParser' = do
-    vars <- lexeme' lambdaHead
-    body <- lexeme parser
-    pure $ E1Lam vars body
+lamParser = do
+  vars <- lexeme' lambdaHead
+  body <- lexeme parser
+  pure $ E1Lam vars body
+  where
+    lambdaHead = sameLine $ do
+      void . lexeme $ char '\\'
+      vars <- some $ lexeme Pattern.parser
+      void $ lexeme (chunk "->" <?> "lambda arrow")
+      pure vars
 
 ifParser :: Parser Expr1
-ifParser = ifParser' <?> "if expression" where
-  ifParser' = do
-    keyword "if"
-    cond <- lexeme' parser
-    keyword "then"
-    trueClause <- lexeme' parser
-    keyword "else"
-    E1If cond trueClause <$> lexeme' parser
+ifParser = do
+  keyword "if"
+  cond <- lexeme' parser
+  keyword "then"
+  trueClause <- lexeme' parser
+  keyword "else"
+  E1If cond trueClause <$> lexeme' parser
 
 caseParser :: Parser Expr1
-caseParser = caseParser' <?> "case expression" where
-  caseParser' = do
-    keyword "case"
-    expr <- lexeme' parser
-    keyword "of"
-    indentation <- indentLevel
-    let clauseParser' = withIndent indentation clauseParser <?> "case clause"
-    clauses <- some clauseParser'
-    pure $ E1Case expr clauses
-  clauseParser = withLineFold $ do
-    pat <- lexeme' Pattern.parser
-    void . lexeme' $ chunk "->"
-    expr <- parser
-    pure (pat, expr)
+caseParser = do
+  keyword "case"
+  expr <- lexeme' parser
+  keyword "of"
+  indentation <- indentLevel
+  let clauseParser' = withIndent indentation clauseParser <?> "case clause"
+  clauses <- some clauseParser'
+  pure $ E1Case expr clauses
+  where
+    clauseParser = withLineFold $ do
+      pat <- lexeme' Pattern.parser
+      void . lexeme' $ chunk "->"
+      expr <- parser
+      pure (pat, expr)
 
 letParser :: Parser Expr1
-letParser = letParser' <?> "let expression" where
-  inLabel = "properly indented declaration or 'in' keyword"
-  letParser' = do
-    bindings <- withLineFold $ do
-      keyword "let"
-      indentation <- indentLevel
-      let declParser' = withIndent indentation declParser <?> "declaration"
-      lexeme declParser' `sepBy1` whitespace'
-    result <- withLineFold $ (keyword "in" <?> inLabel) *> parser
-    pure $ E1Let bindings result
+letParser = do
+  bindings <- withLineFold $ do
+    keyword "let"
+    indentation <- indentLevel
+    let declParser' = withIndent indentation declParser <?> "declaration"
+    lexeme declParser' `sepBy1` whitespace'
+  result <- withLineFold $ (keyword "in" <?> inLabel) *> parser
+  pure $ E1Let bindings result
+  where
+    inLabel = "properly indented declaration or 'in' keyword"
 
 declParser :: Parser ExprDecl
 declParser = withLineFold declParser' where
