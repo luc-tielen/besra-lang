@@ -7,6 +7,7 @@ import X1.Types.Expr1
 import X1.Parser.Helpers
 import qualified X1.Parser.Lit as Lit
 import qualified X1.Parser.Scheme as Scheme
+import qualified X1.Parser.Pattern as Pattern
 
 
 parser :: Parser Expr1
@@ -35,17 +36,13 @@ lamParser :: Parser Expr1
 lamParser = lamParser' <?> "lambda expression" where
   lambdaHead = sameLine $ do
     void . lexeme $ char '\\'
-    vars <- some $ lexeme arg
+    vars <- some $ lexeme Pattern.parser
     void $ lexeme (chunk "->" <?> "lambda arrow")
     pure vars
   lamParser' = do
     vars <- lexeme' lambdaHead
     body <- lexeme parser
     pure $ E1Lam vars body
-
--- TODO pattern
-arg :: Parser Id
-arg = Id <$> identifier <?> "variable"
 
 ifParser :: Parser Expr1
 ifParser = ifParser' <?> "if expression" where
@@ -77,7 +74,7 @@ declParser = withLineFold declParser' where
 
   functionHead = sameLine $ do
     funcName <- Id <$> lexeme identifier
-    vars <- some $ lexeme arg
+    vars <- some $ lexeme Pattern.parser
     void $ lexeme assign
     pure (funcName, vars)
   namedFunctionDecl = do

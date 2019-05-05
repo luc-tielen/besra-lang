@@ -5,6 +5,7 @@ import Protolude hiding ( Type )
 import Test.Tasty.Hspec
 import Test.X1.Parser.Helpers
 import X1.Types.Expr1
+import X1.Types.Pattern
 import X1.Types.Lit
 import X1.Types.Id
 import X1.Parser.Expr1 (parser)
@@ -113,7 +114,7 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
         binding x = ExprBindingDecl (Id x)
         sig x ty = ExprTypeDecl (Id x) (Scheme [] ty)
         var = E1Var . Id
-        lam vars = E1Lam (Id <$> vars)
+        lam vars = E1Lam (PVar . Id <$> vars)
         a ==> b = parse a `shouldParse` b
 
     it "can parse multi-line let expressions" $ do
@@ -151,7 +152,7 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       (parse, "let ") `shouldFailWith` err 4 (ueof <> elabel "declaration")
       (parse, "let x") `shouldFailWith` err 5
         (ueof <> elabel "rest of assignment" <> elabel "rest of identifier"
-        <> elabel "rest of type declaration" <> elabel "variable")
+        <> elabel "rest of type declaration" <> elabel "pattern")
       (parse, "let x = 1") `shouldFailWith` err 9
         (ueof <> elabel "properly indented declaration or 'in' keyword")
       (parse, "let x = 1 in") `shouldFailWith` err 12 (ueof <> elabel "whitespace")
@@ -173,10 +174,12 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
 
   describe "lambdas" $ parallel $ do
     let a ==> b = parse a `shouldParse` b
-        lam vars = E1Lam (Id <$> vars)
+        lam vars = E1Lam (PVar . Id <$> vars)
         let' = E1Let
         binding x = ExprBindingDecl (Id x)
-        num = E1Lit . LNumber . SInt
+        num' = LNumber . SInt
+        num = E1Lit . num'
+        str' =  LString . String
         var = E1Var . Id
 
     it "can parse lambda with 1 argument" $ do
@@ -189,6 +192,10 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       "\\a b -> a" ==> lam ["a", "b"] (var "a")
       "\\ a b c -> 1" ==> lam ["a", "b", "c"] (num 1)
 
+    it "can parse lambdas containing patterns" $ do
+      "\\1 \"abc\" -> 123" ==> E1Lam [PLit (num' 1), PLit (str' "abc")] (num 123)
+      "\\a@(X y) -> 123" ==> E1Lam [PAs (Id "a") $ PCon (Id "X") [PVar (Id "y")]] (num 123)
+
     it "can parse lambda over multiple lines" $ do
       "\\a b -> \n a" ==> lam ["a", "b"] (var "a")
       "let x = \\a b ->\n         a\nin x"
@@ -200,9 +207,9 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       "\\a -> \n \\b ->\n  a" ==> lam ["a"] (lam ["b"] (var "a"))
 
     it "fails with readable error message" $ do
-      let expected = elabel "lambda arrow" <> elabel "variable"
-      (parse, "\\ -> 1") `shouldFailWith` err 2 (utok '-' <> elabel "variable")
-      (parse, "\\\n -> 1") `shouldFailWith` err 1 (utok '\n' <> elabel "variable")
+      let expected = elabel "lambda arrow" <> elabel "pattern"
+      (parse, "\\ -> 1") `shouldFailWith` err 2 (utok '-' <> elabel "pattern")
+      (parse, "\\\n -> 1") `shouldFailWith` err 1 (utok '\n' <> elabel "pattern")
       (parse, "\\a \nb -> a") `shouldFailWith` err 3 (utoks "\nb" <> expected)
       (parse, "\\a \n b -> a") `shouldFailWith` err 3 (utoks "\n " <> expected)
       (parse, "\\a \n -> a") `shouldFailWith` err 3 (utoks "\n " <> expected)

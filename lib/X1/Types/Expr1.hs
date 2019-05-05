@@ -5,6 +5,7 @@ import Protolude
 import X1.Types.Id
 import X1.Types.Lit
 import X1.Parser.Types.Scheme
+import X1.Types.Pattern
 
 
 data ExprDecl = ExprTypeDecl Id Scheme
@@ -13,7 +14,7 @@ data ExprDecl = ExprTypeDecl Id Scheme
 
 data Expr1 = E1Lit Lit
            | E1Var Id
-           | E1Lam [Id] Expr1  -- TODO replace Id with Expr1?
+           | E1Lam [Pattern] Expr1
            | E1App Expr1 [Expr1]
            | E1If Expr1 Expr1 Expr1  -- condition, true clause, false clause
            | E1Let [ExprDecl] Expr1     -- bindings end result

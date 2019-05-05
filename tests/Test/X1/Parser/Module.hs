@@ -5,6 +5,7 @@ import Protolude hiding ( Type )
 import Test.Tasty.Hspec
 import Test.X1.Parser.Helpers
 import X1.Types.Module
+import X1.Types.Pattern
 import X1.Types.Id
 import X1.Types.Expr1
 import X1.Types.Lit
@@ -45,15 +46,15 @@ char :: Char -> Expr1
 char = E1Lit . LChar
 
 lam :: [Text] -> Expr1 -> Expr1
-lam vars = E1Lam (Id <$> vars)
+lam vars = E1Lam (PVar . Id <$> vars)
 
 
 infixr 2 -->
 infixr 1 ==>
 
 
-spec_exprParseTest :: Spec
-spec_exprParseTest = describe "module parser" $ parallel $ do
+spec_moduleParseTest :: Spec
+spec_moduleParseTest = describe "module parser" $ parallel $ do
   it "can parse empty module" $
     "" ==> Module []
 
@@ -124,6 +125,14 @@ spec_exprParseTest = describe "module parser" $ parallel $ do
       "f x =\n 5" ==> Module [BindingDecl (Id "f") $ lam ["x"] (num 5)]
       "f x y =\n \"abc123\"" ==> Module [BindingDecl (Id "f") $ lam ["x", "y"] (str "abc123")]
 
+    it "can parse a named function containing patterns" $ do
+      "f 1 \"abc\" = 123" ==> Module [BindingDecl (Id "f") (E1Lam [ PLit (LNumber (SInt 1))
+                                                                  , PLit (LString (String "abc"))]
+                                                                  (num 123))]
+      "f a@(X y) = 123" ==> Module [BindingDecl (Id "f") (E1Lam [ PAs (Id "a")
+                                                                  (PCon (Id "X") [PVar (Id "y")])]
+                                                                  (num 123))]
+
     it "can parse multiple named functions" $
       "f x = 5\ng x y = \"abc123\""
         ==> Module [ BindingDecl (Id "f") $ lam ["x"] (num 5)
@@ -131,7 +140,7 @@ spec_exprParseTest = describe "module parser" $ parallel $ do
                    ]
 
   it "fails with readable error message" $ do
-    let labels = elabel <$> [ "rest of assignment", "rest of type declaration", "variable" ]
+    let labels = elabel <$> [ "rest of assignment", "rest of type declaration", "pattern" ]
     (parse, "x -") `shouldFailWith` err 2 (utok '-' <> mconcat labels)
     (parse, "1") `shouldFailWith` err 0 (utok '1' <> elabel "type or binding declaration" <> eeof)
 
