@@ -118,7 +118,7 @@ identifier = do
   when (parsed `V.elem` reserved) (fail . T.unpack $ "Reserved keyword: " <> parsed)
   pure parsed
   where reserved = [ "module", "type", "data", "trait", "impl"
-                   , "do", "let", "in", "where", "if", "else", "case"
+                   , "do", "let", "in", "where", "if", "else", "case", "of"
                    ]
 
 capitalIdentifier :: Parser Text

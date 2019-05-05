@@ -58,7 +58,7 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       (parse, "'a") `shouldFailWith` err 2 (ueof <> elabel "closing single quote (')")
 
     it "fails with readable error message for numbers" $ do
-      (parse, "-0b0") `shouldFailWith` err 0 (utoks "-0b" <> elabel "expression")
+      (parse, "-0b0") `shouldFailWith` err 0 (utoks "-0b0" <> elabel "expression")
       (parse, "0b2") `shouldFailWith` err 2 (utok '2' <> elabel "binary digit")
       (parse, "0bb1") `shouldFailWith` err 2 (utok 'b' <> elabel "binary digit")
       (parse, "0b") `shouldFailWith` err 2 (ueof <> elabel "binary digit")
@@ -240,6 +240,43 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       "f (a 1)" ==> app "f" [app "a" [num 1]]
       "f a (b 1)" ==> app "f" [var "a", app "b" [num 1]]
       "(((1)))" ==> num 1
+
+  describe "case expressions" $ parallel $ do
+    let a ==> b = parse a `shouldParse` b
+        case' = E1Case
+        pvar = PVar . Id
+        pcon x = PCon (Id x)
+        var = E1Var . Id
+        num' = LNumber . SInt
+        num = E1Lit . num'
+        str = E1Lit . LString . String
+
+    it "can parse a case expression with 1 branch" $ do
+      "case 1 of\n x -> x" ==> case' (num 1) [(pvar "x", var "x")]
+      "case 1 of\n x ->\n   x" ==> case' (num 1) [(pvar "x", var "x")]
+      "case \"abc\" of\n x -> x" ==> case' (str "abc") [(pvar "x", var "x")]
+      "case 1 of\n (X y) -> y" ==> case' (num 1) [(pcon "X" [pvar "y"], var "y")]
+
+    it "can parse a case expression with multiple branches" $ do
+      "case bool of\n True -> 1\n False -> 0"
+        ==> case' (var "bool") [(pcon "True" [], num 1), (pcon "False" [], num 0)]
+      "case bool of\n True ->\n  1\n False ->\n  0"
+        ==> case' (var "bool") [(pcon "True" [], num 1), (pcon "False" [], num 0)]
+      "case 1 of\n 0 -> 0\n 1 -> 1\n _ -> 0"
+        ==> case' (num 1) [(PLit (num' 0), num 0), (PLit (num' 1), num 1), (PWildcard, num 0)]
+
+    it "fails with readable error message" $ do
+      (parse, "case") `shouldFailWith` err 4 (ueof <> elabel "whitespace")
+      (parse, "case ") `shouldFailWith` err 5 (ueof <> elabel "expression")
+      (parse, "case 1 ") `shouldFailWith` err 7 (ueof <> etoks "of")
+      (parse, "case 1 of") `shouldFailWith` err 9 (ueof <> elabel "whitespace")
+      (parse, "case 1 of ") `shouldFailWith` err 10 (ueof <> elabel "case clause")
+      (parse, "case 1 of\n1 -> 1") `shouldFailWith` errFancy 10 (badIndent 1 1)
+      (parse, "case 1 of\n 1") `shouldFailWith` err 12 (ueof <> etoks "->")
+      (parse, "case 1 of\n 1 ->") `shouldFailWith` err 15 (ueof <> elabel "expression")
+      -- TODO improve error message for these last 2 some other time
+      (parser, "case 1 of\n  2 -> 2\n 1 -> 1") `succeedsLeaving` "1 -> 1"  -- fails after bad indent
+      (parser, "case 1 of\n 1 -> 1\n  2 -> 2") `succeedsLeaving` "2 -> 2"  -- fails after bad indent
 
   it "can parse variables" $ do
     let a ==> b = parse a `shouldParse` E1Var (Id b)

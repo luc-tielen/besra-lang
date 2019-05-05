@@ -18,7 +18,7 @@ parser = parser' <?> "expression" where
          <|> try funcParser
          <|> varParser
          <|> betweenParens parser
-  lineFoldedExprs = withLineFold $ lamParser <|> ifParser
+  lineFoldedExprs = withLineFold $ lamParser <|> ifParser <|> caseParser
 
 funcParser :: Parser Expr1
 funcParser = funcParser' <?> "function application" where
@@ -53,6 +53,22 @@ ifParser = ifParser' <?> "if expression" where
     trueClause <- lexeme' parser
     keyword "else"
     E1If cond trueClause <$> lexeme' parser
+
+caseParser :: Parser Expr1
+caseParser = caseParser' <?> "case expression" where
+  caseParser' = do
+    keyword "case"
+    expr <- lexeme' parser
+    keyword "of"
+    indentation <- indentLevel
+    let clauseParser' = withIndent indentation clauseParser <?> "case clause"
+    clauses <- some clauseParser'
+    pure $ E1Case expr clauses
+  clauseParser = withLineFold $ do
+    pat <- lexeme' Pattern.parser
+    void . lexeme' $ chunk "->"
+    expr <- parser
+    pure (pat, expr)
 
 letParser :: Parser Expr1
 letParser = letParser' <?> "let expression" where

@@ -16,7 +16,8 @@ data Expr1 = E1Lit Lit
            | E1Var Id
            | E1Lam [Pattern] Expr1
            | E1App Expr1 [Expr1]
-           | E1If Expr1 Expr1 Expr1  -- condition, true clause, false clause
-           | E1Let [ExprDecl] Expr1     -- bindings end result
+           | E1If Expr1 Expr1 Expr1           -- condition, true clause, false clause
+           | E1Case Expr1 [(Pattern, Expr1)]  -- expression to match on, multiple branches
+           | E1Let [ExprDecl] Expr1           -- bindings end result
            deriving (Eq, Show)
 
