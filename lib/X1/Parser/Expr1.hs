@@ -69,6 +69,7 @@ caseParser = do
   indentation <- indentLevel
   let clauseParser' = withIndent indentation clauseParser <?> "case clause"
   clauses <- some clauseParser'
+  notFollowedBy clauseParser <?> "properly indented case clause"
   pure $ E1Case expr clauses
   where
     clauseParser = withLineFold $ do

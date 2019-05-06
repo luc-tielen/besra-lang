@@ -275,9 +275,10 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       (parse, "case 1 of\n1 -> 1") `shouldFailWith` errFancy 10 (badIndent 1 1)
       (parse, "case 1 of\n 1") `shouldFailWith` err 12 (ueof <> etoks "->")
       (parse, "case 1 of\n 1 ->") `shouldFailWith` err 15 (ueof <> elabel "expression")
-      -- TODO improve error message for these last 2 some other time
-      (parser, "case 1 of\n  2 -> 2\n 1 -> 1") `succeedsLeaving` "1 -> 1"  -- fails after bad indent
-      (parser, "case 1 of\n 1 -> 1\n  2 -> 2") `succeedsLeaving` "2 -> 2"  -- fails after bad indent
+      (parse, "case 1 of\n  2 -> 2\n 1 -> 1") `shouldFailWith` err 20
+        (utok '1' <> elabel "properly indented case clause")
+      (parse, "case 1 of\n 1 -> 1\n  2 -> 2") `shouldFailWith` err 20
+        (utok '2' <> elabel "properly indented case clause")
 
   it "can parse variables" $ do
     let a ==> b = parse a `shouldParse` E1Var (Id b)
