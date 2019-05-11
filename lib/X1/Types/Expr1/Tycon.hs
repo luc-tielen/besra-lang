@@ -1,5 +1,5 @@
 
-module X1.Parser.Types.Tycon ( Tycon(..) ) where
+module X1.Types.Expr1.Tycon ( Tycon(..) ) where
 
 import Protolude
 import X1.Types.Id

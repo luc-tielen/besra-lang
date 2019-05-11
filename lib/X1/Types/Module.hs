@@ -6,7 +6,7 @@ module X1.Types.Module ( Decl(..), Module(..) ) where
 import Protolude
 import X1.Types.Id
 import X1.Types.Expr1
-import X1.Parser.Types.Scheme
+import X1.Types.Expr1.Scheme
 
 
 data Decl = TypeDecl Id Scheme

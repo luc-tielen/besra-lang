@@ -3,9 +3,9 @@ module X1.Types.Expr1 ( Expr1(..), ExprDecl(..) ) where
 
 import Protolude
 import X1.Types.Id
-import X1.Types.Lit
-import X1.Parser.Types.Scheme
-import X1.Types.Pattern
+import X1.Types.Expr1.Lit
+import X1.Types.Expr1.Scheme
+import X1.Types.Expr1.Pattern
 
 
 data ExprDecl = ExprTypeDecl Id Scheme

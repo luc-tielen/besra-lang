@@ -5,8 +5,8 @@ import Protolude hiding ( try, pred )
 import X1.Parser.Helpers
 import qualified X1.Parser.Pred as Pred
 import qualified X1.Parser.Type as Type
-import X1.Parser.Types.Scheme
-import X1.Parser.Types.Pred
+import X1.Types.Expr1.Scheme
+import X1.Types.Expr1.Pred
 
 
 parser :: Parser Scheme

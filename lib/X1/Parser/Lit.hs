@@ -2,7 +2,7 @@
 module X1.Parser.Lit ( parser ) where
 
 import Protolude
-import X1.Types.Lit
+import X1.Types.Expr1.Lit
 import X1.Parser.Helpers ( Parser )
 import qualified X1.Parser.Char as Char
 import qualified X1.Parser.String as String

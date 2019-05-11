@@ -1,9 +1,9 @@
 
-module X1.Types.Lit ( Lit(..) ) where
+module X1.Types.Expr1.Lit ( Lit(..) ) where
 
 import Protolude
-import X1.Parser.Types.String
-import X1.Parser.Types.Number
+import X1.Types.Expr1.String
+import X1.Types.Expr1.Number
 
 
 data Lit = LChar Char

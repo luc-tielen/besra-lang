@@ -5,12 +5,12 @@ import Protolude hiding ( Type )
 import X1.SA.ConflictingBindingDecls
 import X1.SA.Helpers
 import X1.SA.Types
-import X1.Parser.Types.String
-import X1.Parser.Types.Number
+import X1.Types.Id
 import X1.Types.Module
 import X1.Types.Expr1
-import X1.Types.Lit
-import X1.Types.Id
+import X1.Types.Expr1.String
+import X1.Types.Expr1.Number
+import X1.Types.Expr1.Lit
 import X1.Parser
 import Test.Tasty.Hspec
 
