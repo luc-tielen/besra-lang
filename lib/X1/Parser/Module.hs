@@ -24,3 +24,4 @@ typeOrBindingDecl = do
   case result of
     ExprTypeDecl id scheme -> pure $ TypeDecl id scheme
     ExprBindingDecl id expr -> pure $ BindingDecl id expr
+    ExprFixityDecl fixity precedence op -> pure $ FixityDecl fixity precedence op

@@ -32,6 +32,7 @@ sameVar (TypeDecl (Id a) _) (TypeDecl (Id b) _) = a == b
 sameVar (BindingDecl (Id a) _) (TypeDecl (Id b) _) = a == b
 sameVar (TypeDecl (Id a) _) (BindingDecl (Id b) _) = a == b
 sameVar (BindingDecl (Id a) _) (BindingDecl (Id b) _) = a == b
+sameVar _ _ = False
 
 checkConflict :: FilePath -> [Decl] -> ValidationResult [SAError]
 checkConflict path decls =
