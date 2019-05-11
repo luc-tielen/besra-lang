@@ -1,12 +1,12 @@
 
 module Test.X1.Parser.Number ( module Test.X1.Parser.Number ) where
 
-import X1.Parser.Number (parser)
-import X1.Parser.Types.Number
 import Protolude
-import Test.Hspec.Megaparsec hiding (shouldFailWith, succeedsLeaving)
-import Test.X1.Parser.Helpers
 import Test.Tasty.Hspec
+import Test.Hspec.Megaparsec hiding (shouldFailWith, succeedsLeaving)
+import X1.Parser.Number (parser)
+import X1.Types.Expr1.Number
+import Test.X1.Parser.Helpers
 
 
 parse :: Text -> ParseResult Number

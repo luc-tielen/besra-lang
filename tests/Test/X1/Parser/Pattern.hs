@@ -4,12 +4,12 @@ module Test.X1.Parser.Pattern ( module Test.X1.Parser.Pattern ) where
 import Protolude hiding ( Type )
 import Test.Tasty.Hspec
 import Test.X1.Parser.Helpers
-import X1.Types.Pattern
-import X1.Types.Lit
-import X1.Types.Id
 import X1.Parser.Pattern ( parser )
-import X1.Parser.Types.String
-import X1.Parser.Types.Number
+import X1.Types.Id
+import X1.Types.Expr1.Lit
+import X1.Types.Expr1.String
+import X1.Types.Expr1.Number
+import X1.Types.Expr1.Pattern
 import Test.Hspec.Megaparsec hiding (shouldFailWith, succeedsLeaving)
 
 

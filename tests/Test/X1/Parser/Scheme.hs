@@ -2,14 +2,14 @@
 module Test.X1.Parser.Scheme ( module Test.X1.Parser.Scheme ) where
 
 import Protolude hiding (Type)
-import X1.Parser.Scheme (parser)
-import X1.Parser.Types.Pred
-import X1.Parser.Types.Scheme
-import X1.Parser.Types.Type
-import X1.Types.Id
-import Test.Hspec.Megaparsec hiding (shouldFailWith)
-import Test.X1.Parser.Helpers
 import Test.Tasty.Hspec
+import Test.Hspec.Megaparsec hiding (shouldFailWith)
+import X1.Parser.Scheme (parser)
+import X1.Types.Id
+import X1.Types.Expr1.Pred
+import X1.Types.Expr1.Scheme
+import X1.Types.Expr1.Type
+import Test.X1.Parser.Helpers
 
 
 parser' :: Text -> ParseResult Scheme

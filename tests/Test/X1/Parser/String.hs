@@ -4,12 +4,12 @@
 module Test.X1.Parser.String ( module Test.X1.Parser.String ) where
 
 import Protolude
-import X1.Parser.String (parser)
-import X1.Parser.Types.String
-import NeatInterpolation
-import Test.Hspec.Megaparsec hiding (shouldFailWith)
-import Test.X1.Parser.Helpers
 import Test.Tasty.Hspec
+import Test.Hspec.Megaparsec hiding (shouldFailWith)
+import X1.Parser.String (parser)
+import X1.Types.Expr1.String
+import NeatInterpolation
+import Test.X1.Parser.Helpers
 
 
 (==>) :: Text -> Text -> IO ()

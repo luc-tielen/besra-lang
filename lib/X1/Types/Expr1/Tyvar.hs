@@ -1,5 +1,5 @@
 
-module X1.Parser.Types.Tyvar ( Tyvar(..) ) where
+module X1.Types.Expr1.Tyvar ( Tyvar(..) ) where
 
 import Protolude
 import X1.Types.Id

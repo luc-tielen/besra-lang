@@ -3,12 +3,12 @@ module Test.X1.Parser.Lit ( module Test.X1.Parser.Lit ) where
 
 import Protolude
 import Test.Tasty.Hspec
-import Test.X1.Parser.Helpers
-import X1.Types.Lit
-import X1.Parser.Lit (parser)
-import X1.Parser.Types.String
-import X1.Parser.Types.Number
 import Test.Hspec.Megaparsec hiding (shouldFailWith)
+import X1.Parser.Lit (parser)
+import Test.X1.Parser.Helpers
+import X1.Types.Expr1.Lit
+import X1.Types.Expr1.String
+import X1.Types.Expr1.Number
 
 
 parse :: Text -> ParseResult Lit

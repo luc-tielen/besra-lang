@@ -6,7 +6,7 @@ import Test.X1.Parser.Helpers
 import Test.Hspec.Megaparsec hiding (shouldFailWith)
 import Test.Tasty.Hspec
 import X1.Parser.Type (parser)
-import X1.Parser.Types.Type
+import X1.Types.Expr1.Type
 import X1.Types.Id
 
 

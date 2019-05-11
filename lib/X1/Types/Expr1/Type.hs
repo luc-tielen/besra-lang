@@ -1,9 +1,9 @@
 
-module X1.Parser.Types.Type ( Type(..), Tycon(..), Tyvar(..) ) where
+module X1.Types.Expr1.Type ( Type(..), Tycon(..), Tyvar(..) ) where
 
 import Protolude hiding ( Type )
-import X1.Parser.Types.Tycon
-import X1.Parser.Types.Tyvar
+import X1.Types.Expr1.Tycon
+import X1.Types.Expr1.Tyvar
 
 
 data Type = TCon Tycon

@@ -4,16 +4,16 @@ module Test.X1.Parser.Module ( module Test.X1.Parser.Module ) where
 import Protolude hiding ( Type )
 import Test.Tasty.Hspec
 import Test.X1.Parser.Helpers
-import X1.Types.Module
-import X1.Types.Pattern
 import X1.Types.Id
+import X1.Types.Module
 import X1.Types.Expr1
-import X1.Types.Lit
-import X1.Parser.Types.Number
-import X1.Parser.Types.String
-import X1.Parser.Types.Scheme
-import X1.Parser.Types.Pred
-import X1.Parser.Types.Type
+import X1.Types.Expr1.Lit
+import X1.Types.Expr1.Pred
+import X1.Types.Expr1.Type
+import X1.Types.Expr1.Number
+import X1.Types.Expr1.String
+import X1.Types.Expr1.Scheme
+import X1.Types.Expr1.Pattern
 import X1.Parser.Module (parser)
 import Test.Hspec.Megaparsec hiding (shouldFailWith)
 
