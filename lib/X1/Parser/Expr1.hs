@@ -90,27 +90,53 @@ letParser = do
   where
     inLabel = "properly indented declaration or 'in' keyword"
 
+-- TODO refactor into multiple helper functions
 declParser :: Parser ExprDecl
 declParser = withLineFold declParser' where
-  declParser' = try namedFunctionDecl <|> typeOrBindingDecl
-  assign = char '=' <?> "rest of assignment"
-  typeSeparator = char ':' <?> "rest of type declaration"
+  declParser' =  try fixityDecl
+             <|> try namedFunctionDecl
+             <|> typeOrBindingDecl
 
-  functionHead = sameLine $ do
-    funcName <- Id <$> lexeme identifier
-    vars <- some $ lexeme Pattern.parser
-    void $ lexeme assign
-    pure (funcName, vars)
-  namedFunctionDecl = do
-    (funcName, vars) <- lexeme' functionHead
-    body <- E1Lam vars <$> parser
-    pure $ ExprBindingDecl funcName body
+fixityDecl :: Parser ExprDecl
+fixityDecl =  do
+  fixityType <- lexeme' fixityTypeParser
+  precedence <- optional $ digitToInt <$> lexeme' decimal
+  operator <- Id <$> lexeme opIdentifier
+  pure $ ExprFixityDecl fixityType (maybe 9 identity precedence) operator
+  where
+    fixityTypeParser =  keyword "infixl" $> L
+                    <|> keyword "infixr" $> R
+                    <|> keyword "infix" $> M
+    digit = satisfy isDigit
+    precedenceMsg = "precedence between 0..9"
+    decimal = do
+      parsed <- digit <?> precedenceMsg
+      notFollowedBy digit <?> precedenceMsg
+      pure parsed
 
-  typeOrBindingDecl = do
-    var <- Id <$> lexeme' identifier <?> "variable"
-    separator <- lexeme' $ typeSeparator <|> assign
-    case separator of
-      ':' -> ExprTypeDecl var <$> Scheme.parser
-      '=' -> ExprBindingDecl var <$> parser
-      _ -> panic "Parse error when parsing declaration."
+namedFunctionDecl :: Parser ExprDecl
+namedFunctionDecl = do
+  (funcName, vars) <- lexeme' functionHead
+  body <- E1Lam vars <$> parser
+  pure $ ExprBindingDecl funcName body
+  where
+    functionHead = sameLine $ do
+      funcName <- Id <$> lexeme identifier
+      vars <- some $ lexeme Pattern.parser
+      void $ lexeme assign
+      pure (funcName, vars)
+
+typeOrBindingDecl :: Parser ExprDecl
+typeOrBindingDecl = do
+  var <- Id <$> lexeme' identifier <?> "variable"
+  separator <- lexeme' $ typeSeparator <|> assign
+  case separator of
+    ':' -> ExprTypeDecl var <$> Scheme.parser
+    '=' -> ExprBindingDecl var <$> parser
+    _ -> panic "Parse error when parsing declaration."
+  where
+    typeSeparator = char ':' <?> "rest of type declaration"
+
+assign :: Parser Char
+assign = char '=' <?> "rest of assignment"
 

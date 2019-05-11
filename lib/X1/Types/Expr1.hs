@@ -1,8 +1,9 @@
 
 module X1.Types.Expr1 ( Expr1(..), ExprDecl(..) ) where
 
-import Protolude
+import Protolude hiding ( Fixity )
 import X1.Types.Id
+import X1.Types.Fixity
 import X1.Types.Expr1.Lit
 import X1.Types.Expr1.Scheme
 import X1.Types.Expr1.Pattern
@@ -10,6 +11,7 @@ import X1.Types.Expr1.Pattern
 
 data ExprDecl = ExprTypeDecl Id Scheme
               | ExprBindingDecl Id Expr1
+              | ExprFixityDecl Fixity Int Id
               deriving (Eq, Show)
 
 data Expr1 = E1Lit Lit

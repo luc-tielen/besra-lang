@@ -4,7 +4,7 @@ module X1.Parser.Helpers ( Parser, ParseError, ParseErr, ParseResult
                          , lexeme, lexeme', whitespace, whitespace', withLineFold
                          , eof, between, betweenParens, betweenOptionalParens
                          , singleQuote, digitChar, hexDigitChars, binDigitChars
-                         , letterChar
+                         , letterChar, opIdentifier
                          , keyword, chunk, char
                          , identifier, capitalIdentifier
                          , notFollowedBy, lookAhead
@@ -15,7 +15,7 @@ module X1.Parser.Helpers ( Parser, ParseError, ParseErr, ParseResult
                          , (<?>)
                          ) where
 
-import Protolude hiding (try)
+import Protolude hiding (try, first)
 import Control.Monad ( fail )
 import qualified Data.Vector.Unboxed as VU
 import qualified Data.Vector as V
@@ -119,6 +119,7 @@ identifier = do
   pure parsed
   where reserved = [ "module", "type", "data", "trait", "impl"
                    , "do", "let", "in", "where", "if", "else", "case", "of"
+                   , "infix", "infixl", "infixr"
                    ]
 
 capitalIdentifier :: Parser Text
@@ -129,6 +130,20 @@ capitalIdentifier = do
 
 isIdentifierChar :: Char -> Bool
 isIdentifierChar c = isLower c || isUpper c || isDigit c || c == '\''
+
+opIdentifier :: Parser Text
+opIdentifier = do
+  first <- satisfy isOperatorChar <?> "operator"
+  rest <- takeWhileP (Just "rest of operator") isOperatorChar
+  let parsed = T.cons first rest
+  when (parsed `V.elem` reserved) (fail . T.unpack $ "Reserved operator: '" <> parsed <> "'")
+  notFollowedBy $ satisfy isDigit
+  pure parsed
+  where
+    isOperatorChar c = c `VU.elem` opChars
+    opChars = ['!', '#', '$', '%', '&', '.', '+', '*', '/', '<', '>'
+              , '=', '?', '@', '\\', '^', '|', '-', '~', ':']
+    reserved = [ "..", ":", "=", "\\", "|", "<-", "->", "=>", "@", "~" ]
 
 singleQuote :: Parser Char
 singleQuote = char '\''
