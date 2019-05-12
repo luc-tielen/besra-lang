@@ -32,7 +32,7 @@ conPattern = singleCon <|> multiCon where
 varOrAsPattern :: Parser Pattern
 varOrAsPattern = do
   var <- Id <$> identifier
-  asBinding <- optional $ char '@'
+  asBinding <- optional (char '@' <?> "pattern")
   case asBinding of
     Nothing -> pure $ PVar var
     Just _ -> PAs var <$> parser
