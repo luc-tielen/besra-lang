@@ -141,11 +141,39 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
                    ]
 
   it "fails with readable error message" $ do
-    let labels = elabel <$> [ "rest of assignment", "rest of type declaration", "pattern" ]
-    (parse, "x -") `shouldFailWith` err 2 (utok '-' <> mconcat labels)
+    let labels = mconcat $ elabel <$> ["pattern", "rest of assignment", "rest of type declaration"]
+    (parse, "x -") `shouldFailWith` err 2 (utok '-' <> labels)
     (parse, "1") `shouldFailWith` err 0 (utok '1' <> elabel "type or binding declaration" <> eeof)
 
   describe "operators" $ parallel $ do
+    let v = E1Var . Id
+        binding = v "primitivePlus"
+        complexBinding = lam ["a", "b"] $ E1App binding [v "a", v "b"]
+
+    it "can parse a top level type declaration for an operator" $ do
+      "(+) : Int -> Int -> Int"
+        ==> Module [TypeDecl (Id "+") (Scheme [] $ con "Int" --> con "Int" --> con "Int")]
+      "(==) : Eq a => a -> a -> a"
+        ==> Module [TypeDecl (Id "==")
+                    (Scheme [IsIn (Id "Eq") [var "a"]] $
+                      var "a" --> var "a" --> var "a")]
+
+    it "can parse a top level prefix binding declaration for an operator" $ do
+      "(+) = primitivePlus" ==> Module [BindingDecl (Id "+") binding]
+      "(+) a b = primitivePlus a b"
+        ==> Module [BindingDecl (Id "+") complexBinding]
+
+    it "fails with readable error message" $ do
+      (parse, "(x) = 1") `shouldFailWith` err 1 (utok 'x' <> elabel "operator")
+      (parse, "(x) a = 1") `shouldFailWith` err 1 (utok 'x' <> elabel "operator")
+      (parse, "(") `shouldFailWith` err 1 (ueof <> elabel "operator")
+      (parse, "(+") `shouldFailWith` err 2 (ueof <> etok ')' <> elabel "rest of operator")
+      (parse, "(+)") `shouldFailWith` err 3
+        (ueof <> elabel "pattern" <> elabel "rest of assignment"
+              <> elabel "rest of type declaration")
+      (parse, "(+) =") `shouldFailWith` err 5 (ueof <> elabel "expression")
+      (parse, "(+) :") `shouldFailWith` err 5 (ueof <> elabel "typescheme")
+
     describe "fixity declarations" $ parallel $ do
       let expected op fixity prio = Module [FixityDecl fixity prio (Id op)]
 

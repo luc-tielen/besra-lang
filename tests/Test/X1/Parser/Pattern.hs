@@ -73,7 +73,7 @@ spec_patternParseTest = describe "pattern parser" $ parallel $ do
     (parse, "(_ a)") `shouldFailWith` err 1 (utok '_' <> elabel "constructor")
     (parse, "(a b)") `shouldFailWith` err 1 (utok 'a' <> elabel "constructor")
     (parse, "(A b") `shouldFailWith` err 4
-      (ueof <> etok ')' <> etok '@' <> elabel "pattern" <> elabel "rest of identifier")
+      (ueof <> etok ')' <> elabel "pattern" <> elabel "rest of identifier")
     (parse, "a@(A b") `shouldFailWith` err 6
-      (ueof <> etok ')' <> etok '@' <> elabel "pattern" <> elabel "rest of identifier")
+      (ueof <> etok ')' <> elabel "pattern" <> elabel "rest of identifier")
 
