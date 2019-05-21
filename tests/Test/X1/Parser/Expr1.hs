@@ -345,6 +345,17 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
                                                , app (var "g") [num 2]]
                             , app (var "h") [num 3]]
 
+    it "fails with readable error message" $ do
+      (parse, "(+") `shouldFailWith` err 2 (ueof <> etok ')' <> elabel "rest of operator")
+      (parse, "1 `") `shouldFailWith` err 3
+        (ueof <> elabel "infix constructor" <> elabel "infix function")
+      (parse, "1 `plu") `shouldFailWith` err 6 (ueof <> etok '`' <> elabel "rest of identifier")
+      (parse, "1 +") `shouldFailWith` err 3
+        (ueof <> elabel "expression" <> elabel "rest of operator")
+      (parser, "1 f") `succeedsLeaving` "f"
+      (parse, "1 `if` 2") `shouldFailWith` errFancy 5 (failMsg "Reserved keyword: if")
+      (parse, "1 + + 2") `shouldFailWith` err 4 (utoks "+ 2" <> elabel "expression")
+
   it "can parse variables" $ do
     let a ==> b = parse a `shouldParse` E1Var (Id b)
     "a" ==> "a"
