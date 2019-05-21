@@ -11,4 +11,4 @@ jobs:
           command: nix-shell --option sandbox false --run "make lint"
       - run:
           name: Unit tests
-          command: nix-shell --option sandbox false --run "make configure tests"
+          command: nix-shell --option sandbox false --run "make configure tests focus_check"
