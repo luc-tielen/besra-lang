@@ -1,38 +1,62 @@
 
 module X1.Parser.Expr1 ( parser, declParser ) where
 
-import Protolude hiding ( try )
+import Protolude hiding ( try, functionName, Fixity )
+import Data.Char ( digitToInt )
+import GHC.Unicode (isDigit)
 import X1.Types.Id
+import X1.Types.Fixity
 import X1.Types.Expr1
 import X1.Parser.Helpers
+import Control.Monad.Combinators.Expr
 import qualified X1.Parser.Lit as Lit
 import qualified X1.Parser.Scheme as Scheme
 import qualified X1.Parser.Pattern as Pattern
 
 
 parser :: Parser Expr1
-parser = parser' <?> "expression" where
-  parser' =  E1Lit <$> Lit.parser
-         <|> withLineFold lineFoldedExprs
-         <|> letParser
-         <|> try funcParser
-         <|> varParser
-         <|> conParser
-         <|> betweenParens parser
+parser = expr
+
+expr :: Parser Expr1
+expr = makeExprParser term exprOperators <?> "expression"
+
+exprOperators :: [[Operator Parser Expr1]]
+exprOperators = [ [ InfixL (operator <$> lexeme' opIdentifier) ] ]
+  where
+    operator :: Text -> Expr1 -> Expr1 -> Expr1
+    operator op e1 e2 = E1App (E1Var $ Id op) [e1, e2]
+
+term :: Parser Expr1
+term = term' <?> "expression" where
+  -- TODO move lexeme to start of term'?
+  term' =  lexeme litParser
+       <|> withLineFold lineFoldedExprs
+       <|> letParser
+       <|> try funcParser
+       <|> varParser
+       <|> conParser
+       <|> betweenParens parser
   lineFoldedExprs =  lamParser
                  <|> ifParser
                  <|> caseParser
+
+litParser :: Parser Expr1
+litParser = E1Lit <$> Lit.parser
 
 funcParser :: Parser Expr1
 funcParser = sameLine $ do
   funcName <- funcNameParser
   -- NOTE: next line is to prevent wrong order of parentheses in nested applications
-  args <- some $ lexeme (funcNameParser <|> parser)
+  args <- some $ lexeme arg
   pure $ E1App funcName args
   where
     variable = E1Var . Id <$> lexeme identifier
     constructor = E1Con . Id <$> lexeme capitalIdentifier
     funcNameParser = variable <|> constructor
+    arg =  litParser
+       <|> varParser
+       <|> conParser
+       <|> betweenParens parser
 
 varParser :: Parser Expr1
 varParser = E1Var . Id <$> lexeme identifier
@@ -64,19 +88,19 @@ ifParser = do
 caseParser :: Parser Expr1
 caseParser = do
   keyword "case"
-  expr <- lexeme' parser
+  expr' <- lexeme' parser
   keyword "of"
   indentation <- indentLevel
   let clauseParser' = withIndent indentation clauseParser <?> "case clause"
   clauses <- some clauseParser'
   notFollowedBy clauseParser <?> "properly indented case clause"
-  pure $ E1Case expr clauses
+  pure $ E1Case expr' clauses
   where
     clauseParser = withLineFold $ do
       pat <- lexeme' Pattern.parser
       void . lexeme' $ chunk "->"
-      expr <- parser
-      pure (pat, expr)
+      expr' <- parser
+      pure (pat, expr')
 
 letParser :: Parser Expr1
 letParser = do
@@ -90,7 +114,6 @@ letParser = do
   where
     inLabel = "properly indented declaration or 'in' keyword"
 
--- TODO refactor into multiple helper functions
 declParser :: Parser ExprDecl
 declParser = withLineFold declParser' where
   declParser' =  try fixityDecl
@@ -100,9 +123,9 @@ declParser = withLineFold declParser' where
 fixityDecl :: Parser ExprDecl
 fixityDecl =  do
   fixityType <- lexeme' fixityTypeParser
-  precedence <- optional $ digitToInt <$> lexeme' decimal
+  precedence <- withDefault 9 $ digitToInt <$> lexeme' decimal
   operator <- Id <$> lexeme opIdentifier
-  pure $ ExprFixityDecl fixityType (maybe 9 identity precedence) operator
+  pure $ ExprFixityDecl fixityType precedence operator
   where
     fixityTypeParser =  keyword "infixl" $> L
                     <|> keyword "infixr" $> R
