@@ -20,6 +20,15 @@ import Test.Hspec.Megaparsec hiding (shouldFailWith, succeedsLeaving)
 c :: Text -> Type
 c = TCon . Tycon . Id
 
+let' :: [ExprDecl] -> Expr1 -> Expr1
+let' = E1Let
+
+binding :: Text -> Expr1 -> ExprDecl
+binding x = ExprBindingDecl (Id x)
+
+sig :: Text -> Type -> ExprDecl
+sig x ty = ExprTypeDecl (Id x) (Scheme [] ty)
+
 parse :: Text -> ParseResult Expr1
 parse = mkParser parser
 
@@ -111,11 +120,8 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       (parse, "if 1 then if 2\nthen 3 else 4 else 5") `shouldFailWith` errFancy 15 (badIndent 11 1)
 
   describe "let expressions" $ parallel $ do
-    let let' = E1Let
+    let var = E1Var . Id
         num = E1Lit . LNumber . SInt
-        binding x = ExprBindingDecl (Id x)
-        sig x ty = ExprTypeDecl (Id x) (Scheme [] ty)
-        var = E1Var . Id
         lam vars = E1Lam (PVar . Id <$> vars)
         a ==> b = parse a `shouldParse` b
 
@@ -177,8 +183,6 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
   describe "lambdas" $ parallel $ do
     let a ==> b = parse a `shouldParse` b
         lam vars = E1Lam (PVar . Id <$> vars)
-        let' = E1Let
-        binding x = ExprBindingDecl (Id x)
         num' = LNumber . SInt
         num = E1Lit . num'
         str' =  LString . String
@@ -283,10 +287,7 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
         (utok '2' <> elabel "properly indented case clause")
 
   describe "operators" $ parallel $ do
-    let let' = E1Let
-        num = E1Lit . LNumber . SInt
-        binding x = ExprBindingDecl (Id x)
-        sig x ty = ExprTypeDecl (Id x) (Scheme [] ty)
+    let num = E1Lit . LNumber . SInt
         fixity ty prio op = ExprFixityDecl ty prio (Id op)
         app = E1App
         var = E1Var . Id
