@@ -27,9 +27,9 @@ exprOperators = [ [ InfixL (operator <$> lexeme' operatorParser) ] ]
                   <|> betweenBackticks (infixFunction <|> infixCon)
     operator op e1 e2 = E1App op [e1, e2]
     infixOp = E1Var . Id <$> opIdentifier
-    infixFunction = E1Var . Id <$> identifier
-    infixCon = E1Con . Id <$> capitalIdentifier
-    betweenBackticks = between backtick backtick
+    infixFunction = E1Var . Id <$> identifier <?> "infix function"
+    infixCon = E1Con . Id <$> capitalIdentifier <?> "infix constructor"
+    betweenBackticks = between (backtick <?> "operator") backtick
     backtick = char '`'
 
 term :: Parser Expr1
