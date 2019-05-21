@@ -333,6 +333,18 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
         ==> app (var "*") [ app (var "+") [app (var "f") [num 1], app (var "g") [num 2]]
                           , app (var "h") [num 3]]
 
+    it "can parse operators as return values" $
+      "(+)" ==> var "+"
+
+    it "can parse infix functions" $ do
+      "1 `plus` 2" ==> app (var "plus") [num 1, num 2]
+      "f 1 `Plus` a f 2" ==> app (con "Plus") [ app (var "f") [num 1]
+                                              , app (var "a") [var "f", num 2]]
+      "f 1 `plus` g 2 `Mul` h 3"
+        ==> app (con "Mul") [ app (var "plus") [ app (var "f") [num 1]
+                                               , app (var "g") [num 2]]
+                            , app (var "h") [num 3]]
+
   it "can parse variables" $ do
     let a ==> b = parse a `shouldParse` E1Var (Id b)
     "a" ==> "a"

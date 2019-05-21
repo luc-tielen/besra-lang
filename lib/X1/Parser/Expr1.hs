@@ -21,10 +21,16 @@ expr :: Parser Expr1
 expr = makeExprParser term exprOperators <?> "expression"
 
 exprOperators :: [[Operator Parser Expr1]]
-exprOperators = [ [ InfixL (operator <$> lexeme' opIdentifier) ] ]
+exprOperators = [ [ InfixL (operator <$> lexeme' operatorParser) ] ]
   where
-    operator :: Text -> Expr1 -> Expr1 -> Expr1
-    operator op e1 e2 = E1App (E1Var $ Id op) [e1, e2]
+    operatorParser =  infixOp
+                  <|> betweenBackticks (infixFunction <|> infixCon)
+    operator op e1 e2 = E1App op [e1, e2]
+    infixOp = E1Var . Id <$> opIdentifier
+    infixFunction = E1Var . Id <$> identifier
+    infixCon = E1Con . Id <$> capitalIdentifier
+    betweenBackticks = between backtick backtick
+    backtick = char '`'
 
 term :: Parser Expr1
 term = term' <?> "expression" where
@@ -59,7 +65,9 @@ funcParser = sameLine $ do
        <|> betweenParens parser
 
 varParser :: Parser Expr1
-varParser = E1Var . Id <$> lexeme identifier
+varParser = E1Var . Id <$> varParser' where
+  varParser' = lexeme (try opVar <|> identifier)
+  opVar = betweenParens opIdentifier
 
 conParser :: Parser Expr1
 conParser = E1Con . Id <$> lexeme capitalIdentifier
