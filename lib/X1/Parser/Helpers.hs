@@ -9,7 +9,7 @@ module X1.Parser.Helpers ( Parser, ParseError, ParseErr, ParseResult
                          , identifier, capitalIdentifier
                          , notFollowedBy, lookAhead
                          , sepBy, sepBy1, endBy, endBy1
-                         , L.indentLevel, withIndent, sameLine
+                         , L.indentLevel, withIndent, sameLine, withDefault
                          , satisfy, takeWhileP
                          , try
                          , (<?>)
@@ -96,6 +96,11 @@ betweenParens = between (lexeme $ char '(') (char ')') . lexeme
 
 betweenOptionalParens :: Parser a -> Parser a
 betweenOptionalParens p = betweenParens p <|> p
+
+-- | Helper for optionally parsing a value. If the parsing fails,
+--   it will use the provided default value instead.
+withDefault :: a -> Parser a -> Parser a
+withDefault def p = p <|> pure def
 
 char :: Char -> Parser Char
 char = single
