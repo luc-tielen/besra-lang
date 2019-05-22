@@ -308,6 +308,8 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       "let infixl 4 +\nin\n 1" ==> let' [fixity L 4 "+"] (num 1)
       "let infixl 4 +\n    infixl 5 *\nin\n 1"
         ==> let' [fixity L 4 "+", fixity L 5 "*"] (num 1)
+      "let infixl 4 `plus`\n    infixl 5 `mul`\nin\n 1"
+        ==> let' [fixity L 4 "plus", fixity L 5 "mul"] (num 1)
 
     it "can parse fixity decl with default fixity in let " $ do
       "let infixl +\nin\n 1" ==> let' [fixity L 9 "+"] (num 1)
