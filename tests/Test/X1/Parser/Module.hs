@@ -1,10 +1,11 @@
 
 module Test.X1.Parser.Module ( module Test.X1.Parser.Module ) where
 
-import Protolude hiding ( Type )
+import Protolude hiding ( Type, Fixity )
 import Test.Tasty.Hspec
 import Test.X1.Parser.Helpers
 import X1.Types.Id
+import X1.Types.Fixity
 import X1.Types.Module
 import X1.Types.Expr1
 import X1.Types.Expr1.Lit
@@ -140,7 +141,107 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
                    ]
 
   it "fails with readable error message" $ do
-    let labels = elabel <$> [ "rest of assignment", "rest of type declaration", "pattern" ]
-    (parse, "x -") `shouldFailWith` err 2 (utok '-' <> mconcat labels)
+    let labels = mconcat $ elabel <$> ["pattern", "rest of assignment", "rest of type declaration"]
+    (parse, "x -") `shouldFailWith` err 2 (utok '-' <> labels)
     (parse, "1") `shouldFailWith` err 0 (utok '1' <> elabel "type or binding declaration" <> eeof)
+
+  describe "operators" $ parallel $ do
+    let v = E1Var . Id
+        binding = v "primitivePlus"
+        complexBinding = lam ["a", "b"] $ E1App binding [v "a", v "b"]
+
+    it "can parse a top level type declaration for an operator" $ do
+      "(+) : Int -> Int -> Int"
+        ==> Module [TypeDecl (Id "+") (Scheme [] $ con "Int" --> con "Int" --> con "Int")]
+      "(==) : Eq a => a -> a -> a"
+        ==> Module [TypeDecl (Id "==")
+                    (Scheme [IsIn (Id "Eq") [var "a"]] $
+                      var "a" --> var "a" --> var "a")]
+
+    it "can parse a top level prefix binding declaration for an operator" $ do
+      "(+) = primitivePlus" ==> Module [BindingDecl (Id "+") binding]
+      "(+) a b = primitivePlus a b"
+        ==> Module [BindingDecl (Id "+") complexBinding]
+
+    it "fails with readable error message" $ do
+      (parse, "(x) = 1") `shouldFailWith` err 1 (utok 'x' <> elabel "operator")
+      (parse, "(x) a = 1") `shouldFailWith` err 1 (utok 'x' <> elabel "operator")
+      (parse, "(") `shouldFailWith` err 1 (ueof <> elabel "operator")
+      (parse, "(+") `shouldFailWith` err 2 (ueof <> etok ')' <> elabel "rest of operator")
+      (parse, "(+)") `shouldFailWith` err 3
+        (ueof <> elabel "pattern" <> elabel "rest of assignment"
+              <> elabel "rest of type declaration")
+      (parse, "(+) =") `shouldFailWith` err 5 (ueof <> elabel "expression")
+      (parse, "(+) :") `shouldFailWith` err 5 (ueof <> elabel "typescheme")
+
+    describe "fixity declarations" $ parallel $ do
+      let expected op fixity prio = Module [FixityDecl fixity prio (Id op)]
+
+      it "can parse top level fixity declarations" $ do
+        let expected' = expected "+"
+        "infixl 0 +" ==> expected' L 0
+        "infixl 5 +" ==> expected' L 5
+        "infixl 9 +" ==> expected' L 9
+        "infixr 0 +" ==> expected' R 0
+        "infixr 5 +" ==> expected' R 5
+        "infixr 9 +" ==> expected' R 9
+        "infix 0 +" ==> expected' M 0
+        "infix 5 +" ==> expected' M 5
+        "infix 9 +" ==> expected' M 9
+
+      it "can parse top level fixity decl with default fixity" $ do
+        "infixl +" ==> expected "+" L 9
+        "infixr +" ==> expected "+" R 9
+        "infix +" ==> expected "+" M 9
+        "infix 9 `plus`" ==> expected "plus" M 9
+
+      it "can parse multiple fixity declarations" $
+        "infixl 5 +\ninfixr 7 `plus`\ninfixl 6 *"
+          ==> Module [ FixityDecl L 5 (Id "+")
+                     , FixityDecl R 7 (Id "plus")
+                     , FixityDecl L 6 (Id "*")]
+
+      it "can parse multiline fixity declaration" $ do
+        "infixl\n 7\n  ***" ==> expected "***" L 7
+        "infixr\n 7\n ***" ==> expected "***" R 7
+        "infix\n 7\n ***" ==> expected "***" M 7
+        "infix 7\n ***" ==> expected "***" M 7
+        "infix 7\n `mul`" ==> expected "mul" M 7
+
+      it "fails with readable error message (basic errors)" $ do
+        (parse, "infi") `shouldFailWith` err 4
+          (ueof <> elabel "pattern" <> elabel "rest of assignment"
+          <> elabel "rest of identifier" <> elabel "rest of type declaration" )
+        (parse, "infixr 0") `shouldFailWith` err 8 (ueof <> elabel "operator")
+        (parse, "infixr -1 +") `shouldFailWith` err 8 (utok '1' <> elabel "rest of operator")
+        (parse, "infixr a") `shouldFailWith` err 7 (utok 'a' <> elabel "operator" <> elabel "precedence between 0..9")
+        (parse, "infixr 6 a") `shouldFailWith` err 9 (utok 'a' <> elabel "operator")
+
+      it "fails with readable error (bad linefolds)" $ do
+        (parse, "infixr\n0") `shouldFailWith` errFancy 7 (badIndent 1 1)
+        (parse, "infixr 0\n+") `shouldFailWith` errFancy 9 (badIndent 1 1)
+
+      it "fails with readable error message (out of range precedence)" $ do
+        (parse, "infixr 10 +") `shouldFailWith` err 8
+          (utok '0' <> elabel "precedence between 0..9")
+        (parse, "infixr 11 +") `shouldFailWith` err 8
+          (utok '1' <> elabel "precedence between 0..9")
+
+      it "fails with readable error message (reserved keywords)" $ do
+        (parse, "infix") `shouldFailWith` errFancy 5 (failMsg "Reserved keyword: infix")
+        (parse, "infixl") `shouldFailWith` errFancy 6 (failMsg "Reserved keyword: infixl")
+        (parse, "infixr") `shouldFailWith` errFancy 6 (failMsg "Reserved keyword: infixr")
+
+      it "fails with readable error message (reserved operators)" $ do
+        (parse, "infixr 0 :") `shouldFailWith` errFancy 10 (failMsg "Reserved operator: ':'")
+        (parse, "infixr :") `shouldFailWith` errFancy 8 (failMsg "Reserved operator: ':'")
+        (parse, "infixr ..") `shouldFailWith` errFancy 9 (failMsg "Reserved operator: '..'")
+        (parse, "infixr =") `shouldFailWith` errFancy 8 (failMsg "Reserved operator: '='")
+        (parse, "infixr \\") `shouldFailWith` errFancy 8 (failMsg "Reserved operator: '\\'")
+        (parse, "infixr |") `shouldFailWith` errFancy 8 (failMsg "Reserved operator: '|'")
+        (parse, "infixr <-") `shouldFailWith` errFancy 9 (failMsg "Reserved operator: '<-'")
+        (parse, "infixr ->") `shouldFailWith` errFancy 9 (failMsg "Reserved operator: '->'")
+        (parse, "infixr =>") `shouldFailWith` errFancy 9 (failMsg "Reserved operator: '=>'")
+        (parse, "infixr @") `shouldFailWith` errFancy 8 (failMsg "Reserved operator: '@'")
+        (parse, "infixr ~") `shouldFailWith` errFancy 8 (failMsg "Reserved operator: '~'")
 

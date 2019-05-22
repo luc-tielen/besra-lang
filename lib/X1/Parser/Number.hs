@@ -2,12 +2,13 @@
 module X1.Parser.Number ( parser ) where
 
 import Protolude
-import qualified Data.Text as T
-import qualified Data.Text.Read as TR
-import qualified Data.Vector.Unboxed as V
 import X1.Types.Expr1.Number
 import X1.Parser.Helpers
-import GHC.Unicode ( isDigit )
+import qualified Data.Vector as V
+import qualified Data.Text as T
+import qualified Data.Text.Read as TR
+import GHC.Unicode (isDigit)
+
 
 decimal :: Parser Number
 decimal = SInt <$> do

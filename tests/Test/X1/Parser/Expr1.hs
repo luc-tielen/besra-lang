@@ -6,6 +6,7 @@ import Test.Tasty.Hspec
 import Test.X1.Parser.Helpers
 import X1.Parser.Expr1 (parser)
 import X1.Types.Id
+import X1.Types.Fixity
 import X1.Types.Expr1
 import X1.Types.Expr1.Lit
 import X1.Types.Expr1.Type
@@ -18,6 +19,15 @@ import Test.Hspec.Megaparsec hiding (shouldFailWith, succeedsLeaving)
 
 c :: Text -> Type
 c = TCon . Tycon . Id
+
+let' :: [ExprDecl] -> Expr1 -> Expr1
+let' = E1Let
+
+binding :: Text -> Expr1 -> ExprDecl
+binding x = ExprBindingDecl (Id x)
+
+sig :: Text -> Type -> ExprDecl
+sig x ty = ExprTypeDecl (Id x) (Scheme [] ty)
 
 parse :: Text -> ParseResult Expr1
 parse = mkParser parser
@@ -91,13 +101,14 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
 
     it "fails with readable error message for ifs" $ do
       (parse, "if") `shouldFailWith` err 2 (ueof <> elabel "whitespace")
-      (parse, "if 1") `shouldFailWith` err 4 (ueof <> etoks "then")
+      (parse, "if 1") `shouldFailWith` err 4 (ueof <> etoks "then" <> elabel "operator")
       (parse, "if 1 then") `shouldFailWith` err 9 (ueof <> elabel "whitespace")
-      (parse, "if 1 then 2") `shouldFailWith` err 11 (ueof <> etoks "else")
+      (parse, "if 1 then 2") `shouldFailWith` err 11 (ueof <> etoks "else" <> elabel "operator")
       (parse, "if 1 then 2 else") `shouldFailWith` err 16 (ueof <> elabel "whitespace")
       (parse, "iff 1") `shouldFailWith` err 2 (utok 'f' <> elabel "whitespace")
-      (parse, "if 1 thn 2") `shouldFailWith` err 5 (utoks "thn " <> etoks "then")
-      (parse, "if 1 then 2 ele 3") `shouldFailWith` err 12 (utoks "ele " <> etoks "else")
+      (parse, "if 1 thn 2") `shouldFailWith` err 5 (utoks "thn " <> etoks "then" <> elabel "operator")
+      (parse, "if 1 then 2 ele 3") `shouldFailWith` err 12
+        (utoks "ele " <> etoks "else" <> elabel "operator")
 
     it "fails with readable error message for incorrect line folds" $ do
       (parse, "if \n1 then 2 else 3") `shouldFailWith` errFancy 4 (badIndent 1 1)
@@ -109,11 +120,8 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       (parse, "if 1 then if 2\nthen 3 else 4 else 5") `shouldFailWith` errFancy 15 (badIndent 11 1)
 
   describe "let expressions" $ parallel $ do
-    let let' = E1Let
+    let var = E1Var . Id
         num = E1Lit . LNumber . SInt
-        binding x = ExprBindingDecl (Id x)
-        sig x ty = ExprTypeDecl (Id x) (Scheme [] ty)
-        var = E1Var . Id
         lam vars = E1Lam (PVar . Id <$> vars)
         a ==> b = parse a `shouldParse` b
 
@@ -175,8 +183,6 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
   describe "lambdas" $ parallel $ do
     let a ==> b = parse a `shouldParse` b
         lam vars = E1Lam (PVar . Id <$> vars)
-        let' = E1Let
-        binding x = ExprBindingDecl (Id x)
         num' = LNumber . SInt
         num = E1Lit . num'
         str' =  LString . String
@@ -269,7 +275,7 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
     it "fails with readable error message" $ do
       (parse, "case") `shouldFailWith` err 4 (ueof <> elabel "whitespace")
       (parse, "case ") `shouldFailWith` err 5 (ueof <> elabel "expression")
-      (parse, "case 1 ") `shouldFailWith` err 7 (ueof <> etoks "of")
+      (parse, "case 1 ") `shouldFailWith` err 7 (ueof <> etoks "of" <> elabel "operator")
       (parse, "case 1 of") `shouldFailWith` err 9 (ueof <> elabel "whitespace")
       (parse, "case 1 of ") `shouldFailWith` err 10 (ueof <> elabel "case clause")
       (parse, "case 1 of\n1 -> 1") `shouldFailWith` errFancy 10 (badIndent 1 1)
@@ -279,6 +285,79 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
         (utok '1' <> elabel "properly indented case clause")
       (parse, "case 1 of\n 1 -> 1\n  2 -> 2") `shouldFailWith` err 20
         (utok '2' <> elabel "properly indented case clause")
+
+  describe "operators" $ parallel $ do
+    let num = E1Lit . LNumber . SInt
+        fixity ty prio op = ExprFixityDecl ty prio (Id op)
+        app = E1App
+        var = E1Var . Id
+        con = E1Con . Id
+        a ==> b = parse a `shouldParse` b
+
+    it "can parse a type declaration for an operator in a let" $ do
+      "let (+) : Int\nin\n 1" ==> let' [sig "+" (c "Int")] (num 1)
+      "let (+) : Int\n    (*) : Int\nin\n 1"
+        ==> let' [sig "+" (c "Int"), sig "*" (c "Int")] (num 1)
+
+    it "can parse a prefix binding declaration for an operator in a let" $ do
+      "let (+) = 1\nin\n 1" ==> let' [binding "+" (num 1)] (num 1)
+      "let (+) = 1\n    (*) = 2\nin\n 1"
+        ==> let' [binding "+" (num 1), binding "*" (num 2)] (num 1)
+
+    it "can parse fixity decl in let " $ do
+      "let infixl 4 +\nin\n 1" ==> let' [fixity L 4 "+"] (num 1)
+      "let infixl 4 +\n    infixl 5 *\nin\n 1"
+        ==> let' [fixity L 4 "+", fixity L 5 "*"] (num 1)
+      "let infixl 4 `plus`\n    infixl 5 `mul`\nin\n 1"
+        ==> let' [fixity L 4 "plus", fixity L 5 "mul"] (num 1)
+
+    it "can parse fixity decl with default fixity in let " $ do
+      "let infixl +\nin\n 1" ==> let' [fixity L 9 "+"] (num 1)
+      "let infixr +\n    infix *\nin\n 1"
+        ==> let' [fixity R 9 "+", fixity M 9 "*"] (num 1)
+
+    it "can parse valid operators" $ do
+      "1 + 2" ==> app (var "+") [num 1, num 2]
+      "1 + 2 + 3" ==> app (var "+") [app (var "+") [num 1, num 2], num 3]
+      "1 + 2 * 3" ==> app (var "*") [app (var "+") [num 1, num 2], num 3]
+      "True || False && True"
+        ==> app (var "&&") [app (var "||") [con "True", con "False"], con "True"]
+
+    it "can parse expressions with mix of parentheses and operators" $
+      "1 + (2 + 3)" ==> app (var "+") [num 1, app (var "+") [num 2, num 3]]
+
+    it "can parse expressions with function application and operators" $ do
+      "f 1 + a f 2" ==> app (var "+") [ app (var "f") [num 1]
+                                      , app (var "a") [var "f", num 2]]
+      "f 1 + g (2 + 3)" ==> app (var "+") [ app (var "f") [num 1]
+                                          , app (var "g") [app (var "+") [num 2, num 3]]
+                                          ]
+      "f 1 + g 2 * h 3"
+        ==> app (var "*") [ app (var "+") [app (var "f") [num 1], app (var "g") [num 2]]
+                          , app (var "h") [num 3]]
+
+    it "can parse operators as return values" $
+      "(+)" ==> var "+"
+
+    it "can parse infix functions" $ do
+      "1 `plus` 2" ==> app (var "plus") [num 1, num 2]
+      "f 1 `Plus` a f 2" ==> app (con "Plus") [ app (var "f") [num 1]
+                                              , app (var "a") [var "f", num 2]]
+      "f 1 `plus` g 2 `Mul` h 3"
+        ==> app (con "Mul") [ app (var "plus") [ app (var "f") [num 1]
+                                               , app (var "g") [num 2]]
+                            , app (var "h") [num 3]]
+
+    it "fails with readable error message" $ do
+      (parse, "(+") `shouldFailWith` err 2 (ueof <> etok ')' <> elabel "rest of operator")
+      (parse, "1 `") `shouldFailWith` err 3
+        (ueof <> elabel "infix constructor" <> elabel "infix function")
+      (parse, "1 `plu") `shouldFailWith` err 6 (ueof <> etok '`' <> elabel "rest of identifier")
+      (parse, "1 +") `shouldFailWith` err 3
+        (ueof <> elabel "expression" <> elabel "rest of operator")
+      (parser, "1 f") `succeedsLeaving` "f"
+      (parse, "1 `if` 2") `shouldFailWith` errFancy 5 (failMsg "Reserved keyword: if")
+      (parse, "1 + + 2") `shouldFailWith` err 4 (utoks "+ 2" <> elabel "expression")
 
   it "can parse variables" $ do
     let a ==> b = parse a `shouldParse` E1Var (Id b)
