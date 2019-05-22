@@ -15,11 +15,8 @@ parser :: Parser ADT
 parser = withLineFold $ do
   keyword "data"
   adtHead <- adtHeadParser <?> "name of datatype"
-  maybeBody <- optional $ do
-    void $ lexeme' (char '=')
-    adtBodyParser
-  let body = fromMaybe [] maybeBody
-  pure $ ADT adtHead body
+  adtBody <- withDefault [] $ lexeme' (char '=') *> adtBodyParser
+  pure $ ADT adtHead adtBody
 
 adtHeadParser :: Parser ADTHead
 adtHeadParser = do
