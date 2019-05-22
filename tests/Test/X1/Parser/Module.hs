@@ -193,16 +193,20 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
         "infixl +" ==> expected "+" L 9
         "infixr +" ==> expected "+" R 9
         "infix +" ==> expected "+" M 9
+        "infix 9 `plus`" ==> expected "plus" M 9
 
       it "can parse multiple fixity declarations" $
-        "infixl 5 +\ninfixl 6 *"
-          ==> Module [FixityDecl L 5 (Id "+"), FixityDecl L 6 (Id "*")]
+        "infixl 5 +\ninfixr 7 `plus`\ninfixl 6 *"
+          ==> Module [ FixityDecl L 5 (Id "+")
+                     , FixityDecl R 7 (Id "plus")
+                     , FixityDecl L 6 (Id "*")]
 
       it "can parse multiline fixity declaration" $ do
         "infixl\n 7\n  ***" ==> expected "***" L 7
         "infixr\n 7\n ***" ==> expected "***" R 7
         "infix\n 7\n ***" ==> expected "***" M 7
         "infix 7\n ***" ==> expected "***" M 7
+        "infix 7\n `mul`" ==> expected "mul" M 7
 
       it "fails with readable error message (basic errors)" $ do
         (parse, "infi") `shouldFailWith` err 4

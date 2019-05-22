@@ -23,14 +23,10 @@ expr = makeExprParser term exprOperators <?> "expression"
 exprOperators :: [[Operator Parser Expr1]]
 exprOperators = [ [ InfixL (operator <$> lexeme' operatorParser) ] ]
   where
-    operatorParser =  infixOp
-                  <|> betweenBackticks (infixFunction <|> infixCon)
+    operatorParser =  infixOp <|> infixFunction'
     operator op e1 e2 = E1App op [e1, e2]
     infixOp = E1Var . Id <$> opIdentifier
-    infixFunction = E1Var . Id <$> identifier <?> "infix function"
-    infixCon = E1Con . Id <$> capitalIdentifier <?> "infix constructor"
-    betweenBackticks = between (backtick <?> "operator") backtick
-    backtick = char '`'
+    infixFunction' = infixFunction (E1Var . Id) (E1Con . Id)
 
 term :: Parser Expr1
 term = term' <?> "expression" where
@@ -132,7 +128,7 @@ fixityDecl :: Parser ExprDecl
 fixityDecl =  do
   fixityType <- lexeme' fixityTypeParser
   precedence <- withDefault 9 $ digitToInt <$> lexeme' decimal
-  operator <- Id <$> lexeme opIdentifier
+  operator <- Id <$> lexeme (opIdentifier <|> infixFunction')
   pure $ ExprFixityDecl fixityType precedence operator
   where
     fixityTypeParser =  keyword "infixl" $> L
@@ -144,6 +140,7 @@ fixityDecl =  do
       parsed <- digit <?> precedenceMsg
       notFollowedBy digit <?> precedenceMsg
       pure parsed
+    infixFunction' = infixFunction identity identity
 
 namedFunctionDecl :: Parser ExprDecl
 namedFunctionDecl = do
@@ -177,4 +174,16 @@ prefixOperator = Id <$> sameLine (betweenParens opIdentifier) <?> "operator"
 
 assign :: Parser Char
 assign = char '=' <?> "rest of assignment"
+
+betweenBackticks :: Parser a -> Parser a
+betweenBackticks = between (backtick <?> "operator") backtick where
+  backtick = char '`'
+
+infixFunction :: (Text -> a) -> (Text -> a) -> Parser a
+infixFunction var con =
+  betweenBackticks $  var <$> infixFunc
+                  <|> con <$> infixCon
+  where
+    infixFunc = identifier <?> "infix function"
+    infixCon = capitalIdentifier <?> "infix constructor"
 
