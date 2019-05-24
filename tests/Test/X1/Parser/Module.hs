@@ -8,6 +8,7 @@ import X1.Types.Id
 import X1.Types.Fixity
 import X1.Types.Module
 import X1.Types.Expr1
+import X1.Types.Expr1.ADT
 import X1.Types.Expr1.Lit
 import X1.Types.Expr1.Pred
 import X1.Types.Expr1.Type
@@ -143,7 +144,7 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
   it "fails with readable error message" $ do
     let labels = mconcat $ elabel <$> ["pattern", "rest of assignment", "rest of type declaration"]
     (parse, "x -") `shouldFailWith` err 2 (utok '-' <> labels)
-    (parse, "1") `shouldFailWith` err 0 (utok '1' <> elabel "type or binding declaration" <> eeof)
+    (parse, "1") `shouldFailWith` err 0 (utok '1' <> elabel "declaration" <> eeof)
 
   describe "operators" $ parallel $ do
     let v = E1Var . Id
@@ -244,4 +245,41 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
         (parse, "infixr =>") `shouldFailWith` errFancy 9 (failMsg "Reserved operator: '=>'")
         (parse, "infixr @") `shouldFailWith` errFancy 8 (failMsg "Reserved operator: '@'")
         (parse, "infixr ~") `shouldFailWith` errFancy 8 (failMsg "Reserved operator: '~'")
+
+  describe "data declarations" $ parallel $ do
+    let hd constr vars = ADTHead (con' constr) (var' <$> vars)
+        con' = Tycon . Id
+        var' = Tyvar . Id
+        body constr = ConDecl (Id constr)
+        adt adtHead adtBody = DataDecl (ADT adtHead adtBody)
+
+    it "can parse multiple ADTs in a row" $ do
+      "data X\ndata Y" ==> Module [adt (hd "X" []) [], adt (hd "Y" []) []]
+      "data X a b\ndata Y c d" ==> Module [ adt (hd "X" ["a", "b"]) []
+                                          , adt (hd "Y" ["c", "d"]) []]
+      "data X = X\ndata Y = Y" ==> Module [ adt (hd "X" []) [body "X" []]
+                                          , adt (hd "Y" []) [body "Y" []]]
+      "data X = X Y Z\ndata A = A (b -> c)\ndata D = F"
+        ==> Module [ adt (hd "X" []) [body "X" [con "Y", con "Z"]]
+                   , adt (hd "A" []) [body "A" [var "b" --> var "c"]]
+                   , adt (hd "D" []) [body "F" []]
+                   ]
+
+    it "can parse ADT followed by binding declaration" $
+      "data X\na = X"
+        ==> Module [adt (hd "X" []) [], BindingDecl (Id "a") $ E1Con (Id "X")]
+
+    it "fails with readable error message" $ do
+      (parse, "dat") `shouldFailWith` err 3
+        (ueof <> elabel "pattern" <> elabel "rest of assignment"
+        <> elabel "rest of type declaration" <> elabel "rest of identifier")
+      (parse, "data") `shouldFailWith` err 4 (ueof <> elabel "whitespace")
+      (parse, "data ") `shouldFailWith` err 5 (ueof <> elabel "name of datatype")
+      (parse, "data\nX = X") `shouldFailWith` errFancy 5 (badIndent 1 1)
+      (parse, "data X\n= X") `shouldFailWith` err 7 (utok '=' <> elabel "declaration" <> eeof)
+      (parse, "data X a\n= X") `shouldFailWith` err 9 (utok '=' <> elabel "declaration" <> eeof)
+      (parse, "data X a =\nX") `shouldFailWith` errFancy 11 (badIndent 1 1)
+      (parse, "data X a = X\na") `shouldFailWith` err 14
+        (ueof <> elabel "pattern" <> elabel "rest of assignment"
+        <> elabel "rest of identifier" <> elabel "rest of type declaration")
 
