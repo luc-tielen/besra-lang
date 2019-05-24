@@ -12,33 +12,33 @@ import X1.Parser.Helpers
 
 
 parser :: Parser ADT
-parser = withLineFold $ do
+parser = do
   keyword "data"
   adtHead <- adtHeadParser <?> "name of datatype"
-  adtBody <- withDefault [] $ lexeme' (char '=') *> adtBodyParser
+  adtBody <- withDefault [] $ assignChar *> adtBodyParser
   pure $ ADT adtHead adtBody
+  where assignChar = lexeme $ indented $ char '='
 
 adtHeadParser :: Parser ADTHead
 adtHeadParser = do
-  name <- lexeme' Tycon.parser
-  vars <- many $ lexeme' Tyvar.parser
+  name <- lexeme $ indented Tycon.parser
+  vars <- many $ lexeme $ indented Tyvar.parser
   pure $ ADTHead name vars
 
 adtBodyParser :: Parser ADTBody
-adtBodyParser =
-  lexeme' conDeclParser `sepBy1` lexeme' separator
-  where
-    separator = char '|'
+adtBodyParser = conDeclParser `sepBy1` pipeChar
+  where pipeChar = lexeme $ indented $ char '|'
 
 conDeclParser :: Parser ConDecl
 conDeclParser = do
-  constrName <- Id <$> lexeme' capitalIdentifier <?> "constructor"
-  types <- many (lexeme' adtTypeParser <?> "type")
+  constrName <- Id <$> lexeme (indented capitalIdentifier) <?> "constructor"
+  types <- many (lexeme (indented adtTypeParser) <?> "type")
   pure $ ConDecl constrName types
 
 adtTypeParser :: Parser Type
-adtTypeParser = con <|> var <|> betweenParens Type.parser
-  where
-    con = TCon <$> Tycon.parser
-    var = TVar <$> Tyvar.parser
+adtTypeParser =  con
+             <|> var
+             <|> betweenParens Type.parser
+  where con = TCon <$> Tycon.parser
+        var = TVar <$> Tyvar.parser
 

@@ -9,7 +9,8 @@ module X1.Parser.Helpers ( Parser, ParseError, ParseErr, ParseResult
                          , identifier, capitalIdentifier
                          , notFollowedBy, lookAhead
                          , sepBy, sepBy1, endBy, endBy1
-                         , L.indentLevel, withIndent, sameLine, withDefault
+                         , L.indentLevel, withIndent, indented, sameLine
+                         , withDefault
                          , satisfy, takeWhileP
                          , try
                          , (<?>)
@@ -87,6 +88,13 @@ withLineFold p = lexeme $ do
 
 withIndent :: Pos -> Parser a -> Parser a
 withIndent indent p = L.indentGuard whitespace EQ indent *> p
+
+-- | Helper for only parsing if a word occurs with indentation > 1.
+--   Assumes space in front of the token to be parsed has already been parsed.
+--   This works best for declarations that can only appear at top level in
+--   combination with lexeme (instead of lexeme' in a linefold).
+indented :: Parser a -> Parser a
+indented p = L.indentGuard (pure ()) GT pos1 *> p
 
 wsChar :: Parser ()
 wsChar = void (char ' ' <|> char '\n') <?> "whitespace"
