@@ -11,7 +11,7 @@ import X1.Types.Expr1.Scheme
 import X1.Types.Expr1.ADT
 
 
-data Decl = TypeDecl Id Scheme
+data Decl = TypeAnnDecl Id Scheme
           | DataDecl ADT
           | BindingDecl Id Expr1
           | FixityDecl Fixity Int Id

@@ -26,12 +26,12 @@ analyze' = analyze [validate file]
 missingType :: Text -> Expr1 -> SAError
 missingType var expr =
   let bindingDecl = BindingDecl (Id var) expr
-   in MissingTopLevelTypeDeclErr $ MissingTopLevelTypeDecl file bindingDecl
+   in MissingTopLevelTypeAnnDeclErr $ MissingTopLevelTypeAnnDecl file bindingDecl
 
 missingBinding :: Text -> Type -> SAError
 missingBinding var ty =
-  let toTypeDecl = TypeDecl (Id var) . Scheme []
-      err = MissingTopLevelBindingDeclErr . MissingTopLevelBindingDecl file . toTypeDecl
+  let toTypeAnnDecl = TypeAnnDecl (Id var) . Scheme []
+      err = MissingTopLevelBindingDeclErr . MissingTopLevelBindingDecl file . toTypeAnnDecl
    in err ty
 
 num :: Int -> Expr1
