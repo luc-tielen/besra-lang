@@ -1,8 +1,8 @@
 
-module Test.X1.SA.ConflictingTypeDecls ( module Test.X1.SA.ConflictingTypeDecls ) where
+module Test.X1.SA.ConflictingTypeAnnDecls ( module Test.X1.SA.ConflictingTypeAnnDecls ) where
 
 import Protolude hiding ( Type )
-import X1.SA.ConflictingTypeDecls
+import X1.SA.ConflictingTypeAnnDecls
 import X1.SA.Helpers
 import X1.SA.Types
 import X1.Types.Id
@@ -21,8 +21,8 @@ analyze' = analyze [validate file]
 
 conflict :: Text -> [Type] -> SAError
 conflict var types =
-  let toTypeDecls = map (TypeDecl (Id var) . Scheme [])
-      err = ConflictingTypeDeclErr . ConflictingTypeDecl file . toTypeDecls
+  let toTypeAnnDecls = map (TypeAnnDecl (Id var) . Scheme [])
+      err = ConflictingTypeAnnDeclErr . ConflictingTypeAnnDecl file . toTypeAnnDecls
    in err types
 
 c :: Text -> Type
@@ -45,8 +45,8 @@ txt ==> b =
      Right a -> analyze' a `shouldBe` b
 
 
-spec_conflictingTypeDecls :: Spec
-spec_conflictingTypeDecls = describe "SA: ConflictingTypeDecls" $ parallel $ do
+spec_conflictingTypeAnnDecls :: Spec
+spec_conflictingTypeAnnDecls = describe "SA: ConflictingTypeAnnDecls" $ parallel $ do
   it "reports no errors for empty module" $
     "" ==> Ok
 

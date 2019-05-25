@@ -11,36 +11,36 @@ import qualified Data.List as List
 
 validate :: FilePath -> Validation [SAError] (Module Decl)
 validate path (Module decls) =
-  let matchingDecls = filter isBindingOrTypeDecl decls
+  let matchingDecls = filter isBindingOrTypeAnnDecl decls
       groupedDecls = groupBy sameVar matchingDecls
       result = mconcat $ map (checkConflict path) groupedDecls
    in result
 
-isBindingOrTypeDecl :: Decl -> Bool
-isBindingOrTypeDecl decl = isBindingDecl decl || isTypeDecl decl
+isBindingOrTypeAnnDecl :: Decl -> Bool
+isBindingOrTypeAnnDecl decl = isBindingDecl decl || isTypeAnnDecl decl
 
 isBindingDecl :: Decl -> Bool
 isBindingDecl (BindingDecl _ _) = True
 isBindingDecl _ = False
 
-isTypeDecl :: Decl -> Bool
-isTypeDecl (TypeDecl _ _) = True
-isTypeDecl _ = False
+isTypeAnnDecl :: Decl -> Bool
+isTypeAnnDecl (TypeAnnDecl _ _) = True
+isTypeAnnDecl _ = False
 
 sameVar :: Decl -> Decl -> Bool
-sameVar (TypeDecl (Id a) _) (TypeDecl (Id b) _) = a == b
-sameVar (BindingDecl (Id a) _) (TypeDecl (Id b) _) = a == b
-sameVar (TypeDecl (Id a) _) (BindingDecl (Id b) _) = a == b
+sameVar (TypeAnnDecl (Id a) _) (TypeAnnDecl (Id b) _) = a == b
+sameVar (BindingDecl (Id a) _) (TypeAnnDecl (Id b) _) = a == b
+sameVar (TypeAnnDecl (Id a) _) (BindingDecl (Id b) _) = a == b
 sameVar (BindingDecl (Id a) _) (BindingDecl (Id b) _) = a == b
 sameVar _ _ = False
 
 checkConflict :: FilePath -> [Decl] -> ValidationResult [SAError]
 checkConflict path decls =
-  let maybeTypeDecl = List.find isTypeDecl decls
+  let maybeTypeAnnDecl = List.find isTypeAnnDecl decls
       maybeBindingDecl = List.find isBindingDecl decls
-      missingType = MissingTopLevelTypeDeclErr . MissingTopLevelTypeDecl path
+      missingType = MissingTopLevelTypeAnnDeclErr . MissingTopLevelTypeAnnDecl path
       missingBinding = MissingTopLevelBindingDeclErr . MissingTopLevelBindingDecl path
-      result = case (maybeTypeDecl, maybeBindingDecl) of
+      result = case (maybeTypeAnnDecl, maybeBindingDecl) of
         (Just _, Just _) -> Ok
         (Nothing, Nothing) -> Ok
         (Just ty, Nothing) -> Err [missingBinding ty]
