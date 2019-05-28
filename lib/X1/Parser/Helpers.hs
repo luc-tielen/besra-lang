@@ -1,11 +1,11 @@
 
 module X1.Parser.Helpers ( Parser, ParseError, ParseErr, ParseResult
-                         , ParseState(..), ParseMode(..)
+                         , ParseState(..), ParseMode(..), KeywordResult(..)
                          , lexeme, lexeme', whitespace, whitespace', withLineFold
                          , eof, between, betweenParens, betweenOptionalParens
                          , singleQuote, digitChar, hexDigitChars, binDigitChars
                          , letterChar, opIdentifier
-                         , keyword, chunk, char
+                         , keyword, keyword', chunk, char
                          , identifier, capitalIdentifier
                          , notFollowedBy, lookAhead
                          , sepBy, sepBy1, endBy, endBy1
@@ -29,6 +29,9 @@ import qualified Text.Megaparsec as P (ParseErrorBundle)
 import Text.Megaparsec.Char (digitChar, letterChar, lowerChar, upperChar)
 import GHC.Unicode (isLower, isUpper, isDigit)
 
+
+data KeywordResult = TrailingWS | NoTrailingWS
+  deriving (Eq, Show)
 
 type IndentLevel = Pos
 
@@ -120,8 +123,18 @@ hexDigitChars = takeWhile1P (Just "hex digit") (`VU.elem` hexChars) where
 binDigitChars :: Parser Text
 binDigitChars = takeWhile1P (Just "binary digit") (\c -> c == '0' || c == '1')
 
+-- | Helper function for creating a parser that consumes a keyword.
+--   Expects trailing whitespace after the actual keyword.
 keyword :: Text -> Parser ()
 keyword s = lexeme' (chunk s <* lookAhead wsChar) $> ()
+
+
+-- | Helper function for creating a parser that consumes a keyword
+--   with optional trailing whitespace. The return value indicates
+--   if it consumed whitespace or not.
+keyword' :: Text -> Parser KeywordResult
+keyword' s = try (keyword s $> TrailingWS)
+          <|> chunk s $> NoTrailingWS
 
 identifier :: Parser Text
 identifier = do
