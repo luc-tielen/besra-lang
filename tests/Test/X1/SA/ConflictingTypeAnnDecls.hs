@@ -9,6 +9,7 @@ import X1.Types.Id
 import X1.Types.Module
 import X1.Types.Expr1.Type
 import X1.Types.Expr1.Scheme
+import X1.Types.Expr1.TypeAnn
 import X1.Parser
 import Test.Tasty.Hspec
 
@@ -21,7 +22,7 @@ analyze' = analyze [validate file]
 
 conflict :: Text -> [Type] -> SAError
 conflict var types =
-  let toTypeAnnDecls = map (TypeAnnDecl (Id var) . Scheme [])
+  let toTypeAnnDecls = map (TypeAnnDecl . TypeAnn (Id var) . Scheme [])
       err = ConflictingTypeAnnDeclErr . ConflictingTypeAnnDecl file . toTypeAnnDecls
    in err types
 

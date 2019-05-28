@@ -10,5 +10,9 @@ import X1.Types.Id
 
 parser :: Parser Pred
 parser = IsIn <$> lexeme' (Id <$> capitalIdentifier <?> "typeclass identifier")
-              <*> some (TVar <$> lexeme' Tyvar.parser)
+              <*> some tyvar
+  where
+    tyvar = do
+      notFollowedBy $ chunk "where"
+      TVar <$> lexeme' Tyvar.parser
 

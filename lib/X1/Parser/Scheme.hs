@@ -1,5 +1,5 @@
 
-module X1.Parser.Scheme ( parser ) where
+module X1.Parser.Scheme ( parser, predicatesPrefix ) where
 
 import Protolude hiding ( try, pred )
 import X1.Parser.Helpers
@@ -11,12 +11,11 @@ import X1.Types.Expr1.Pred
 
 parser :: Parser Scheme
 parser = parser' <?> "typescheme" where
-  parser' = try schemeWithPredicates <|> schemeWithoutPredicates
-  schemeWithoutPredicates = Scheme [] <$> Type.parser
-  schemeWithPredicates = do
-    preds <- predicates
-    lexeme' . void $ chunk "=>"
-    Scheme preds <$> Type.parser
+  parser' = Scheme <$> predicatesPrefix <*> Type.parser
+
+predicatesPrefix :: Parser [Pred]
+predicatesPrefix = withDefault [] $ try prefix
+  where prefix = predicates <* lexeme' (chunk "=>")
 
 predicates :: Parser [Pred]
 predicates =

@@ -16,6 +16,7 @@ import X1.Types.Expr1.Number
 import X1.Types.Expr1.String
 import X1.Types.Expr1.Scheme
 import X1.Types.Expr1.Pattern
+import X1.Types.Expr1.TypeAnn
 import X1.Parser.Module (parser)
 import Test.Hspec.Megaparsec hiding (shouldFailWith)
 
@@ -50,6 +51,9 @@ char = E1Lit . LChar
 lam :: [Text] -> Expr1 -> Expr1
 lam vars = E1Lam (PVar . Id <$> vars)
 
+typeAnn :: Id -> Scheme -> Decl
+typeAnn name scheme = TypeAnnDecl (TypeAnn name scheme)
+
 
 infixr 2 -->
 infixr 1 ==>
@@ -62,47 +66,47 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
 
   it "ignores whitespace at the beginning of a file" $
     "    \n\n   \n  \nx : Int"
-      ==> Module [TypeAnnDecl (Id "x") (Scheme [] $ con "Int")]
+      ==> Module [typeAnn (Id "x") (Scheme [] $ con "Int")]
 
   it "ignores whitespace at the end of a file" $
     "x : Int    \n\n   \n  \n"
-      ==> Module [TypeAnnDecl (Id "x") (Scheme [] $ con "Int")]
+      ==> Module [typeAnn (Id "x") (Scheme [] $ con "Int")]
 
   it "can parse multiple type level declarations" $ do
-    "x : Int\nx = 5" ==> Module [ TypeAnnDecl (Id "x") (Scheme [] $ con "Int")
+    "x : Int\nx = 5" ==> Module [ typeAnn (Id "x") (Scheme [] $ con "Int")
                                 , BindingDecl (Id "x") (num 5) ]
     "x = 5\nx : Int" ==> Module [ BindingDecl (Id "x") (num 5)
-                                , TypeAnnDecl (Id "x") (Scheme [] $ con "Int") ]
+                                , typeAnn (Id "x") (Scheme [] $ con "Int") ]
 
   describe "type declarations" $ parallel $ do
     it "can parse top level type declaration" $ do
-      "x : Int" ==> Module [TypeAnnDecl (Id "x") (Scheme [] $ con "Int")]
-      "x : a" ==> Module [TypeAnnDecl (Id "x") (Scheme [] $ var "a")]
-      "x : Int -> Int" ==> Module [TypeAnnDecl (Id "x") (Scheme [] $ con "Int" --> con "Int")]
+      "x : Int" ==> Module [typeAnn (Id "x") (Scheme [] $ con "Int")]
+      "x : a" ==> Module [typeAnn (Id "x") (Scheme [] $ var "a")]
+      "x : Int -> Int" ==> Module [typeAnn (Id "x") (Scheme [] $ con "Int" --> con "Int")]
 
     it "can parse multiple type level declarations" $ do
-      "x : Int \ny : String" ==> Module [ TypeAnnDecl (Id "x") (Scheme [] $ con "Int")
-                                      , TypeAnnDecl (Id "y") (Scheme [] $ con "String")]
-      "x : Int\ny : String" ==> Module [ TypeAnnDecl (Id "x") (Scheme [] $ con "Int")
-                                      , TypeAnnDecl (Id "y") (Scheme [] $ con "String")]
+      "x : Int \ny : String" ==> Module [ typeAnn (Id "x") (Scheme [] $ con "Int")
+                                        , typeAnn (Id "y") (Scheme [] $ con "String")]
+      "x : Int\ny : String" ==> Module [ typeAnn (Id "x") (Scheme [] $ con "Int")
+                                       , typeAnn (Id "y") (Scheme [] $ con "String")]
 
     it "can parse multi-line declarations" $ do
-      "x\n :\n Int" ==> Module [TypeAnnDecl (Id "x") (Scheme [] $ con "Int")]
-      "x\n :\n Int -> Int" ==> Module [TypeAnnDecl (Id "x") (Scheme [] $ con "Int" --> con "Int")]
-      "x\n :\n Eq a => a -> a" ==> Module [TypeAnnDecl (Id "x")
+      "x\n :\n Int" ==> Module [typeAnn (Id "x") (Scheme [] $ con "Int")]
+      "x\n :\n Int -> Int" ==> Module [typeAnn (Id "x") (Scheme [] $ con "Int" --> con "Int")]
+      "x\n :\n Eq a => a -> a" ==> Module [typeAnn (Id "x")
                                     (Scheme [IsIn (Id "Eq") [var "a"]] $ var "a" --> var "a")]
 
     it "can handle linefolds in type signatures correctly" $ do
-      "x : Int -> Int\ny : String" ==> Module [ TypeAnnDecl (Id "x") (Scheme [] $ con "Int" --> con "Int")
-                                      , TypeAnnDecl (Id "y") (Scheme [] $ con "String")]
-      "x : Int \n  -> Int\ny : String" ==> Module [ TypeAnnDecl (Id "x") (Scheme [] $ con "Int" --> con "Int")
-                                      , TypeAnnDecl (Id "y") (Scheme [] $ con "String")]
-      "x : Int ->\n Int\ny : String" ==> Module [ TypeAnnDecl (Id "x") (Scheme [] $ con "Int" --> con "Int")
-                                      , TypeAnnDecl (Id "y") (Scheme [] $ con "String")]
-      "x\n : Int \n ->\n Int\ny : String" ==> Module [ TypeAnnDecl (Id "x") (Scheme [] $ con "Int" --> con "Int")
-                                      , TypeAnnDecl (Id "y") (Scheme [] $ con "String")]
-      "x :\n Int \n ->\n Int\ny : String" ==> Module [ TypeAnnDecl (Id "x") (Scheme [] $ con "Int" --> con "Int")
-                                      , TypeAnnDecl (Id "y") (Scheme [] $ con "String")]
+      "x : Int -> Int\ny : String" ==> Module [ typeAnn (Id "x") (Scheme [] $ con "Int" --> con "Int")
+                                      , typeAnn (Id "y") (Scheme [] $ con "String")]
+      "x : Int \n  -> Int\ny : String" ==> Module [ typeAnn (Id "x") (Scheme [] $ con "Int" --> con "Int")
+                                      , typeAnn (Id "y") (Scheme [] $ con "String")]
+      "x : Int ->\n Int\ny : String" ==> Module [ typeAnn (Id "x") (Scheme [] $ con "Int" --> con "Int")
+                                      , typeAnn (Id "y") (Scheme [] $ con "String")]
+      "x\n : Int \n ->\n Int\ny : String" ==> Module [ typeAnn (Id "x") (Scheme [] $ con "Int" --> con "Int")
+                                      , typeAnn (Id "y") (Scheme [] $ con "String")]
+      "x :\n Int \n ->\n Int\ny : String" ==> Module [ typeAnn (Id "x") (Scheme [] $ con "Int" --> con "Int")
+                                      , typeAnn (Id "y") (Scheme [] $ con "String")]
 
   describe "binding declarations" $ parallel $ do
     it "can parse top level constants" $ do
@@ -153,9 +157,9 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
 
     it "can parse a top level type declaration for an operator" $ do
       "(+) : Int -> Int -> Int"
-        ==> Module [TypeAnnDecl (Id "+") (Scheme [] $ con "Int" --> con "Int" --> con "Int")]
+        ==> Module [typeAnn (Id "+") (Scheme [] $ con "Int" --> con "Int" --> con "Int")]
       "(==) : Eq a => a -> a -> a"
-        ==> Module [TypeAnnDecl (Id "==")
+        ==> Module [typeAnn (Id "==")
                     (Scheme [IsIn (Id "Eq") [var "a"]] $
                       var "a" --> var "a" --> var "a")]
 

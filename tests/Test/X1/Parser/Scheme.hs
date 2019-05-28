@@ -106,10 +106,9 @@ spec_typeschemeParseTest = describe "parsing typeschemes" $ parallel $ do
   it "fails with readable error message" $ do
     (parser', "") `shouldFailWith` err 0 (ueof <> elabel "typescheme")
     (parser', "(") `shouldFailWith` err 1
-      (ueof <> etok '(' <> elabel "type" <> elabel "typeclass identifier")
+      (ueof <> elabel "type")
     (parser', ")") `shouldFailWith` err 0 (utok ')' <> elabel "typescheme")
-    (parser', "()") `shouldFailWith` err 1
-      (utok ')' <> etok '(' <> elabel "type" <> elabel "typeclass identifier")
+    (parser', "()") `shouldFailWith` err 1 (utok ')' <> elabel "type")
     (parser', "(a => a)") `shouldFailWith` err 3
       (utok '=' <> etoks "->" <> etok '(' <> etok ')' <>
        elabel "concrete type" <> elabel "type variable")

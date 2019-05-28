@@ -5,6 +5,7 @@ import Protolude
 import X1.SA.Helpers
 import X1.SA.Types
 import X1.Types.Module
+import X1.Types.Expr1.TypeAnn
 import X1.Types.Id
 
 
@@ -16,11 +17,11 @@ validate path (Module decls) =
    in result
 
 isTypeAnnDecl :: Decl -> Bool
-isTypeAnnDecl (TypeAnnDecl _ _) = True
+isTypeAnnDecl (TypeAnnDecl _) = True
 isTypeAnnDecl _ = False
 
 sameVar :: Decl -> Decl -> Bool
-sameVar (TypeAnnDecl (Id a) _) (TypeAnnDecl (Id b) _) = a == b
+sameVar (TypeAnnDecl (TypeAnn (Id a) _)) (TypeAnnDecl (TypeAnn (Id b) _)) = a == b
 sameVar _ _ = False
 
 checkConflict :: FilePath -> [Decl] -> ValidationResult [SAError]

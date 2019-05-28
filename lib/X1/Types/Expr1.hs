@@ -5,11 +5,11 @@ import Protolude hiding ( Fixity )
 import X1.Types.Id
 import X1.Types.Fixity
 import X1.Types.Expr1.Lit
-import X1.Types.Expr1.Scheme
 import X1.Types.Expr1.Pattern
+import X1.Types.Expr1.TypeAnn
 
 
-data ExprDecl = ExprTypeDecl Id Scheme
+data ExprDecl = ExprTypeAnnDecl TypeAnn
               | ExprBindingDecl Id Expr1
               | ExprFixityDecl Fixity Int Id
               deriving (Eq, Show)
