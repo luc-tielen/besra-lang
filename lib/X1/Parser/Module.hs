@@ -26,7 +26,7 @@ typeOrBindingDecl = do
   result <- Expr1.declParser
   case result of
     ExprTypeAnnDecl typeAnn -> pure $ TypeAnnDecl typeAnn
-    ExprBindingDecl id expr -> pure $ BindingDecl id expr
+    ExprBindingDecl binding -> pure $ BindingDecl binding
     ExprFixityDecl fixity precedence op -> pure $ FixityDecl fixity precedence op
 
 dataDecl :: Parser Decl

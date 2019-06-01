@@ -26,7 +26,7 @@ analyze' = analyze [validate file]
 
 missingType :: Text -> Expr1 -> SAError
 missingType var expr =
-  let bindingDecl = BindingDecl (Id var) expr
+  let bindingDecl = BindingDecl $ Binding (Id var) expr
    in MissingTopLevelTypeAnnDeclErr $ MissingTopLevelTypeAnnDecl file bindingDecl
 
 missingBinding :: Text -> Type -> SAError

@@ -23,7 +23,7 @@ analyze' = analyze [validate file]
 
 conflict :: Text -> [Expr1] -> SAError
 conflict var exprs =
-  let toBindingDecls = map (BindingDecl (Id var))
+  let toBindingDecls = map (BindingDecl . Binding (Id var))
       err = ConflictingBindingDeclErr . ConflictingBindingDecl file . toBindingDecls
    in err exprs
 
