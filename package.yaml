@@ -47,6 +47,7 @@ ghc-options:
   - -Wno-monomorphism-restriction
   - -optP-Wno-nonportable-include-path
   - -fhide-source-paths
+  - -O0
 
 library:
   source-dirs:        lib

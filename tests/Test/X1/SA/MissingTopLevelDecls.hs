@@ -13,6 +13,7 @@ import X1.Types.Expr1.Type
 import X1.Types.Expr1.String
 import X1.Types.Expr1.Number
 import X1.Types.Expr1.Scheme
+import X1.Types.Expr1.TypeAnn
 import X1.Parser
 import Test.Tasty.Hspec
 
@@ -25,13 +26,13 @@ analyze' = analyze [validate file]
 
 missingType :: Text -> Expr1 -> SAError
 missingType var expr =
-  let bindingDecl = BindingDecl (Id var) expr
-   in MissingTopLevelTypeDeclErr $ MissingTopLevelTypeDecl file bindingDecl
+  let bindingDecl = BindingDecl $ Binding (Id var) expr
+   in MissingTopLevelTypeAnnDeclErr $ MissingTopLevelTypeAnnDecl file bindingDecl
 
 missingBinding :: Text -> Type -> SAError
 missingBinding var ty =
-  let toTypeDecl = TypeDecl (Id var) . Scheme []
-      err = MissingTopLevelBindingDeclErr . MissingTopLevelBindingDecl file . toTypeDecl
+  let toTypeAnnDecl = TypeAnnDecl . TypeAnn (Id var) . Scheme []
+      err = MissingTopLevelBindingDeclErr . MissingTopLevelBindingDecl file . toTypeAnnDecl
    in err ty
 
 num :: Int -> Expr1

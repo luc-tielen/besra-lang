@@ -7,6 +7,7 @@ import GHC.Unicode (isDigit)
 import X1.Types.Id
 import X1.Types.Fixity
 import X1.Types.Expr1
+import X1.Types.Expr1.TypeAnn
 import X1.Parser.Helpers
 import Control.Monad.Combinators.Expr
 import qualified X1.Parser.Lit as Lit
@@ -146,7 +147,7 @@ namedFunctionDecl :: Parser ExprDecl
 namedFunctionDecl = do
   (funcName, vars) <- lexeme' functionHead
   body <- E1Lam vars <$> parser
-  pure $ ExprBindingDecl funcName body
+  pure $ ExprBindingDecl $ Binding funcName body
   where
     functionName =  Id <$> identifier
                 <|> prefixOperator
@@ -161,8 +162,8 @@ typeOrBindingDecl = do
   var <- lexeme' declIdentifier
   separator <- lexeme' $ typeSeparator <|> assign
   case separator of
-    ':' -> ExprTypeDecl var <$> Scheme.parser
-    '=' -> ExprBindingDecl var <$> parser
+    ':' -> ExprTypeAnnDecl . TypeAnn var <$> Scheme.parser
+    '=' -> ExprBindingDecl . Binding var <$> parser
     _ -> panic "Parse error when parsing declaration."
   where
     declIdentifier = declVar <|> prefixOperator

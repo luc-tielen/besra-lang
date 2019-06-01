@@ -12,7 +12,7 @@ import qualified Text.Megaparsec as P
 
 parse :: Parser a -> FilePath -> Text -> ParseResult a
 parse p path txt =
-  let beginState = ParseState (P.mkPos 1) Normal
+  let beginState = ParseState P.pos1 Normal
    in flip runReader beginState $ P.runParserT p path txt
 
 parseFile :: FilePath -> Text -> ParseResult (Module Decl)

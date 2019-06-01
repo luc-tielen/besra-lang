@@ -14,6 +14,7 @@ import X1.Types.Expr1.String
 import X1.Types.Expr1.Scheme
 import X1.Types.Expr1.Number
 import X1.Types.Expr1.Pattern
+import X1.Types.Expr1.TypeAnn
 import Test.Hspec.Megaparsec hiding (shouldFailWith, succeedsLeaving)
 
 
@@ -24,10 +25,10 @@ let' :: [ExprDecl] -> Expr1 -> Expr1
 let' = E1Let
 
 binding :: Text -> Expr1 -> ExprDecl
-binding x = ExprBindingDecl (Id x)
+binding x = ExprBindingDecl . Binding (Id x)
 
 sig :: Text -> Type -> ExprDecl
-sig x ty = ExprTypeDecl (Id x) (Scheme [] ty)
+sig x ty = ExprTypeAnnDecl $ TypeAnn (Id x) (Scheme [] ty)
 
 parse :: Text -> ParseResult Expr1
 parse = mkParser parser
@@ -241,6 +242,7 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
     it "fails with readable error message" $ do
       (parser, "f\n a") `succeedsLeaving` "a"  -- parses variable only
       (parse, "in a") `shouldFailWith` errFancy 2 (failMsg "Reserved keyword: in")
+      (parser, "a in") `succeedsLeaving` "in"
 
     it "can parse expressions inside parentheses" $ do
       "f (1)" ==> app (var "f") [num 1]

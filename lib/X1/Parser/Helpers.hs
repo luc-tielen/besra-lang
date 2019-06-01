@@ -1,15 +1,16 @@
 
 module X1.Parser.Helpers ( Parser, ParseError, ParseErr, ParseResult
-                         , ParseState(..), ParseMode(..)
+                         , ParseState(..), ParseMode(..), KeywordResult(..)
                          , lexeme, lexeme', whitespace, whitespace', withLineFold
                          , eof, between, betweenParens, betweenOptionalParens
                          , singleQuote, digitChar, hexDigitChars, binDigitChars
                          , letterChar, opIdentifier
-                         , keyword, chunk, char
+                         , keyword, keyword', chunk, char
                          , identifier, capitalIdentifier
                          , notFollowedBy, lookAhead
                          , sepBy, sepBy1, endBy, endBy1
-                         , L.indentLevel, withIndent, sameLine, withDefault
+                         , L.indentLevel, withIndent, indented, sameLine
+                         , withDefault
                          , satisfy, takeWhileP
                          , try
                          , (<?>)
@@ -28,6 +29,9 @@ import qualified Text.Megaparsec as P (ParseErrorBundle)
 import Text.Megaparsec.Char (digitChar, letterChar, lowerChar, upperChar)
 import GHC.Unicode (isLower, isUpper, isDigit)
 
+
+data KeywordResult = TrailingWS | NoTrailingWS
+  deriving (Eq, Show)
 
 type IndentLevel = Pos
 
@@ -88,11 +92,18 @@ withLineFold p = lexeme $ do
 withIndent :: Pos -> Parser a -> Parser a
 withIndent indent p = L.indentGuard whitespace EQ indent *> p
 
+-- | Helper for only parsing if a word occurs with indentation > 1.
+--   Assumes space in front of the token to be parsed has already been parsed.
+--   This works best for declarations that can only appear at top level in
+--   combination with lexeme (instead of lexeme' in a linefold).
+indented :: Parser a -> Parser a
+indented p = L.indentGuard (pure ()) GT pos1 *> p
+
 wsChar :: Parser ()
 wsChar = void (char ' ' <|> char '\n') <?> "whitespace"
 
 betweenParens :: Parser a -> Parser a
-betweenParens = between (lexeme $ char '(') (char ')') . lexeme
+betweenParens = between (lexeme' $ char '(') (char ')') . lexeme'
 
 betweenOptionalParens :: Parser a -> Parser a
 betweenOptionalParens p = betweenParens p <|> p
@@ -112,8 +123,18 @@ hexDigitChars = takeWhile1P (Just "hex digit") (`VU.elem` hexChars) where
 binDigitChars :: Parser Text
 binDigitChars = takeWhile1P (Just "binary digit") (\c -> c == '0' || c == '1')
 
+-- | Helper function for creating a parser that consumes a keyword.
+--   Expects trailing whitespace after the actual keyword.
 keyword :: Text -> Parser ()
 keyword s = lexeme' (chunk s <* lookAhead wsChar) $> ()
+
+
+-- | Helper function for creating a parser that consumes a keyword
+--   with optional trailing whitespace. The return value indicates
+--   if it consumed whitespace or not.
+keyword' :: Text -> Parser KeywordResult
+keyword' s = try (keyword s $> TrailingWS)
+          <|> chunk s $> NoTrailingWS
 
 identifier :: Parser Text
 identifier = do
