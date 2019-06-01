@@ -103,7 +103,7 @@ wsChar :: Parser ()
 wsChar = void (char ' ' <|> char '\n') <?> "whitespace"
 
 betweenParens :: Parser a -> Parser a
-betweenParens = between (lexeme $ char '(') (char ')') . lexeme
+betweenParens = between (lexeme' $ char '(') (char ')') . lexeme'
 
 betweenOptionalParens :: Parser a -> Parser a
 betweenOptionalParens p = betweenParens p <|> p

@@ -25,7 +25,7 @@ let' :: [ExprDecl] -> Expr1 -> Expr1
 let' = E1Let
 
 binding :: Text -> Expr1 -> ExprDecl
-binding x = ExprBindingDecl (Id x)
+binding x = ExprBindingDecl . Binding (Id x)
 
 sig :: Text -> Type -> ExprDecl
 sig x ty = ExprTypeAnnDecl $ TypeAnn (Id x) (Scheme [] ty)

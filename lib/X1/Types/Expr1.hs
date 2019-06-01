@@ -1,5 +1,5 @@
 
-module X1.Types.Expr1 ( Expr1(..), ExprDecl(..) ) where
+module X1.Types.Expr1 ( Expr1(..), ExprDecl(..), Binding(..) ) where
 
 import Protolude hiding ( Fixity )
 import X1.Types.Id
@@ -9,8 +9,11 @@ import X1.Types.Expr1.Pattern
 import X1.Types.Expr1.TypeAnn
 
 
+data Binding = Binding Id Expr1
+  deriving (Eq, Show)
+
 data ExprDecl = ExprTypeAnnDecl TypeAnn
-              | ExprBindingDecl Id Expr1
+              | ExprBindingDecl Binding
               | ExprFixityDecl Fixity Int Id
               deriving (Eq, Show)
 

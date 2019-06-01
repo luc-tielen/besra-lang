@@ -7,6 +7,7 @@ import X1.SA.Types
 import X1.Types.Module
 import X1.Types.Id
 import X1.Types.Expr1.TypeAnn
+import X1.Types.Expr1 ( Binding(..) )
 import qualified Data.List as List
 
 
@@ -21,7 +22,7 @@ isBindingOrTypeAnnDecl :: Decl -> Bool
 isBindingOrTypeAnnDecl decl = isBindingDecl decl || isTypeAnnDecl decl
 
 isBindingDecl :: Decl -> Bool
-isBindingDecl (BindingDecl _ _) = True
+isBindingDecl (BindingDecl _) = True
 isBindingDecl _ = False
 
 isTypeAnnDecl :: Decl -> Bool
@@ -30,9 +31,9 @@ isTypeAnnDecl _ = False
 
 sameVar :: Decl -> Decl -> Bool
 sameVar (TypeAnnDecl (TypeAnn (Id a) _)) (TypeAnnDecl (TypeAnn (Id b) _)) = a == b
-sameVar (BindingDecl (Id a) _) (TypeAnnDecl (TypeAnn (Id b) _)) = a == b
-sameVar (TypeAnnDecl (TypeAnn (Id a) _)) (BindingDecl (Id b) _) = a == b
-sameVar (BindingDecl (Id a) _) (BindingDecl (Id b) _) = a == b
+sameVar (BindingDecl (Binding (Id a) _)) (TypeAnnDecl (TypeAnn (Id b) _)) = a == b
+sameVar (TypeAnnDecl (TypeAnn (Id a) _)) (BindingDecl (Binding (Id b) _)) = a == b
+sameVar (BindingDecl (Binding (Id a) _)) (BindingDecl (Binding (Id b) _)) = a == b
 sameVar _ _ = False
 
 checkConflict :: FilePath -> [Decl] -> ValidationResult [SAError]

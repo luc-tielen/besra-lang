@@ -120,3 +120,4 @@ spec_traitParseTest = describe "trait parser" $ parallel $ do
       (utok 'y' <> elabel "properly indented type declaration in trait")
     (parse, "trait Eq a where\n x : Int\n  y : String") `shouldFailWith` err 30
       (utok ':' <> elabel "properly indented type declaration in trait")
+

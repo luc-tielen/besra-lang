@@ -147,7 +147,7 @@ namedFunctionDecl :: Parser ExprDecl
 namedFunctionDecl = do
   (funcName, vars) <- lexeme' functionHead
   body <- E1Lam vars <$> parser
-  pure $ ExprBindingDecl funcName body
+  pure $ ExprBindingDecl $ Binding funcName body
   where
     functionName =  Id <$> identifier
                 <|> prefixOperator
@@ -163,7 +163,7 @@ typeOrBindingDecl = do
   separator <- lexeme' $ typeSeparator <|> assign
   case separator of
     ':' -> ExprTypeAnnDecl . TypeAnn var <$> Scheme.parser
-    '=' -> ExprBindingDecl var <$> parser
+    '=' -> ExprBindingDecl . Binding var <$> parser
     _ -> panic "Parse error when parsing declaration."
   where
     declIdentifier = declVar <|> prefixOperator

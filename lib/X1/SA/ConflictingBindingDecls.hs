@@ -5,6 +5,7 @@ import Protolude
 import X1.SA.Helpers
 import X1.SA.Types
 import X1.Types.Module
+import X1.Types.Expr1
 import X1.Types.Id
 
 
@@ -16,11 +17,11 @@ validate path (Module decls) =
    in result
 
 isBindingDecl :: Decl -> Bool
-isBindingDecl (BindingDecl _ _) = True
+isBindingDecl (BindingDecl _) = True
 isBindingDecl _ = False
 
 sameVar :: Decl -> Decl -> Bool
-sameVar (BindingDecl (Id a) _) (BindingDecl (Id b) _) = a == b
+sameVar (BindingDecl (Binding (Id a) _)) (BindingDecl (Binding (Id b) _)) = a == b
 sameVar _ _ = False
 
 checkConflict :: FilePath -> [Decl] -> ValidationResult [SAError]
