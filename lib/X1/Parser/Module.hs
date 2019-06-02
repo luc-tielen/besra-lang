@@ -6,6 +6,8 @@ import X1.Types.Module
 import X1.Types.Expr1
 import qualified X1.Parser.Expr1 as Expr1
 import qualified X1.Parser.ADT as ADT
+import qualified X1.Parser.Trait as Trait
+import qualified X1.Parser.Impl as Impl
 import X1.Parser.Helpers
 
 
@@ -19,7 +21,10 @@ parser = do
 decl :: Parser Decl
 decl = decl' <?> "declaration"
   where
-    decl' = dataDecl <|> typeOrBindingDecl
+    decl' =  dataDecl
+         <|> traitDecl
+         <|> implDecl
+         <|> typeOrBindingDecl
 
 typeOrBindingDecl :: Parser Decl
 typeOrBindingDecl = do
@@ -32,3 +37,8 @@ typeOrBindingDecl = do
 dataDecl :: Parser Decl
 dataDecl = DataDecl <$> ADT.parser
 
+traitDecl :: Parser Decl
+traitDecl = TraitDecl <$> Trait.parser
+
+implDecl :: Parser Decl
+implDecl = ImplDecl <$> Impl.parser

@@ -30,7 +30,7 @@ parser = parser' <?> "impl declaration" where
         bindings <- many bindingParser'
         notFollowedBy badlyIndentedDecl <?> badIndentMsg
         pure $ Impl predicates typeInfo bindings
-  badlyIndentedDecl = void bindingParser <|> void (char '=')
+  badlyIndentedDecl = indented bindingParser
   badIndentMsg = "properly indented binding declaration in impl"
 
 implParser :: Parser Pred
