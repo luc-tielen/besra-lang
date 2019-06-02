@@ -1,7 +1,9 @@
 
+{-# LANGUAGE QuasiQuotes #-}
+
 module Test.X1.Parser.Module ( module Test.X1.Parser.Module ) where
 
-import Protolude hiding ( Type, Fixity )
+import Protolude hiding ( Type, Fixity, pred )
 import Test.Tasty.Hspec
 import Test.X1.Parser.Helpers
 import X1.Types.Id
@@ -17,8 +19,12 @@ import X1.Types.Expr1.String
 import X1.Types.Expr1.Scheme
 import X1.Types.Expr1.Pattern
 import X1.Types.Expr1.TypeAnn
+import X1.Types.Expr1.Trait
+import X1.Types.Expr1.Impl
 import X1.Parser.Module (parser)
 import Test.Hspec.Megaparsec hiding (shouldFailWith)
+import NeatInterpolation
+
 
 
 parse :: Text -> ParseResult (Module Decl)
@@ -289,4 +295,130 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
       (parse, "data X a = X\na") `shouldFailWith` err 14
         (ueof <> elabel "pattern" <> elabel "rest of assignment"
         <> elabel "rest of identifier" <> elabel "rest of type declaration")
+
+  describe "trait declarations" $ parallel $ do
+    let trait p typeAnns = TraitDecl $ Trait [] p typeAnns
+        pred clazz = IsIn (Id clazz) . map var
+        typeAnn' x = TypeAnn (Id x)
+
+    it "can parse multiple traits in a row" $ do
+      let mapType = (var "a" --> var "b")
+                  --> app (con "List") [var "a"]
+                  --> app (con "List") [var "b"]
+      [text|
+        trait Eq a where
+          x : Int
+        trait Eq a where
+          x : Int
+          y : (a -> b) -> List a -> List b
+        |] ==> Module [ trait (pred "Eq" ["a"]) [typeAnn' "x" $ Scheme [] (con "Int")]
+                      , trait (pred "Eq" ["a"])
+                              [ typeAnn' "x" $ Scheme [] (con "Int")
+                              , typeAnn' "y" $ Scheme [] mapType
+                              ]
+                   ]
+      [text|
+        trait Eq a where
+        trait Eq a where
+        |] ==> Module [ trait (pred "Eq" ["a"]) []
+                      , trait (pred "Eq" ["a"]) []
+                   ]
+
+    it "can parse trait followed by other declaration" $ do
+      [text|
+        trait Eq a where
+          x : Int
+        a = 3
+        |] ==> Module [ trait (pred "Eq" ["a"]) [typeAnn' "x" $ Scheme [] (con "Int")]
+                      , BindingDecl $ Binding (Id "a") $ num 3]
+      [text|
+        trait Eq a where
+          x : Int
+        a : Int
+        |] ==> Module [ trait (pred "Eq" ["a"]) [typeAnn' "x" $ Scheme [] (con "Int")]
+                      , typeAnn (Id "a") $ Scheme [] (con "Int")]
+      [text|
+        trait Eq a where
+        a = 3
+        |] ==> Module [ trait (pred "Eq" ["a"]) []
+                      , BindingDecl $ Binding (Id "a") $ num 3]
+      [text|
+        trait Eq a where
+        a : Int
+        |] ==> Module [ trait (pred "Eq" ["a"]) []
+                      , typeAnn (Id "a") $ Scheme [] (con "Int")]
+
+
+    it "fails with readable error message" $ do
+      (parse, "tra") `shouldFailWith` err 3
+        (ueof <> elabel "pattern" <> elabel "rest of assignment"
+        <> elabel "rest of identifier" <> elabel "rest of type declaration")
+      (parse, "trait") `shouldFailWith` err 5 (ueof <> elabel "whitespace")
+      (parse, "trait Eq a") `shouldFailWith` err 10
+        (ueof <> etoks "where" <> elabel "rest of identifier" <> elabel "type variable")
+      (parse, "trait Eq a => Ord a where\n x") `shouldFailWith` err 28
+        (ueof <> elabel "rest of identifier" <> elabel "rest of type declaration")
+      (parse, "trait Eq a => Ord a where\n x\n : Int")
+        `shouldFailWith` errFancy 30 (badIndent 2 2)
+      (parse, "trait Eq a where\n  x : Int\n y : String") `shouldFailWith` err 28
+        (utok 'y' <> elabel "properly indented type declaration in trait")
+      (parse, "trait Eq a where\n x : Int\n  y : String") `shouldFailWith` err 30
+        (utok ':' <> elabel "properly indented type declaration in trait")
+
+  describe "impl declarations" $ parallel $ do
+    let impl p bindings = ImplDecl $ Impl [] p bindings
+        pred clazz = IsIn (Id clazz)
+        binding' x = Binding (Id x)
+
+    it "can parse multiple impls in a row" $ do
+      [text|
+        impl Eq Int where
+        impl Eq Int where
+        |] ==> Module [ impl (pred "Eq" [con "Int"]) []
+                      , impl (pred "Eq" [con "Int"]) []
+                      ]
+      [text|
+        impl X Int where
+          x = 42
+        impl Y Int where
+          x = 1234
+          y = 100
+        |] ==> Module [ impl (pred "X" [con "Int"]) [ binding' "x" $ num 42 ]
+                      , impl (pred "Y" [con "Int"]) [ binding' "x" $ num 1234
+                                                    , binding' "y" $ num 100]
+                      ]
+
+    it "can parse impl followed by other declaration" $ do
+      [text|
+        impl X Int where
+          x = 42
+        a = 3
+        |] ==> Module [ impl (pred "X" [con "Int"]) [ binding' "x" $ num 42 ]
+                      , binding "a" $ num 3
+                      ]
+      [text|
+        impl X Int where
+        a = 3
+        |] ==> Module [ impl (pred "X" [con "Int"]) []
+                      , binding "a" $ num 3
+                      ]
+
+    it "fails with readable error message" $ do
+      (parse, "imp") `shouldFailWith` err 3
+        (ueof <> elabel "pattern" <> elabel "rest of assignment"
+        <> elabel "rest of type declaration" <> elabel "rest of identifier")
+      (parse, "impl") `shouldFailWith` err 4 (ueof <> elabel "whitespace")
+      (parse, "impl ") `shouldFailWith` err 5
+        (ueof <> etok '(' <> elabel "trait identifier"
+          <> elabel "typeclass identifier")
+      (parse, "impl Eq a") `shouldFailWith` err 8 (utok 'a' <> elabel "type" )
+      (parse, "impl Eq a =>") `shouldFailWith` err 12
+        (ueof <> elabel "trait identifier")
+      (parse, "impl Eq a => Ord a") `shouldFailWith` err 17
+        (utok 'a' <> elabel "type")
+      (parse, "impl Eq X") `shouldFailWith` err 9
+        (ueof <> etoks "where" <> elabel "rest of identifier"
+          <> elabel "type" <> elabel "type variable")
+      (parse, "impl Eq X where\n x = 3\n  y = 4") `shouldFailWith` err 25
+        (utok 'y' <> elabel "properly indented binding declaration in impl")
 

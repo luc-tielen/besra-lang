@@ -25,7 +25,7 @@ parser = parser' <?> "trait declaration" where
         typeAnns <- many typeAnnParser'
         notFollowedBy badlyIndentedDecl <?> badIndentMsg
         pure $ Trait predicates trait typeAnns
-  badlyIndentedDecl = void typeAnnParser <|> void (char ':')
+  badlyIndentedDecl = void (indented typeAnnParser) <|> void (char ':')
   badIndentMsg = "properly indented type declaration in trait"
 
 -- TODO remove duplication with expr1 parser once binding decls are supported in traits
