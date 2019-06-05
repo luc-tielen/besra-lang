@@ -27,6 +27,9 @@ let' = E1Let
 op :: Expr1 -> Expr1 -> Expr1 -> Expr1
 op = E1BinOp
 
+parens :: Expr1 -> Expr1
+parens = E1Parens
+
 binding :: Text -> Expr1 -> ExprDecl
 binding x = ExprBindingDecl . Binding (Id x)
 
@@ -248,10 +251,10 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       (parser, "a in") `succeedsLeaving` "in"
 
     it "can parse expressions inside parentheses" $ do
-      "f (1)" ==> app (var "f") [num 1]
-      "f (a 1)" ==> app (var "f") [app (var "a") [num 1]]
-      "f a (b 1)" ==> app (var "f") [var "a", app (var "b") [num 1]]
-      "(((1)))" ==> num 1
+      "f (1)" ==> app (var "f") [parens $ num 1]
+      "f (a 1)" ==> app (var "f") [parens $ app (var "a") [num 1]]
+      "f a (b 1)" ==> app (var "f") [var "a", parens $ app (var "b") [num 1]]
+      "(((1)))" ==> (parens . parens . parens $ num 1)
 
   describe "case expressions" $ parallel $ do
     let a ==> b = parse a `shouldParse` b
@@ -329,13 +332,14 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
         ==> op (var "&&") (op (var "||") (con "True") (con "False")) (con "True")
 
     it "can parse expressions with mix of parentheses and operators" $
-      "1 + (2 + 3)" ==> op (var "+") (num 1) (op (var "+") (num 2) (num 3))
+      "1 + (2 + 3)" ==> op (var "+") (num 1) (parens $ op (var "+") (num 2) (num 3))
 
     it "can parse expressions with function application and operators" $ do
       "f 1 + a f 2" ==> op (var "+") (app (var "f") [num 1])
                                      (app (var "a") [var "f", num 2])
-      "f 1 + g (2 + 3)" ==> op (var "+") (app (var "f") [num 1])
-                                         (app (var "g") [op (var "+") (num 2) (num 3)])
+      "f 1 + g (2 + 3)"
+        ==> op (var "+") (app (var "f") [num 1])
+                         (app (var "g") [parens $ op (var "+") (num 2) (num 3)])
       "f 1 + g 2 * h 3"
         ==> op (var "*") (op (var "+") (app (var "f") [num 1]) (app (var "g") [num 2]))
                          (app (var "h") [num 3])

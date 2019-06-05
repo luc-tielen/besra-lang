@@ -37,7 +37,7 @@ term = term' <?> "expression" where
        <|> try funcParser
        <|> varParser
        <|> conParser
-       <|> betweenParens parser
+       <|> parens parser
   lineFoldedExprs =  lamParser
                  <|> ifParser
                  <|> caseParser
@@ -58,7 +58,7 @@ funcParser = sameLine $ do
     arg =  litParser
        <|> varParser
        <|> conParser
-       <|> betweenParens parser
+       <|> parens parser
 
 varParser :: Parser Expr1
 varParser = E1Var . Id <$> varParser' where
@@ -184,4 +184,7 @@ infixFunction var con =
     infixCon = capitalIdentifier <?> "infix constructor"
     betweenBackticks = between (backtick <?> "operator") backtick
     backtick = char '`'
+
+parens :: Parser Expr1 -> Parser Expr1
+parens p = E1Parens <$> betweenParens p
 
