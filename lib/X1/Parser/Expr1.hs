@@ -34,7 +34,7 @@ term = term' <?> "expression" where
   term' =  lexeme litParser
        <|> withLineFold lineFoldedExprs
        <|> letParser
-       <|> try funcParser
+       <|> try applyFuncParser
        <|> varParser
        <|> conParser
        <|> parens parser
@@ -45,16 +45,19 @@ term = term' <?> "expression" where
 litParser :: Parser Expr1
 litParser = E1Lit <$> Lit.parser
 
-funcParser :: Parser Expr1
-funcParser = sameLine $ do
-  funcName <- funcNameParser
+applyFuncParser :: Parser Expr1
+applyFuncParser = sameLine $ do
+  funcName <- lexeme funcNameParser
   -- NOTE: next line is to prevent wrong order of parentheses in nested applications
   args <- some $ lexeme arg
   pure $ E1App funcName args
   where
-    variable = E1Var . Id <$> lexeme identifier
-    constructor = E1Con . Id <$> lexeme capitalIdentifier
-    funcNameParser = variable <|> constructor
+    variable = E1Var . Id <$> identifier
+    constructor = E1Con . Id <$> capitalIdentifier
+    prefixOp = E1Var <$> prefixOperator
+    funcNameParser =  variable
+                  <|> constructor
+                  <|> prefixOp
     arg =  litParser
        <|> varParser
        <|> conParser

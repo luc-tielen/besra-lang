@@ -355,6 +355,7 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
         ==> op (con "Mul") (op (var "plus") (app (var "f") [num 1])
                                             (app (var "g") [num 2]))
                            (app (var "h") [num 3])
+      "1 * (+) 2 3" ==> op (var "*") (num 1) (app (var "+") [num 2, num 3])
 
     it "fails with readable error message" $ do
       (parse, "(+") `shouldFailWith` err 2 (ueof <> etok ')' <> elabel "rest of operator")
