@@ -26,5 +26,6 @@ data Expr1 = E1Lit Lit
            | E1If Expr1 Expr1 Expr1           -- condition, true clause, false clause
            | E1Case Expr1 [(Pattern, Expr1)]  -- expression to match on, multiple branches
            | E1Let [ExprDecl] Expr1           -- bindings end result
+           | E1Parens Expr1
            deriving (Eq, Show)
 
