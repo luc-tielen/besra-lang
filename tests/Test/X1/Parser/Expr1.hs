@@ -24,6 +24,9 @@ c = TCon . Tycon . Id
 let' :: [ExprDecl] -> Expr1 -> Expr1
 let' = E1Let
 
+op :: Expr1 -> Expr1 -> Expr1 -> Expr1
+op = E1BinOp
+
 binding :: Text -> Expr1 -> ExprDecl
 binding x = ExprBindingDecl . Binding (Id x)
 
@@ -290,7 +293,7 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
 
   describe "operators" $ parallel $ do
     let num = E1Lit . LNumber . SInt
-        fixity ty prio op = ExprFixityDecl ty prio (Id op)
+        fixity ty prio op' = ExprFixityDecl ty prio (Id op')
         app = E1App
         var = E1Var . Id
         con = E1Con . Id
@@ -319,36 +322,35 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
         ==> let' [fixity R 9 "+", fixity M 9 "*"] (num 1)
 
     it "can parse valid operators" $ do
-      "1 + 2" ==> app (var "+") [num 1, num 2]
-      "1 + 2 + 3" ==> app (var "+") [app (var "+") [num 1, num 2], num 3]
-      "1 + 2 * 3" ==> app (var "*") [app (var "+") [num 1, num 2], num 3]
+      "1 + 2" ==> op (var "+") (num 1) (num 2)
+      "1 + 2 + 3" ==> op (var "+") (op (var "+") (num 1) (num 2)) (num 3)
+      "1 + 2 * 3" ==> op (var "*") (op (var "+") (num 1) (num 2)) (num 3)
       "True || False && True"
-        ==> app (var "&&") [app (var "||") [con "True", con "False"], con "True"]
+        ==> op (var "&&") (op (var "||") (con "True") (con "False")) (con "True")
 
     it "can parse expressions with mix of parentheses and operators" $
-      "1 + (2 + 3)" ==> app (var "+") [num 1, app (var "+") [num 2, num 3]]
+      "1 + (2 + 3)" ==> op (var "+") (num 1) (op (var "+") (num 2) (num 3))
 
     it "can parse expressions with function application and operators" $ do
-      "f 1 + a f 2" ==> app (var "+") [ app (var "f") [num 1]
-                                      , app (var "a") [var "f", num 2]]
-      "f 1 + g (2 + 3)" ==> app (var "+") [ app (var "f") [num 1]
-                                          , app (var "g") [app (var "+") [num 2, num 3]]
-                                          ]
+      "f 1 + a f 2" ==> op (var "+") (app (var "f") [num 1])
+                                     (app (var "a") [var "f", num 2])
+      "f 1 + g (2 + 3)" ==> op (var "+") (app (var "f") [num 1])
+                                         (app (var "g") [op (var "+") (num 2) (num 3)])
       "f 1 + g 2 * h 3"
-        ==> app (var "*") [ app (var "+") [app (var "f") [num 1], app (var "g") [num 2]]
-                          , app (var "h") [num 3]]
+        ==> op (var "*") (op (var "+") (app (var "f") [num 1]) (app (var "g") [num 2]))
+                         (app (var "h") [num 3])
 
     it "can parse operators as return values" $
       "(+)" ==> var "+"
 
     it "can parse infix functions" $ do
-      "1 `plus` 2" ==> app (var "plus") [num 1, num 2]
-      "f 1 `Plus` a f 2" ==> app (con "Plus") [ app (var "f") [num 1]
-                                              , app (var "a") [var "f", num 2]]
+      "1 `plus` 2" ==> op (var "plus") (num 1) (num 2)
+      "f 1 `Plus` a f 2" ==> op (con "Plus") (app (var "f") [num 1])
+                                             (app (var "a") [var "f", num 2])
       "f 1 `plus` g 2 `Mul` h 3"
-        ==> app (con "Mul") [ app (var "plus") [ app (var "f") [num 1]
-                                               , app (var "g") [num 2]]
-                            , app (var "h") [num 3]]
+        ==> op (con "Mul") (op (var "plus") (app (var "f") [num 1])
+                                            (app (var "g") [num 2]))
+                           (app (var "h") [num 3])
 
     it "fails with readable error message" $ do
       (parse, "(+") `shouldFailWith` err 2 (ueof <> etok ')' <> elabel "rest of operator")
