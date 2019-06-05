@@ -22,10 +22,9 @@ expr :: Parser Expr1
 expr = makeExprParser term exprOperators <?> "expression"
 
 exprOperators :: [[Operator Parser Expr1]]
-exprOperators = [ [ InfixL (operator <$> lexeme' operatorParser) ] ]
+exprOperators = [ [ InfixL (E1BinOp <$> lexeme' operatorParser) ] ]
   where
     operatorParser =  infixOp <|> infixFunction'
-    operator op e1 e2 = E1App op [e1, e2]
     infixOp = E1Var . Id <$> opIdentifier
     infixFunction' = infixFunction (E1Var . Id) (E1Con . Id)
 
@@ -176,10 +175,6 @@ prefixOperator = Id <$> sameLine (betweenParens opIdentifier) <?> "operator"
 assign :: Parser Char
 assign = char '=' <?> "rest of assignment"
 
-betweenBackticks :: Parser a -> Parser a
-betweenBackticks = between (backtick <?> "operator") backtick where
-  backtick = char '`'
-
 infixFunction :: (Text -> a) -> (Text -> a) -> Parser a
 infixFunction var con =
   betweenBackticks $  var <$> infixFunc
@@ -187,4 +182,6 @@ infixFunction var con =
   where
     infixFunc = identifier <?> "infix function"
     infixCon = capitalIdentifier <?> "infix constructor"
+    betweenBackticks = between (backtick <?> "operator") backtick
+    backtick = char '`'
 
