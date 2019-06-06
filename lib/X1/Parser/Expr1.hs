@@ -6,7 +6,7 @@ import Data.Char ( digitToInt )
 import GHC.Unicode (isDigit)
 import X1.Types.Id
 import X1.Types.Fixity
-import X1.Types.Expr1
+import X1.Types.Expr1.Expr
 import X1.Types.Expr1.TypeAnn
 import X1.Parser.Helpers
 import Control.Monad.Combinators.Expr

@@ -4,12 +4,12 @@ module X1.SA.ConflictingTypeAnnDecls ( validate ) where
 import Protolude
 import X1.SA.Helpers
 import X1.SA.Types
-import X1.Types.Module
+import X1.Types.Expr1.Module
 import X1.Types.Expr1.TypeAnn
 import X1.Types.Id
 
 
-validate :: FilePath -> Validation [SAError] (Module Decl)
+validate :: FilePath -> Validation [SAError] Module
 validate path (Module decls) =
   let typeDecls = filter isTypeAnnDecl decls
       groupedDecls = groupBy sameVar typeDecls

@@ -4,7 +4,7 @@ import Protolude
 import Control.Monad.Except
 import Data.Text.IO as TIO
 import X1.Parser ( ParseError, parseFile )
-import X1.Types.Module
+import X1.Types.Expr1.Module
 import X1.SA
 import qualified X1.Pass.BalanceOperators as BalanceOperators
 
@@ -40,14 +40,12 @@ f >-> g = wrap f >=> wrap g where
   wrap h = withExceptT toError . h
 
 
-parse :: FilePath -> ExceptT ParseError IO (Module Decl)
+parse :: FilePath -> ExceptT ParseError IO Module
 parse path = do
   content <- liftIO $ TIO.readFile path
   liftEither $ parseFile path content
 
-semanticAnalysis :: FilePath
-                 -> Module Decl
-                 -> ExceptT SemanticError IO (Module Decl)
+semanticAnalysis :: FilePath -> Module -> ExceptT SemanticError IO Module
 semanticAnalysis path decls =
   case runSA path decls of
     Ok -> pure decls

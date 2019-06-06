@@ -2,8 +2,8 @@
 module X1.Parser.Module ( parser ) where
 
 import Protolude
-import X1.Types.Module
-import X1.Types.Expr1
+import X1.Types.Expr1.Module
+import X1.Types.Expr1.Expr
 import qualified X1.Parser.Expr1 as Expr1
 import qualified X1.Parser.ADT as ADT
 import qualified X1.Parser.Trait as Trait
@@ -11,7 +11,7 @@ import qualified X1.Parser.Impl as Impl
 import X1.Parser.Helpers
 
 
-parser :: Parser (Module Decl)
+parser :: Parser Module
 parser = do
   void $ optional whitespace
   decls <- decl `endBy` whitespace
