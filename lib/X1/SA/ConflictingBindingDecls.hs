@@ -4,12 +4,12 @@ module X1.SA.ConflictingBindingDecls ( validate ) where
 import Protolude
 import X1.SA.Helpers
 import X1.SA.Types
-import X1.Types.Module
-import X1.Types.Expr1
+import X1.Types.Expr1.Module
+import X1.Types.Expr1.Expr
 import X1.Types.Id
 
 
-validate :: FilePath -> Validation [SAError] (Module Decl)
+validate :: FilePath -> Validation [SAError] Module
 validate path (Module decls) =
   let typeDecls = filter isBindingDecl decls
       groupedDecls = groupBy sameVar typeDecls

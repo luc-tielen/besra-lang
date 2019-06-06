@@ -6,7 +6,7 @@ module X1.Parser ( Parser, ParseError, parse, parseFile ) where
 import Protolude
 import X1.Parser.Helpers ( Parser, ParseError, ParseResult, ParseState(..), ParseMode(..) )
 import qualified X1.Parser.Module as Module
-import X1.Types.Module
+import X1.Types.Expr1.Module
 import qualified Text.Megaparsec as P
 
 
@@ -15,5 +15,5 @@ parse p path txt =
   let beginState = ParseState P.pos1 Normal
    in flip runReader beginState $ P.runParserT p path txt
 
-parseFile :: FilePath -> Text -> ParseResult (Module Decl)
+parseFile :: FilePath -> Text -> ParseResult Module
 parseFile = parse Module.parser

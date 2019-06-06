@@ -1,5 +1,5 @@
 
-module X1.Types.Expr1 ( Expr1(..), ExprDecl(..), Binding(..) ) where
+module X1.Types.Expr1.Expr ( Expr1(..), ExprDecl(..), Binding(..) ) where
 
 import Protolude hiding ( Fixity )
 import X1.Types.Id

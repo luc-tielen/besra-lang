@@ -7,7 +7,7 @@ import Test.X1.Parser.Helpers
 import X1.Parser.Expr1 (parser)
 import X1.Types.Id
 import X1.Types.Fixity
-import X1.Types.Expr1
+import X1.Types.Expr1.Expr
 import X1.Types.Expr1.Lit
 import X1.Types.Expr1.Type
 import X1.Types.Expr1.String

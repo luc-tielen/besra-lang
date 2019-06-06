@@ -12,7 +12,7 @@ import X1.Types.Expr1.Pattern
 import X1.Types.Expr1.Pred
 import X1.Types.Expr1.Type
 import X1.Types.Expr1.Impl
-import X1.Types.Expr1
+import X1.Types.Expr1.Expr
 import X1.Parser.Impl (parser)
 import Test.Hspec.Megaparsec hiding (shouldFailWith, succeedsLeaving)
 

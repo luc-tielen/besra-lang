@@ -7,7 +7,7 @@ module X1.SA.Types ( ConflictingTypeAnnDecl(..)
                    ) where
 
 import Protolude
-import X1.Types.Module
+import X1.Types.Expr1.Module
 
 
 data ConflictingTypeAnnDecl = ConflictingTypeAnnDecl FilePath [Decl]
