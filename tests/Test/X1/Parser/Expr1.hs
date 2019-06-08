@@ -255,6 +255,7 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       "f (a 1)" ==> app (var "f") [parens $ app (var "a") [num 1]]
       "f a (b 1)" ==> app (var "f") [var "a", parens $ app (var "b") [num 1]]
       "(((1)))" ==> (parens . parens . parens $ num 1)
+      "(f) a b" ==> app (parens $ var "f") [var "a", var "b"]
 
   describe "case expressions" $ parallel $ do
     let a ==> b = parse a `shouldParse` b

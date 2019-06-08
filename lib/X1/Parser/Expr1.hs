@@ -57,7 +57,8 @@ applyFuncParser = sameLine $ do
     prefixOp = E1Var <$> prefixOperator
     funcNameParser =  variable
                   <|> constructor
-                  <|> prefixOp
+                  <|> try prefixOp
+                  <|> parens parser
     arg =  litParser
        <|> varParser
        <|> conParser

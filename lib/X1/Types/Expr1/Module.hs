@@ -1,6 +1,4 @@
 
-{-# LANGUAGE DeriveFunctor #-}
-
 module X1.Types.Expr1.Module ( Decl(..), Module(..) ) where
 
 import Protolude hiding ( Fixity(..) )
