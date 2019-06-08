@@ -106,6 +106,13 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       "if 1 then if 2 then 3 else 4 else 5" ==> if' (num 1) (if' (num 2) (num 3) (num 4)) (num 5)
       "if 1 then 2 else if 3 then 4 else 5" ==> if' (num 1) (num 2) (if' (num 3) (num 4) (num 5))
 
+    it "can parse nested expression inside if" $ do
+      let op' x = E1BinOp (E1Var $ Id x)
+          complex = op' "*" (op' "+" (num 1) (num 2)) (num 3)
+      "if 1 + 2 * 3 then 1 else 1" ==> if' complex (num 1) (num 1)
+      "if 1 then 1 + 2 * 3 else 1" ==> if' (num 1) complex (num 1)
+      "if 1 then 1 else 1 + 2 * 3" ==> if' (num 1) (num 1) complex
+
     it "fails with readable error message for ifs" $ do
       (parse, "if") `shouldFailWith` err 2 (ueof <> elabel "whitespace")
       (parse, "if 1") `shouldFailWith` err 4 (ueof <> etoks "then" <> elabel "operator")
