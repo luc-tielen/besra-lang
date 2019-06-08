@@ -190,5 +190,5 @@ infixFunction var con =
     backtick = char '`'
 
 parens :: Parser Expr1 -> Parser Expr1
-parens p = E1Parens <$> betweenParens p
+parens p = E1Parens <$> lexeme (betweenParens p)
 
