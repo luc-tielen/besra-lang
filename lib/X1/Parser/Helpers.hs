@@ -7,7 +7,7 @@ module X1.Parser.Helpers ( Parser, ParseError, ParseErr, ParseResult
                          , letterChar, opIdentifier
                          , keyword, keyword', chunk, char
                          , identifier, capitalIdentifier
-                         , notFollowedBy, lookAhead
+                         , notFollowedBy, lookAhead, hidden
                          , sepBy, sepBy1, endBy, endBy1
                          , L.indentLevel, withIndent, indented, sameLine
                          , withDefault

@@ -75,7 +75,6 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       (parse, "'a") `shouldFailWith` err 2 (ueof <> elabel "closing single quote (')")
 
     it "fails with readable error message for numbers" $ do
-      (parse, "-0b0") `shouldFailWith` err 0 (utoks "-0b0" <> elabel "expression")
       (parse, "0b2") `shouldFailWith` err 2 (utok '2' <> elabel "binary digit")
       (parse, "0bb1") `shouldFailWith` err 2 (utok 'b' <> elabel "binary digit")
       (parse, "0b") `shouldFailWith` err 2 (ueof <> elabel "binary digit")
@@ -338,6 +337,16 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       "1 + 2 * 3" ==> op (var "*") (op (var "+") (num 1) (num 2)) (num 3)
       "True || False && True"
         ==> op (var "&&") (op (var "||") (con "True") (con "False")) (con "True")
+
+    it "can parse prefix negation operator" $ do
+      let neg = E1Neg
+      "-1 + 2" ==> op (var "+") (neg $ num 1) (num 2)
+      "- 1 + 2" ==> op (var "+") (neg $ num 1) (num 2)
+      "1 + -2" ==> op (var "+") (num 1) (neg $ num 2)
+      "1 + - 2" ==> op (var "+") (num 1) (neg $ num 2)
+      "-1 + -2" ==> op (var "+") (neg $ num 1) (neg $ num 2)
+      "- 1 + - 2" ==> op (var "+") (neg $ num 1) (neg $ num 2)
+      "-0b0" ==> neg (E1Lit $ LNumber $ SBin "0b0")
 
     it "can parse expressions with mix of parentheses and operators" $ do
       let op' x = E1BinOp (E1Var $ Id x)

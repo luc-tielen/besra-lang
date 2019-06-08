@@ -1,7 +1,7 @@
 
 module X1.Parser.Expr1 ( parser, declParser ) where
 
-import Protolude hiding ( try, functionName, Fixity )
+import Protolude hiding ( try, functionName, Fixity, Prefix )
 import Data.Char ( digitToInt )
 import GHC.Unicode (isDigit)
 import X1.Types.Id
@@ -22,9 +22,13 @@ expr :: Parser Expr1
 expr = makeExprParser term exprOperators <?> "expression"
 
 exprOperators :: [[Operator Parser Expr1]]
-exprOperators = [ [ InfixL (E1BinOp <$> lexeme' operatorParser) ] ]
+exprOperators =
+  [ [ Prefix (E1Neg <$ lexeme' negateOpParser) ]
+  , [ InfixL (E1BinOp <$> lexeme' operatorParser) ]
+  ]
   where
-    operatorParser =  infixOp <|> infixFunction'
+    operatorParser = infixOp <|> infixFunction'
+    negateOpParser = hidden $ char '-'
     infixOp = E1Var . Id <$> opIdentifier
     infixFunction' = infixFunction (E1Var . Id) (E1Con . Id)
 
