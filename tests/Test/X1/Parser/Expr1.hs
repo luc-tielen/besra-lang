@@ -339,8 +339,12 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       "True || False && True"
         ==> op (var "&&") (op (var "||") (con "True") (con "False")) (con "True")
 
-    it "can parse expressions with mix of parentheses and operators" $
-      "1 + (2 + 3)" ==> op (var "+") (num 1) (parens $ op (var "+") (num 2) (num 3))
+    it "can parse expressions with mix of parentheses and operators" $ do
+      let op' x = E1BinOp (E1Var $ Id x)
+          complex x y z = op' "*" (op' "+" (num x) (num y)) (num z)
+      "1 + (2 + 3)" ==> op' "+" (num 1) (parens $ op' "+" (num 2) (num 3))
+      "(1 + 2 * 3) <> (4 + 5 * 6)"
+        ==> op' "<>" (parens (complex 1 2 3)) (parens (complex 4 5 6))
 
     it "can parse expressions with function application and operators" $ do
       "f 1 + a f 2" ==> op (var "+") (app (var "f") [num 1])
@@ -352,7 +356,7 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
         ==> op (var "*") (op (var "+") (app (var "f") [num 1]) (app (var "g") [num 2]))
                          (app (var "h") [num 3])
 
-    it "can parse operators as return values" $
+    it "can parse operators as identifier" $
       "(+)" ==> var "+"
 
     it "can parse infix functions" $ do
