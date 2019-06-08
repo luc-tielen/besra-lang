@@ -11,14 +11,13 @@ convert the tokens back to an AST again.
 
 import Protolude hiding ( Fixity, pass )
 import qualified Data.List as List
+import Control.Parallel.Strategies
 import X1.Types.Expr1.Module
 import X1.Types.Expr1.Impl
 import X1.Types.Expr1.Expr
 import X1.Types.Fixity
 import X1.Types.Id
 
-
--- TODO parallellize?
 
 data BalanceError = BadPrecedence FixityInfo FixityInfo Decl
                   | InvalidPrefixPrecedence FixityInfo Decl
@@ -44,7 +43,8 @@ pass (Module decls) =
       isFixityDecl _ = False
       toFixityInfo (FixityDecl fixity prec op) = FI fixity prec op
       toFixityInfo _ = panic "Error while computing operator precedences."
-   in Module <$> traverse (runRebalance fixities) decls
+      parMap' = parMap rpar
+   in Module <$> sequenceA (parMap' (runRebalance fixities) decls)
 
 
 runRebalance :: Monad m => [FixityInfo] -> Decl -> ExceptT BalanceError m Decl
