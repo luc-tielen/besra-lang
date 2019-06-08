@@ -7,7 +7,7 @@ import Test.X1.Parser.Helpers
 import X1.Parser.Expr1 (parser)
 import X1.Types.Id
 import X1.Types.Fixity
-import X1.Types.Expr1
+import X1.Types.Expr1.Expr
 import X1.Types.Expr1.Lit
 import X1.Types.Expr1.Type
 import X1.Types.Expr1.String
@@ -23,6 +23,12 @@ c = TCon . Tycon . Id
 
 let' :: [ExprDecl] -> Expr1 -> Expr1
 let' = E1Let
+
+op :: Expr1 -> Expr1 -> Expr1 -> Expr1
+op = E1BinOp
+
+parens :: Expr1 -> Expr1
+parens = E1Parens
 
 binding :: Text -> Expr1 -> ExprDecl
 binding x = ExprBindingDecl . Binding (Id x)
@@ -69,7 +75,6 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       (parse, "'a") `shouldFailWith` err 2 (ueof <> elabel "closing single quote (')")
 
     it "fails with readable error message for numbers" $ do
-      (parse, "-0b0") `shouldFailWith` err 0 (utoks "-0b0" <> elabel "expression")
       (parse, "0b2") `shouldFailWith` err 2 (utok '2' <> elabel "binary digit")
       (parse, "0bb1") `shouldFailWith` err 2 (utok 'b' <> elabel "binary digit")
       (parse, "0b") `shouldFailWith` err 2 (ueof <> elabel "binary digit")
@@ -99,6 +104,13 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       "if if 1 then 2 else 3 then 4 else 5" ==> if' (if' (num 1) (num 2) (num 3)) (num 4) (num 5)
       "if 1 then if 2 then 3 else 4 else 5" ==> if' (num 1) (if' (num 2) (num 3) (num 4)) (num 5)
       "if 1 then 2 else if 3 then 4 else 5" ==> if' (num 1) (num 2) (if' (num 3) (num 4) (num 5))
+
+    it "can parse nested expression inside if" $ do
+      let op' x = E1BinOp (E1Var $ Id x)
+          complex = op' "*" (op' "+" (num 1) (num 2)) (num 3)
+      "if 1 + 2 * 3 then 1 else 1" ==> if' complex (num 1) (num 1)
+      "if 1 then 1 + 2 * 3 else 1" ==> if' (num 1) complex (num 1)
+      "if 1 then 1 else 1 + 2 * 3" ==> if' (num 1) (num 1) complex
 
     it "fails with readable error message for ifs" $ do
       (parse, "if") `shouldFailWith` err 2 (ueof <> elabel "whitespace")
@@ -245,10 +257,11 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       (parser, "a in") `succeedsLeaving` "in"
 
     it "can parse expressions inside parentheses" $ do
-      "f (1)" ==> app (var "f") [num 1]
-      "f (a 1)" ==> app (var "f") [app (var "a") [num 1]]
-      "f a (b 1)" ==> app (var "f") [var "a", app (var "b") [num 1]]
-      "(((1)))" ==> num 1
+      "f (1)" ==> app (var "f") [parens $ num 1]
+      "f (a 1)" ==> app (var "f") [parens $ app (var "a") [num 1]]
+      "f a (b 1)" ==> app (var "f") [var "a", parens $ app (var "b") [num 1]]
+      "(((1)))" ==> (parens . parens . parens $ num 1)
+      "(f) a b" ==> app (parens $ var "f") [var "a", var "b"]
 
   describe "case expressions" $ parallel $ do
     let a ==> b = parse a `shouldParse` b
@@ -290,7 +303,7 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
 
   describe "operators" $ parallel $ do
     let num = E1Lit . LNumber . SInt
-        fixity ty prio op = ExprFixityDecl ty prio (Id op)
+        fixity ty prio op' = ExprFixityDecl ty prio (Id op')
         app = E1App
         var = E1Var . Id
         con = E1Con . Id
@@ -319,36 +332,51 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
         ==> let' [fixity R 9 "+", fixity M 9 "*"] (num 1)
 
     it "can parse valid operators" $ do
-      "1 + 2" ==> app (var "+") [num 1, num 2]
-      "1 + 2 + 3" ==> app (var "+") [app (var "+") [num 1, num 2], num 3]
-      "1 + 2 * 3" ==> app (var "*") [app (var "+") [num 1, num 2], num 3]
+      "1 + 2" ==> op (var "+") (num 1) (num 2)
+      "1 + 2 + 3" ==> op (var "+") (op (var "+") (num 1) (num 2)) (num 3)
+      "1 + 2 * 3" ==> op (var "*") (op (var "+") (num 1) (num 2)) (num 3)
       "True || False && True"
-        ==> app (var "&&") [app (var "||") [con "True", con "False"], con "True"]
+        ==> op (var "&&") (op (var "||") (con "True") (con "False")) (con "True")
 
-    it "can parse expressions with mix of parentheses and operators" $
-      "1 + (2 + 3)" ==> app (var "+") [num 1, app (var "+") [num 2, num 3]]
+    it "can parse prefix negation operator" $ do
+      let neg = E1Neg
+      "-1 + 2" ==> op (var "+") (neg $ num 1) (num 2)
+      "- 1 + 2" ==> op (var "+") (neg $ num 1) (num 2)
+      "1 + -2" ==> op (var "+") (num 1) (neg $ num 2)
+      "1 + - 2" ==> op (var "+") (num 1) (neg $ num 2)
+      "-1 + -2" ==> op (var "+") (neg $ num 1) (neg $ num 2)
+      "- 1 + - 2" ==> op (var "+") (neg $ num 1) (neg $ num 2)
+      "-0b0" ==> neg (E1Lit $ LNumber $ SBin "0b0")
+
+    it "can parse expressions with mix of parentheses and operators" $ do
+      let op' x = E1BinOp (E1Var $ Id x)
+          complex x y z = op' "*" (op' "+" (num x) (num y)) (num z)
+      "1 + (2 + 3)" ==> op' "+" (num 1) (parens $ op' "+" (num 2) (num 3))
+      "(1 + 2 * 3) <> (4 + 5 * 6)"
+        ==> op' "<>" (parens (complex 1 2 3)) (parens (complex 4 5 6))
 
     it "can parse expressions with function application and operators" $ do
-      "f 1 + a f 2" ==> app (var "+") [ app (var "f") [num 1]
-                                      , app (var "a") [var "f", num 2]]
-      "f 1 + g (2 + 3)" ==> app (var "+") [ app (var "f") [num 1]
-                                          , app (var "g") [app (var "+") [num 2, num 3]]
-                                          ]
+      "f 1 + a f 2" ==> op (var "+") (app (var "f") [num 1])
+                                     (app (var "a") [var "f", num 2])
+      "f 1 + g (2 + 3)"
+        ==> op (var "+") (app (var "f") [num 1])
+                         (app (var "g") [parens $ op (var "+") (num 2) (num 3)])
       "f 1 + g 2 * h 3"
-        ==> app (var "*") [ app (var "+") [app (var "f") [num 1], app (var "g") [num 2]]
-                          , app (var "h") [num 3]]
+        ==> op (var "*") (op (var "+") (app (var "f") [num 1]) (app (var "g") [num 2]))
+                         (app (var "h") [num 3])
 
-    it "can parse operators as return values" $
+    it "can parse operators as identifier" $
       "(+)" ==> var "+"
 
     it "can parse infix functions" $ do
-      "1 `plus` 2" ==> app (var "plus") [num 1, num 2]
-      "f 1 `Plus` a f 2" ==> app (con "Plus") [ app (var "f") [num 1]
-                                              , app (var "a") [var "f", num 2]]
+      "1 `plus` 2" ==> op (var "plus") (num 1) (num 2)
+      "f 1 `Plus` a f 2" ==> op (con "Plus") (app (var "f") [num 1])
+                                             (app (var "a") [var "f", num 2])
       "f 1 `plus` g 2 `Mul` h 3"
-        ==> app (con "Mul") [ app (var "plus") [ app (var "f") [num 1]
-                                               , app (var "g") [num 2]]
-                            , app (var "h") [num 3]]
+        ==> op (con "Mul") (op (var "plus") (app (var "f") [num 1])
+                                            (app (var "g") [num 2]))
+                           (app (var "h") [num 3])
+      "1 * (+) 2 3" ==> op (var "*") (num 1) (app (var "+") [num 2, num 3])
 
     it "fails with readable error message" $ do
       (parse, "(+") `shouldFailWith` err 2 (ueof <> etok ')' <> elabel "rest of operator")

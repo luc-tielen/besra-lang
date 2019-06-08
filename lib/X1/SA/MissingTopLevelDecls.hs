@@ -4,14 +4,14 @@ module X1.SA.MissingTopLevelDecls ( validate ) where
 import Protolude
 import X1.SA.Helpers
 import X1.SA.Types
-import X1.Types.Module
 import X1.Types.Id
+import X1.Types.Expr1.Module
+import X1.Types.Expr1.Expr ( Binding(..) )
 import X1.Types.Expr1.TypeAnn
-import X1.Types.Expr1 ( Binding(..) )
 import qualified Data.List as List
 
 
-validate :: FilePath -> Validation [SAError] (Module Decl)
+validate :: FilePath -> Validation [SAError] Module
 validate path (Module decls) =
   let matchingDecls = filter isBindingOrTypeAnnDecl decls
       groupedDecls = groupBy sameVar matchingDecls

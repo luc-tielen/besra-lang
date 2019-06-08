@@ -3,7 +3,7 @@ module X1.Parser.Impl ( parser ) where
 
 import Protolude hiding ( Type, try, functionName )
 import X1.Types.Id
-import X1.Types.Expr1
+import X1.Types.Expr1.Expr
 import X1.Types.Expr1.Type
 import X1.Types.Expr1.Pred
 import X1.Types.Expr1.Impl

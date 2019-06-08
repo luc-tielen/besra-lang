@@ -4,11 +4,13 @@ import Protolude
 import Control.Monad.Except
 import Data.Text.IO as TIO
 import X1.Parser ( ParseError, parseFile )
-import X1.Types.Module
+import X1.Types.Expr1.Module
 import X1.SA
+import qualified X1.Pass.BalanceOperators as BalanceOperators
 
 
 data X1Error = ParseErr ParseError
+             | BalanceErr BalanceOperators.BalanceError
              | SemanticErr SemanticError
              deriving (Eq, Show)
 
@@ -18,8 +20,15 @@ class ToError e where
 instance ToError ParseError where
   toError = ParseErr
 
+instance ToError BalanceOperators.BalanceError where
+  toError = BalanceErr
+
 instance ToError SemanticError where
   toError = SemanticErr
+
+instance ToError X1Error where
+  toError = identity
+
 
 -- | Operator for combining multiple steps in a pipeline together,
 --   converting each step to have a common error type.
@@ -31,12 +40,12 @@ f >-> g = wrap f >=> wrap g where
   wrap h = withExceptT toError . h
 
 
-parse :: FilePath -> ExceptT ParseError IO (Module Decl)
+parse :: FilePath -> ExceptT ParseError IO Module
 parse path = do
   content <- liftIO $ TIO.readFile path
   liftEither $ parseFile path content
 
-semanticAnalysis :: FilePath -> Module Decl -> ExceptT SemanticError IO (Module Decl)
+semanticAnalysis :: FilePath -> Module -> ExceptT SemanticError IO Module
 semanticAnalysis path decls =
   case runSA path decls of
     Ok -> pure decls
@@ -46,8 +55,8 @@ semanticAnalysis path decls =
 compile :: FilePath -> IO ()
 compile path = runExceptT pipeline $> () where
   pipeline = runPipeline path
-  runPipeline = parse
+  runPipeline =  parse
+             >-> BalanceOperators.pass
              >-> semanticAnalysis path
-  --         >-> typeCheck
   --         >-> ...
 

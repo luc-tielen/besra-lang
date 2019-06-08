@@ -1,12 +1,12 @@
 
 module X1.Parser.Expr1 ( parser, declParser ) where
 
-import Protolude hiding ( try, functionName, Fixity )
+import Protolude hiding ( try, functionName, Fixity, Prefix )
 import Data.Char ( digitToInt )
 import GHC.Unicode (isDigit)
 import X1.Types.Id
 import X1.Types.Fixity
-import X1.Types.Expr1
+import X1.Types.Expr1.Expr
 import X1.Types.Expr1.TypeAnn
 import X1.Parser.Helpers
 import Control.Monad.Combinators.Expr
@@ -22,10 +22,13 @@ expr :: Parser Expr1
 expr = makeExprParser term exprOperators <?> "expression"
 
 exprOperators :: [[Operator Parser Expr1]]
-exprOperators = [ [ InfixL (operator <$> lexeme' operatorParser) ] ]
+exprOperators =
+  [ [ Prefix (E1Neg <$ lexeme' negateOpParser) ]
+  , [ InfixL (E1BinOp <$> lexeme' operatorParser) ]
+  ]
   where
-    operatorParser =  infixOp <|> infixFunction'
-    operator op e1 e2 = E1App op [e1, e2]
+    operatorParser = infixOp <|> infixFunction'
+    negateOpParser = hidden $ char '-'
     infixOp = E1Var . Id <$> opIdentifier
     infixFunction' = infixFunction (E1Var . Id) (E1Con . Id)
 
@@ -35,10 +38,10 @@ term = term' <?> "expression" where
   term' =  lexeme litParser
        <|> withLineFold lineFoldedExprs
        <|> letParser
-       <|> try funcParser
+       <|> try applyFuncParser
        <|> varParser
        <|> conParser
-       <|> betweenParens parser
+       <|> parens parser
   lineFoldedExprs =  lamParser
                  <|> ifParser
                  <|> caseParser
@@ -46,20 +49,24 @@ term = term' <?> "expression" where
 litParser :: Parser Expr1
 litParser = E1Lit <$> Lit.parser
 
-funcParser :: Parser Expr1
-funcParser = sameLine $ do
-  funcName <- funcNameParser
+applyFuncParser :: Parser Expr1
+applyFuncParser = sameLine $ do
+  funcName <- lexeme funcNameParser
   -- NOTE: next line is to prevent wrong order of parentheses in nested applications
   args <- some $ lexeme arg
   pure $ E1App funcName args
   where
-    variable = E1Var . Id <$> lexeme identifier
-    constructor = E1Con . Id <$> lexeme capitalIdentifier
-    funcNameParser = variable <|> constructor
+    variable = E1Var . Id <$> identifier
+    constructor = E1Con . Id <$> capitalIdentifier
+    prefixOp = E1Var <$> prefixOperator
+    funcNameParser =  variable
+                  <|> constructor
+                  <|> try prefixOp
+                  <|> parens parser
     arg =  litParser
        <|> varParser
        <|> conParser
-       <|> betweenParens parser
+       <|> parens parser
 
 varParser :: Parser Expr1
 varParser = E1Var . Id <$> varParser' where
@@ -88,7 +95,7 @@ ifParser = do
   keyword "then"
   trueClause <- lexeme' parser
   keyword "else"
-  E1If cond trueClause <$> lexeme' parser
+  E1If cond trueClause <$> parser
 
 caseParser :: Parser Expr1
 caseParser = do
@@ -176,10 +183,6 @@ prefixOperator = Id <$> sameLine (betweenParens opIdentifier) <?> "operator"
 assign :: Parser Char
 assign = char '=' <?> "rest of assignment"
 
-betweenBackticks :: Parser a -> Parser a
-betweenBackticks = between (backtick <?> "operator") backtick where
-  backtick = char '`'
-
 infixFunction :: (Text -> a) -> (Text -> a) -> Parser a
 infixFunction var con =
   betweenBackticks $  var <$> infixFunc
@@ -187,4 +190,9 @@ infixFunction var con =
   where
     infixFunc = identifier <?> "infix function"
     infixCon = capitalIdentifier <?> "infix constructor"
+    betweenBackticks = between (backtick <?> "operator") backtick
+    backtick = char '`'
+
+parens :: Parser Expr1 -> Parser Expr1
+parens p = E1Parens <$> lexeme (betweenParens p)
 

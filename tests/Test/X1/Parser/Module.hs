@@ -8,8 +8,8 @@ import Test.Tasty.Hspec
 import Test.X1.Parser.Helpers
 import X1.Types.Id
 import X1.Types.Fixity
-import X1.Types.Module
-import X1.Types.Expr1
+import X1.Types.Expr1.Module
+import X1.Types.Expr1.Expr
 import X1.Types.Expr1.ADT
 import X1.Types.Expr1.Lit
 import X1.Types.Expr1.Pred
@@ -27,7 +27,7 @@ import NeatInterpolation
 
 
 
-parse :: Text -> ParseResult (Module Decl)
+parse :: Text -> ParseResult Module
 parse = mkParser parser
 
 con :: Text -> Type
@@ -39,7 +39,7 @@ var = TVar . Tyvar . Id
 app :: Type -> [Type] -> Type
 app = TApp
 
-(==>) :: Text -> Module Decl -> IO ()
+(==>) :: Text -> Module -> IO ()
 a ==> b = parse a `shouldParse` b
 
 (-->) :: Type -> Type -> Type

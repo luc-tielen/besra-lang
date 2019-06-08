@@ -6,8 +6,8 @@ import X1.SA.ConflictingBindingDecls
 import X1.SA.Helpers
 import X1.SA.Types
 import X1.Types.Id
-import X1.Types.Module
-import X1.Types.Expr1
+import X1.Types.Expr1.Module
+import X1.Types.Expr1.Expr
 import X1.Types.Expr1.String
 import X1.Types.Expr1.Number
 import X1.Types.Expr1.Lit
@@ -18,7 +18,7 @@ import Test.Tasty.Hspec
 file :: FilePath
 file = "Test.x1"
 
-analyze' :: Validation [SAError] (Module Decl)
+analyze' :: Validation [SAError] Module
 analyze' = analyze [validate file]
 
 conflict :: Text -> [Expr1] -> SAError
