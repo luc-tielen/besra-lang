@@ -91,7 +91,7 @@ ifParser = do
   keyword "then"
   trueClause <- lexeme' parser
   keyword "else"
-  E1If cond trueClause <$> lexeme' parser
+  E1If cond trueClause <$> parser
 
 caseParser :: Parser Expr1
 caseParser = do
