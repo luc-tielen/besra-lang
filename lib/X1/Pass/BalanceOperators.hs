@@ -20,10 +20,8 @@ import X1.Types.Id
 
 -- TODO parallellize?
 
--- TODO extend badprec to mention which operator combo is invalid
--- TODO extend invalid prefix prec to mention decl also
-data BalanceError = BadPrecedence Decl
-                  | InvalidPrefixPrecedence FixityInfo
+data BalanceError = BadPrecedence FixityInfo FixityInfo Decl
+                  | InvalidPrefixPrecedence FixityInfo Decl
                   deriving (Eq, Show)
 
 data FixityInfo = FI Fixity Int Id
@@ -33,7 +31,7 @@ data Token = TExpr Expr1
            | TOp (Id -> Expr1) FixityInfo
            | TNeg
 
-data Env = Env { envFixities :: [FixityInfo], envExpr :: Decl }
+data Env = Env { envFixities :: [FixityInfo], envDecl :: Decl }
   deriving (Eq, Show)
 
 type RebalanceM m = ReaderT Env (ExceptT BalanceError m)
@@ -124,7 +122,7 @@ opToTokens f op e1 e2 = do
 rebalanceTokens :: Monad m => FixityInfo -> [Token] -> RebalanceM m (Expr1, [Token])
 rebalanceTokens op1 (TExpr e1 : rest) = rebalanceTokens' op1 e1 rest
 rebalanceTokens op1 (TNeg : rest) = do
-  when (prec1 >= 6) $ throwError $ InvalidPrefixPrecedence op1
+  when (prec1 >= 6) $ throwError . InvalidPrefixPrecedence op1 =<< asks envDecl
   (r, rest') <- rebalanceTokens negateOp rest
   rebalanceTokens' op1 (E1Neg r) rest'
   where
@@ -137,7 +135,7 @@ rebalanceTokens' _ e1 [] = pure (e1, [])
 rebalanceTokens' op1 e1 (TOp f op2 : rest)
   -- case (1): check for illegal expressions
   | prec1 == prec2 && (fix1 /= fix2 || fix1 == M) =
-    throwError . BadPrecedence =<< asks envExpr
+    throwError . BadPrecedence op1 op2 =<< asks envDecl
 
   -- case (2): op1 and op2 should associate to the left
   | prec1 > prec2 || (prec1 == prec2 && fix1 == L) =
