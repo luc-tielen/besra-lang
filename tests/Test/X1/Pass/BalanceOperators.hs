@@ -137,12 +137,17 @@ spec_balanceOperators = describe "balance operators pass" $ parallel $ do
       -- Invalid combinations: L+R, L+M, R+L, R+M, M+L, M+R
       let scenarios = [(a, b) | a <- [L, R, M], b <- [L, R, M], a /= b]
           aBinding = BindingDecl $ binding "a" leftAssoc
-      forM_ scenarios $ \(fixTypePlus, fixTypeMul) ->
-        mkScript fixTypePlus 5 fixTypeMul 5 ==> BadPrecedence aBinding
+      forM_ scenarios $ \(fixTypePlus, fixTypeMul) -> do
+        let fiPlus = FI fixTypePlus 5 (Id "+")
+            fiMul = FI fixTypeMul 5 (Id "*")
+        mkScript fixTypePlus 5 fixTypeMul 5
+          ==> BadPrecedence fiPlus fiMul aBinding
 
     it "cannot handle M+M assoc, = precedence" $ do
       let aBinding = BindingDecl $ binding "a" leftAssoc
-      mkScript M 5 M 5 ==> BadPrecedence aBinding
+          fiPlus = FI M 5 (Id "+")
+          fiMul = FI M 5 (Id "*")
+      mkScript M 5 M 5 ==> BadPrecedence fiPlus fiMul aBinding
 
     it "can handle parentheses" $ do
       -- left assoc results in 1 + ((2 + 3) * 4)
@@ -190,9 +195,10 @@ spec_balanceOperators = describe "balance operators pass" $ parallel $ do
       mkScript' "a = 1 + -2" L 4 L 6 ==> expected L 4 L 6 expr2
       mkScript' "a = -1 + 2" L 6 L 6 ==> expected L 6 L 6 expr3
 
-    it "fails on exprs with unary negation preceded by higher precedence op" $
+    it "fails on exprs with unary negation preceded by higher precedence op" $ do
+      let decl = BindingDecl $ binding "a" (op "+" (num 1) (E1Neg $ num 2))
       mkScript' "a = 1 + -2" L 6 L 6
-        ==> InvalidPrefixPrecedence (FI L 6 (Id "+"))
+        ==> InvalidPrefixPrecedence (FI L 6 (Id "+")) decl
 
   describe "expressions" $ parallel $ do
     it "does nothing to AST without operators" $
