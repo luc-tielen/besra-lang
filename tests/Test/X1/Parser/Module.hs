@@ -26,7 +26,6 @@ import Test.Hspec.Megaparsec hiding (shouldFailWith)
 import NeatInterpolation
 
 
-
 parse :: Text -> ParseResult Module
 parse = mkParser parser
 
@@ -129,8 +128,8 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
 
     it "can parse multiple assignments" $
       "x = 5\ny = \"abc123\"\nz = 'a'" ==> Module [ binding "x" $ num 5
-                                                  , binding "y" $ str "abc123"
-                                                  , binding "z" $ char 'a']
+                                               , binding "y" $ str "abc123"
+                                               , binding "z" $ char 'a']
 
     it "can parse top level named functions" $ do
       "f x = 5" ==> Module [binding "f" $ lam ["x"] (num 5)]
@@ -142,17 +141,17 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
 
     it "can parse a named function containing patterns" $ do
       "f 1 \"abc\" = 123" ==> Module [binding "f" (E1Lam [ PLit (LNumber (SInt 1))
-                                                                  , PLit (LString (String "abc"))]
-                                                                  (num 123))]
+                                                             , PLit (LString (String "abc"))]
+                                                             (num 123))]
       "f a@(X y) = 123" ==> Module [binding "f" (E1Lam [ PAs (Id "a")
-                                                                  (PCon (Id "X") [PVar (Id "y")])]
-                                                                  (num 123))]
+                                                               (PCon (Id "X") [PVar (Id "y")])]
+                                                               (num 123))]
 
     it "can parse multiple named functions" $
       "f x = 5\ng x y = \"abc123\""
         ==> Module [ binding "f" $ lam ["x"] (num 5)
-                   , binding "g" $ lam ["x", "y"] (str "abc123")
-                   ]
+                , binding "g" $ lam ["x", "y"] (str "abc123")
+                ]
 
   it "fails with readable error message" $ do
     let labels = mconcat $ elabel <$> ["pattern", "rest of assignment", "rest of type declaration"]
@@ -313,16 +312,16 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
           y : (a -> b) -> List a -> List b
         |] ==> Module [ trait (pred "Eq" ["a"]) [typeAnn' "x" $ Scheme [] (con "Int")]
                       , trait (pred "Eq" ["a"])
-                              [ typeAnn' "x" $ Scheme [] (con "Int")
-                              , typeAnn' "y" $ Scheme [] mapType
-                              ]
+                           [ typeAnn' "x" $ Scheme [] (con "Int")
+                           , typeAnn' "y" $ Scheme [] mapType
+                           ]
                    ]
       [text|
         trait Eq a where
         trait Eq a where
         |] ==> Module [ trait (pred "Eq" ["a"]) []
                       , trait (pred "Eq" ["a"]) []
-                   ]
+                      ]
 
     it "can parse trait followed by other declaration" $ do
       [text|

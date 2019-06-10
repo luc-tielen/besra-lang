@@ -31,9 +31,12 @@ default-extensions:
   - FlexibleInstances
   - LambdaCase
   - RankNTypes
+  - TypeFamilies
   - GADTs
   - TypeFamilies
+  - DataKinds
   - DeriveFunctor
+  - StandaloneDeriving
 
 ghc-options:
   - -Wall

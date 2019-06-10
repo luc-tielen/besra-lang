@@ -312,6 +312,10 @@ spec_balanceOperators = describe "balance operators pass" $ parallel $ do
                      ]
                      (complex (var "b") (var "c") (var "c"))
 
+    -- TODO 2 lvls deep, 2 separate bindings to check they don't collide
+    --it "takes fixity decls inside let into account" $
+    --  pending
+
     it "rebalances infix functions" $ do
       let op' operator = E1BinOp (con operator)
       [text|

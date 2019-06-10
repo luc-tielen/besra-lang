@@ -1,4 +1,6 @@
 
+{-# LANGUAGE UndecidableInstances #-}
+
 module X1.Types.Expr1.Impl ( Impl(..) ) where
 
 import Protolude

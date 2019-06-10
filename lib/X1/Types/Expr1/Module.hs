@@ -11,12 +11,13 @@ import X1.Types.Expr1.Impl
 import X1.Types.Expr1.TypeAnn
 
 
-data Decl = TypeAnnDecl TypeAnn
-          | DataDecl ADT
-          | TraitDecl Trait
-          | ImplDecl Impl
-          | BindingDecl Binding
-          | FixityDecl Fixity Int Id
+data Decl
+  = TypeAnnDecl TypeAnn
+  | DataDecl ADT
+  | TraitDecl Trait
+  | ImplDecl Impl
+  | BindingDecl Binding
+  | FixityDecl Fixity Int Id
   deriving (Eq, Show)
 
 newtype Module = Module [Decl]
