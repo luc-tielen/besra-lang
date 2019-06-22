@@ -18,6 +18,7 @@ import X1.Types.Expr1.Pattern
 import X1.Types.Fixity
 import X1.Types.Id
 
+
 data Tag a where
   TagD :: Tag Decl
   TagE :: Tag Expr1
@@ -47,20 +48,27 @@ transform :: Transform a => Tag b -> (Tag b -> b -> b) -> a -> a
 transform prf f a = runIdentity $ transformM prf ((pure .) . f) a
 
 
--- TODO minimize use of transformM, rename to compos for less confusion
--- TODO this instance is wrong, skips top instance of 'a'
+-- NOTE: use this instance as little as possible, since it skips
+-- the behavior of "f" for the top level items in that list.
+-- Instead, if something that has a "proof value" appears in the list,
+-- calls traverse (f proof) directly instead of transformM.
 instance (Traversable f, Transform a) => Transform (f a) where
   transformM prf f = traverse (transformM prf f)
 
 instance Transform Module where
+  transformM TagD f (Module decls) =
+    Module <$> traverse (f TagD) decls
   transformM prf f (Module decls) =
     Module <$> transformM prf f decls
 
 instance Transform Decl where
   transformM TagD _ d = pure d
+  transformM TagB f d =
+    case d of
+      BindingDecl binding -> BindingDecl <$> f TagB binding
+      _ -> pure d
   transformM prf f d =
     case d of
-      -- TODO binding is wrong for TagB
       ImplDecl impl -> ImplDecl <$> transformM prf f impl
       BindingDecl binding -> BindingDecl <$> transformM prf f binding
       -- The following contain nothing to recurse on
@@ -72,24 +80,29 @@ instance Transform Decl where
 
 instance Transform Impl where
   transformM TagD _ impl = pure impl
+  transformM TagB f (Impl ps p bindings) =
+    Impl ps p <$> traverse (f TagB) bindings
   transformM prf f (Impl ps p bindings) =
     Impl ps p <$> transformM prf f bindings
 
 instance Transform Binding where
   transformM TagD _ b = pure b
-  transformM TagB _ b = pure b
+  transformM TagE f (Binding name expr) =
+    Binding name <$> f TagE expr
   transformM prf f (Binding name expr) =
     Binding name <$> transformM prf f expr
 
 instance Transform ExprDecl where
   transformM TagD _ ed = pure ed
-  transformM TagED _ ed = pure ed
+  transformM TagB f ed =
+    case ed of
+      ExprBindingDecl binding -> ExprBindingDecl <$> f TagB binding
+      _ -> pure ed
   transformM prf f ed =
     case ed of
       ExprBindingDecl binding ->
         ExprBindingDecl <$> transformM prf f binding
-      ExprTypeAnnDecl {} -> pure ed
-      ExprFixityDecl {} -> pure ed
+      _ -> pure ed
 
 instance Transform Expr1 where
   transformM TagD _ e = pure e
@@ -99,12 +112,12 @@ instance Transform Expr1 where
       E1Var {} -> pure e
       E1Con {} -> pure e
       E1Lam vars body -> E1Lam vars <$> f TagE body
-      E1App func args -> E1App <$> f TagE func <*> transformM TagE f args
+      E1App func args -> E1App <$> f TagE func <*> traverse (f TagE) args
       E1BinOp op l r -> E1BinOp <$> f TagE op <*> f TagE l <*> f TagE r
       E1Neg expr -> E1Neg <$> f TagE expr
       E1If cond tr fl -> E1If <$> f TagE cond <*> f TagE tr <*> f TagE fl
       E1Case cond clauses ->
-        E1Case <$> f TagE cond <*> transformM TagE f clauses
+        E1Case <$> f TagE cond <*> traverse (traverse (f TagE)) clauses
       E1Let decls expr -> E1Let <$> transformM TagE f decls <*> f TagE expr
       E1Parens expr -> E1Parens <$> f TagE expr
   transformM prf f e =
@@ -128,7 +141,11 @@ instance Transform Expr1 where
         E1Case <$> transformM prf f cond
                <*> transformM prf f clauses
       E1Let decls expr ->
-        E1Let <$> transformM prf f decls <*> transformM prf f expr
+        case prf of
+          TagED ->
+            E1Let <$> traverse (f TagED) decls <*> transformM prf f expr
+          _ ->
+            E1Let <$> transformM prf f decls <*> transformM prf f expr
       E1Parens expr -> E1Parens <$> transformM prf f expr
 
 
