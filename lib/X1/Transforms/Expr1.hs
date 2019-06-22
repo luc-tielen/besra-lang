@@ -1,8 +1,8 @@
 
-module X1.Transforms.Expr1 ( Transform(..)
-                           , Fold(..)
+module X1.Transforms.Expr1 ( Fold(..)
+                           , Compos(..)
                            , Tag(..)
-                           , transform
+                           , compos
                            ) where
 
 import Protolude hiding ( Fixity )
@@ -27,7 +27,7 @@ data Tag a where
 
 -- | Typeclass for performing an update in the AST without changing to another IR.
 --   Passes a function along with a type level witness in order to update the AST
---   in a typesafe way. The function itself will call transform(M) again for all
+--   in a typesafe way. The function itself will call compos(M) again for all
 --   cases that should stay the same.
 --
 --   The reasoning behind the algorithm is as follows:
@@ -36,41 +36,41 @@ data Tag a where
 --   3. Tag is used at same level update should happen
 --      => apply function, but only in places where "recursion" of that type occurs
 --   In situation 3, the function will be only applied at 1 level, the function
---   is itself responsible to call the transform(M) function again.
+--   is itself responsible to call the compos(M) function again.
 --
 --   Algorithm mostly based on/extended from:
 --   http://www.cse.chalmers.se/alumni/bringert/publ/composOp-jfp/composOp-jfp.pdf
-class Transform a where
-  transformM :: Applicative f => Tag b -> (Tag b -> b -> f b) -> a -> f a
+class Compos a where
+  composM :: Applicative f => Tag b -> (Tag b -> b -> f b) -> a -> f a
 
--- | Non-monadic variant of the transformM function.
-transform :: Transform a => Tag b -> (Tag b -> b -> b) -> a -> a
-transform prf f a = runIdentity $ transformM prf ((pure .) . f) a
+-- | Non-monadic variant of the composM function.
+compos :: Compos a => Tag b -> (Tag b -> b -> b) -> a -> a
+compos prf f a = runIdentity $ composM prf ((pure .) . f) a
 
 
 -- NOTE: use this instance as little as possible, since it skips
 -- the behavior of "f" for the top level items in that list.
 -- Instead, if something that has a "proof value" appears in the list,
--- calls traverse (f proof) directly instead of transformM.
-instance (Traversable f, Transform a) => Transform (f a) where
-  transformM prf f = traverse (transformM prf f)
+-- calls traverse (f proof) directly instead of composM.
+instance (Traversable f, Compos a) => Compos (f a) where
+  composM prf f = traverse (composM prf f)
 
-instance Transform Module where
-  transformM TagD f (Module decls) =
+instance Compos Module where
+  composM TagD f (Module decls) =
     Module <$> traverse (f TagD) decls
-  transformM prf f (Module decls) =
-    Module <$> transformM prf f decls
+  composM prf f (Module decls) =
+    Module <$> composM prf f decls
 
-instance Transform Decl where
-  transformM TagD _ d = pure d
-  transformM TagB f d =
+instance Compos Decl where
+  composM TagD _ d = pure d
+  composM TagB f d =
     case d of
       BindingDecl binding -> BindingDecl <$> f TagB binding
       _ -> pure d
-  transformM prf f d =
+  composM prf f d =
     case d of
-      ImplDecl impl -> ImplDecl <$> transformM prf f impl
-      BindingDecl binding -> BindingDecl <$> transformM prf f binding
+      ImplDecl impl -> ImplDecl <$> composM prf f impl
+      BindingDecl binding -> BindingDecl <$> composM prf f binding
       -- The following contain nothing to recurse on
       -- (just use TagD to target these.)
       TraitDecl {} -> pure d  -- TODO needs support later (default functions)
@@ -78,35 +78,35 @@ instance Transform Decl where
       DataDecl {} -> pure d
       FixityDecl {} -> pure d
 
-instance Transform Impl where
-  transformM TagD _ impl = pure impl
-  transformM TagB f (Impl ps p bindings) =
+instance Compos Impl where
+  composM TagD _ impl = pure impl
+  composM TagB f (Impl ps p bindings) =
     Impl ps p <$> traverse (f TagB) bindings
-  transformM prf f (Impl ps p bindings) =
-    Impl ps p <$> transformM prf f bindings
+  composM prf f (Impl ps p bindings) =
+    Impl ps p <$> composM prf f bindings
 
-instance Transform Binding where
-  transformM TagD _ b = pure b
-  transformM TagE f (Binding name expr) =
+instance Compos Binding where
+  composM TagD _ b = pure b
+  composM TagE f (Binding name expr) =
     Binding name <$> f TagE expr
-  transformM prf f (Binding name expr) =
-    Binding name <$> transformM prf f expr
+  composM prf f (Binding name expr) =
+    Binding name <$> composM prf f expr
 
-instance Transform ExprDecl where
-  transformM TagD _ ed = pure ed
-  transformM TagB f ed =
+instance Compos ExprDecl where
+  composM TagD _ ed = pure ed
+  composM TagB f ed =
     case ed of
       ExprBindingDecl binding -> ExprBindingDecl <$> f TagB binding
       _ -> pure ed
-  transformM prf f ed =
+  composM prf f ed =
     case ed of
       ExprBindingDecl binding ->
-        ExprBindingDecl <$> transformM prf f binding
+        ExprBindingDecl <$> composM prf f binding
       _ -> pure ed
 
-instance Transform Expr1 where
-  transformM TagD _ e = pure e
-  transformM TagE f e =
+instance Compos Expr1 where
+  composM TagD _ e = pure e
+  composM TagE f e =
     case e of
       E1Lit {} -> pure e
       E1Var {} -> pure e
@@ -118,35 +118,35 @@ instance Transform Expr1 where
       E1If cond tr fl -> E1If <$> f TagE cond <*> f TagE tr <*> f TagE fl
       E1Case cond clauses ->
         E1Case <$> f TagE cond <*> traverse (traverse (f TagE)) clauses
-      E1Let decls expr -> E1Let <$> transformM TagE f decls <*> f TagE expr
+      E1Let decls expr -> E1Let <$> composM TagE f decls <*> f TagE expr
       E1Parens expr -> E1Parens <$> f TagE expr
-  transformM prf f e =
+  composM prf f e =
     case e of
       E1Lit {} -> pure e
       E1Var {} -> pure e
       E1Con {} -> pure e
-      E1Lam vars body -> E1Lam vars <$> transformM prf f body
+      E1Lam vars body -> E1Lam vars <$> composM prf f body
       E1App func args ->
-        E1App <$> transformM prf f func <*> transformM prf f args
+        E1App <$> composM prf f func <*> composM prf f args
       E1BinOp op l r ->
-        E1BinOp <$> transformM prf f op
-                <*> transformM prf f l
-                <*> transformM prf f r
-      E1Neg expr -> E1Neg <$> transformM prf f expr
+        E1BinOp <$> composM prf f op
+                <*> composM prf f l
+                <*> composM prf f r
+      E1Neg expr -> E1Neg <$> composM prf f expr
       E1If cond tr fl ->
-        E1If <$> transformM prf f cond
-             <*> transformM prf f tr
-             <*> transformM prf f fl
+        E1If <$> composM prf f cond
+             <*> composM prf f tr
+             <*> composM prf f fl
       E1Case cond clauses ->
-        E1Case <$> transformM prf f cond
-               <*> transformM prf f clauses
+        E1Case <$> composM prf f cond
+               <*> composM prf f clauses
       E1Let decls expr ->
         case prf of
           TagED ->
-            E1Let <$> traverse (f TagED) decls <*> transformM prf f expr
+            E1Let <$> traverse (f TagED) decls <*> composM prf f expr
           _ ->
-            E1Let <$> transformM prf f decls <*> transformM prf f expr
-      E1Parens expr -> E1Parens <$> transformM prf f expr
+            E1Let <$> composM prf f decls <*> composM prf f expr
+      E1Parens expr -> E1Parens <$> composM prf f expr
 
 
 type HandlersMM m rModule rDecl =
