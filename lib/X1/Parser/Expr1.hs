@@ -196,5 +196,5 @@ infixFunction var con =
 
 parens :: Parser Expr1 -> Parser Expr1
 parens p =
-  E1Parens <$> lexeme (betweenParens p)
+  uncurry E1Parens <$> lexeme (withSpan $ betweenParens p)
 

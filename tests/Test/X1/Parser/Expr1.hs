@@ -6,6 +6,8 @@ import Test.Tasty.Hspec
 import Test.X1.Parser.Helpers
 import X1.Parser.Expr1 (parser)
 import X1.Types.Id
+import X1.Types.Ann
+import X1.Types.Span
 import X1.Types.Fixity
 import X1.Types.Expr1.Expr
 import X1.Types.Expr1.Lit
@@ -16,7 +18,17 @@ import X1.Types.Expr1.Number
 import X1.Types.Expr1.Pattern
 import X1.Types.Expr1.TypeAnn
 import Test.Hspec.Megaparsec hiding (shouldFailWith, succeedsLeaving)
+import Test.X1.Helpers
 
+
+-- Same as -->, but strips annotations too
+(==>) :: Text -> Expr1 -> IO ()
+a ==> b = (stripAnns <$> parse a) `shouldParse` b
+infixr 0 ==>
+
+(-->) :: Text -> Expr1 -> IO ()
+a --> b = parse a `shouldParse` b
+infixr 0 -->
 
 c :: Text -> Type
 c = TCon . Tycon . Id
@@ -28,7 +40,7 @@ op :: Expr1 -> Expr1 -> Expr1 -> Expr1
 op = E1BinOp
 
 parens :: Expr1 -> Expr1
-parens = E1Parens
+parens = E1Parens emptyAnn
 
 binding :: Text -> Expr1 -> ExprDecl
 binding x = ExprBindingDecl . Binding (Id x)
@@ -48,22 +60,19 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
         char = E1Lit . LChar
 
     it "can parse literals" $ do
-      let a ==> b = parse a `shouldParse` str b
-      "\"\"" ==> ""
-      "\"0\"" ==> "0"
-      "\"ab123\"" ==> "ab123"
-      "\"a b\"" ==> "a b"
+      "\"\"" ==> str ""
+      "\"0\"" ==> str "0"
+      "\"ab123\"" ==> str "ab123"
+      "\"a b\"" ==> str "a b"
 
     it "can parse number literals" $ do
-      let a ==> b = parse a `shouldParse` num b
-      "123" ==> SInt 123
-      "0b1011" ==> SBin "0b1011"
-      "0xC0FF33" ==> SHex "0xC0FF33"
+      "123" ==> num (SInt 123)
+      "0b1011" ==> num (SBin "0b1011")
+      "0xC0FF33" ==> num (SHex "0xC0FF33")
 
     it "can parse char literals" $ do
-      let a ==> b = parse a `shouldParse` char b
-      "'0'" ==> '0'
-      "'a'" ==> 'a'
+      "'0'" ==> char '0'
+      "'a'" ==> char 'a'
 
     it "fails with readable error message for strings" $
       (parse, "\"abc") `shouldFailWith` err 4 (ueof <> etok '"')
@@ -80,9 +89,9 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       (parse, "0b") `shouldFailWith` err 2 (ueof <> elabel "binary digit")
 
   it "can parse variables" $ do
-    let a ==> b = parse a `shouldParse` E1Var (Id b)
-    "abc123" ==> "abc123"
-    "a'" ==> "a'"
+    let var = E1Var . Id
+    "abc123" ==> var "abc123"
+    "a'" ==> var "a'"
 
   describe "if expressions" $ parallel $ do
     -- NOTE: does not take typesystem into account, only parsing.
@@ -90,7 +99,6 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
         num = E1Lit . LNumber . SInt
         str = E1Lit . LString . String
         char = E1Lit . LChar
-        a ==> b = parse a `shouldParse` b
 
     it "can parse single-line if expressions" $ do
       "if 123 then 456 else 789" ==> if' (num 123) (num 456) (num 789)
@@ -136,7 +144,6 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
     let var = E1Var . Id
         num = E1Lit . LNumber . SInt
         lam vars = E1Lam (PVar . Id <$> vars)
-        a ==> b = parse a `shouldParse` b
 
     it "can parse multi-line let expressions" $ do
       "let x = 1 in x" ==> let' [binding "x" (num 1)] (var "x")  -- special case, for now
@@ -194,8 +201,7 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
         (utoks "y " <> elabel "properly indented declaration or 'in' keyword")
 
   describe "lambdas" $ parallel $ do
-    let a ==> b = parse a `shouldParse` b
-        lam vars = E1Lam (PVar . Id <$> vars)
+    let lam vars = E1Lam (PVar . Id <$> vars)
         num' = LNumber . SInt
         num = E1Lit . num'
         str' =  LString . String
@@ -235,8 +241,7 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       (parse, "\\a ->\na") `shouldFailWith` errFancy 6 (badIndent 1 1)
 
   describe "function application" $ parallel $ do
-    let a ==> b = parse a `shouldParse` b
-        app = E1App
+    let app = E1App
         num = E1Lit . LNumber . SInt
         var = E1Var . Id
         con = E1Con . Id
@@ -263,9 +268,22 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       "(((1)))" ==> (parens . parens . parens $ num 1)
       "(f) a b" ==> app (parens $ var "f") [var "a", var "b"]
 
+  describe "parentheses" $ parallel $ do
+    let num = E1Lit . LNumber . SInt
+        span begin end = Ann TagP (Span begin end)
+
+    it "can parse expressions inside parentheses" $ do
+      "(1)" ==> parens $ num 1
+      "((123))" ==> parens . parens $ num 123
+
+    it "adds location information to the expression" $ do
+      "(1  )" --> E1Parens (span 0 5) $ num 1
+      "(  1  )" --> E1Parens (span 0 7) $ num 1
+      "(  (1)  )" --> E1Parens (span 0 9) $ E1Parens (span 3 6) $ num 1
+      "(  (1)  ) " --> E1Parens (span 0 9) $ E1Parens (span 3 6) $ num 1
+
   describe "case expressions" $ parallel $ do
-    let a ==> b = parse a `shouldParse` b
-        case' = E1Case
+    let case' = E1Case
         pvar = PVar . Id
         pcon x = PCon (Id x)
         var = E1Var . Id
@@ -307,7 +325,6 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
         app = E1App
         var = E1Var . Id
         con = E1Con . Id
-        a ==> b = parse a `shouldParse` b
 
     it "can parse a type declaration for an operator in a let" $ do
       "let (+) : Int\nin\n 1" ==> let' [sig "+" (c "Int")] (num 1)
@@ -390,15 +407,14 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       (parse, "1 + + 2") `shouldFailWith` err 4 (utoks "+ 2" <> elabel "expression")
 
   it "can parse variables" $ do
-    let a ==> b = parse a `shouldParse` E1Var (Id b)
-    "a" ==> "a"
-    "abc123" ==> "abc123"
-    "a'" ==> "a'"
-    "a'b" ==> "a'b"
+    let var = E1Var . Id
+    "a" ==> var "a"
+    "abc123" ==> var "abc123"
+    "a'" ==> var "a'"
+    "a'b" ==> var "a'b"
 
   it "can parse constructors" $ do
-    let a ==> b = parse a `shouldParse` b
-        con = E1Con . Id
+    let con = E1Con . Id
         var = E1Var . Id
         app = E1App
     "True" ==> con "True"

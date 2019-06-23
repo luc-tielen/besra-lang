@@ -18,6 +18,7 @@ module X1.Parser.Helpers ( Parser, ParseError, ParseErr, ParseResult
 
 import Protolude hiding (try, first)
 import Control.Monad ( fail )
+import X1.Types.Ann
 import X1.Types.Span
 import qualified Data.Vector.Unboxed as VU
 import qualified Data.Vector as V
@@ -178,10 +179,11 @@ singleQuote = char '\''
 -- | Helper function for getting the begin and end offset when parsing something.
 --   Important: use this function before lexeme/lexeme' or the trailing
 --   whitespace will also be counted!
-withSpan :: Parser a -> Parser (Span, a)
+withSpan :: Parser a -> Parser (Ann, a)
 withSpan p = do
   begin <- getOffset
   result <- p
   end <- getOffset
-  pure (Span begin end, result)
+  let span = Span begin end
+  pure (Ann TagP span, result)
 

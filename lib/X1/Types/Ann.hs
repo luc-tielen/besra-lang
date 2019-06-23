@@ -1,6 +1,8 @@
 
-module X1.Types.Ann ( Phase(..), Ann ) where
+module X1.Types.Ann ( Phase(..), Anno, Tag(..), Ann(..) ) where
 
+import Protolude hiding ( show )
+import Prelude ( Show(..) )
 import X1.Types.Span
 
 
@@ -12,7 +14,24 @@ data Phase = Parsed  -- ^ Phase right after AST is parsed
            | Testing -- ^ Phase only used in the testsuite (for stripping out annotations)
 
 
-type family Ann (a :: Phase)
+type family Anno (a :: Phase)
 
-type instance Ann 'Parsed = Span
-type instance Ann 'Testing = ()
+type instance Anno 'Parsed = Span
+type instance Anno 'Testing = ()
+
+data Tag (a :: Phase) where
+  TagP :: Tag 'Parsed
+  TagT :: Tag 'Testing
+
+data Ann where
+  Ann :: Tag a -> Anno a -> Ann
+
+instance Eq Ann where
+  (Ann TagP ann1) == (Ann TagP ann2) = ann1 == ann2
+  (Ann TagT ann1) == (Ann TagT ann2) = ann1 == ann2
+  _ == _ = False
+
+instance Show Ann where
+  show (Ann TagP ann1) = "(" ++ show ann1 ++ ")"
+  show (Ann TagT ann1) = show ann1
+

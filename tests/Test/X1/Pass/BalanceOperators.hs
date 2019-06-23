@@ -19,12 +19,13 @@ import X1.Types.Fixity
 import X1.Parser
 import Test.Tasty.Hspec
 import NeatInterpolation
+import Test.X1.Helpers
 
 
 runPass :: Text -> IO (Either BalanceError Module)
 runPass input =
   let
-    parseResult = parseFile "balance_operators.test" input
+    parseResult = stripAnns <$> parseFile "balance_operators.test" input
    in
     runExceptT $ case parseResult of
       Left err -> panic $ printError err
@@ -77,7 +78,7 @@ con :: Text -> Expr1
 con = E1Con . Id
 
 parens :: Expr1 -> Expr1
-parens = E1Parens
+parens = E1Parens emptyAnn
 
 op :: Text -> Expr1 -> Expr1 -> Expr1
 op operator = E1BinOp (var operator)

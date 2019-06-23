@@ -25,6 +25,7 @@ import X1.Types.Expr1.Lit
 import X1.Types.Expr1.Pattern
 import X1.Types.Fixity
 import X1.Types.Id
+import X1.Types.Ann
 
 
 data Proof a where
@@ -127,7 +128,7 @@ instance Compos Expr1 where
       E1Case cond clauses ->
         E1Case <$> f ProofE cond <*> traverse (traverse (f ProofE)) clauses
       E1Let decls expr -> E1Let <$> composM ProofE f decls <*> f ProofE expr
-      E1Parens expr -> E1Parens <$> f ProofE expr
+      E1Parens ann expr -> E1Parens ann <$> f ProofE expr
   composM prf f e =
     case e of
       E1Lit {} -> pure e
@@ -154,7 +155,7 @@ instance Compos Expr1 where
             E1Let <$> traverse (f ProofED) decls <*> composM prf f expr
           _ ->
             E1Let <$> composM prf f decls <*> composM prf f expr
-      E1Parens expr -> E1Parens <$> composM prf f expr
+      E1Parens ann expr -> E1Parens ann <$> composM prf f expr
 
 
 newtype HandlersM m rModule rDecl =
@@ -201,7 +202,7 @@ data HandlersE m rExprDecl rExpr =
     , ifE :: rExpr -> rExpr -> rExpr -> m rExpr        -- Handler for if expression
     , caseE :: rExpr -> [(Pattern, rExpr)] -> m rExpr  -- Handler for case expression
     , letE :: [rExprDecl] -> rExpr -> m rExpr          -- Handler for let expression
-    , parenE :: rExpr -> m rExpr                       -- Handler for parenthesized expression
+    , parenE :: Ann -> rExpr -> m rExpr                -- Handler for parenthesized expression
     }
 
 data Handlers m rModule rDecl rImpl rBinding rExprDecl rExpr =
@@ -245,7 +246,7 @@ instance Applicative m
                   (\c tr fl -> pure $ E1If c tr fl)
                   (\e clauses -> pure $ E1Case e clauses)
                   (\decls body -> pure $ E1Let decls body)
-                  (pure . E1Parens)
+                  (\ann e -> pure $ E1Parens ann e)
 
 instance Applicative m
   => Default (HandlersED m Binding ExprDecl Expr1) where
@@ -349,5 +350,5 @@ instance Fold Expr1 where
          join $ caseE fs' <$> foldAST fs e <*> foldAST fs clauses
        E1Let decls body ->
          join $ letE fs' <$> foldAST fs decls <*> foldAST fs body
-       E1Parens e ->
-         parenE fs' =<< foldAST fs e
+       E1Parens ann e ->
+         parenE fs' ann =<< foldAST fs e
