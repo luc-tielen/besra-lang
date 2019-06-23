@@ -18,7 +18,7 @@ data ExprDecl = ExprTypeAnnDecl TypeAnn
               | ExprFixityDecl Fixity Int Id
               deriving (Eq, Show)
 
-data Expr1 = E1Lit Lit
+data Expr1 = E1Lit Ann Lit
            | E1Var Id
            | E1Con Id
            | E1Lam [Pattern] Expr1

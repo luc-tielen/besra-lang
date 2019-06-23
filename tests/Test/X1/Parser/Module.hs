@@ -6,6 +6,7 @@ module Test.X1.Parser.Module ( module Test.X1.Parser.Module ) where
 import Protolude hiding ( Type, Fixity, pred )
 import Test.Tasty.Hspec
 import Test.X1.Parser.Helpers
+import Test.X1.Helpers
 import X1.Types.Id
 import X1.Types.Fixity
 import X1.Types.Expr1.Module
@@ -39,19 +40,19 @@ app :: Type -> [Type] -> Type
 app = TApp
 
 (==>) :: Text -> Module -> IO ()
-a ==> b = parse a `shouldParse` b
+a ==> b = (stripAnns <$> parse a) `shouldParse` b
 
 (-->) :: Type -> Type -> Type
 t1 --> t2 = app (con "->") [t1, t2]
 
 num :: Int -> Expr1
-num = E1Lit . LNumber . SInt
+num = E1Lit emptyAnn . LNumber . SInt
 
 str :: Text -> Expr1
-str = E1Lit . LString . String
+str = E1Lit emptyAnn . LString . String
 
 char :: Char -> Expr1
-char = E1Lit . LChar
+char = E1Lit emptyAnn . LChar
 
 lam :: [Text] -> Expr1 -> Expr1
 lam vars = E1Lam (PVar . Id <$> vars)

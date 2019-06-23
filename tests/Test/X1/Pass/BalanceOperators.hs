@@ -63,7 +63,7 @@ binding :: Text -> Expr1 -> Binding
 binding x = Binding (Id x)
 
 num :: Int -> Expr1
-num = E1Lit . LNumber . SInt
+num = E1Lit emptyAnn . LNumber . SInt
 
 app :: Expr1 -> [Expr1] -> Expr1
 app = E1App

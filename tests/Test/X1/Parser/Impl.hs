@@ -4,6 +4,7 @@ module Test.X1.Parser.Impl ( module Test.X1.Parser.Impl ) where
 import Protolude hiding ( Type, pred )
 import Test.Tasty.Hspec
 import Test.X1.Parser.Helpers
+import Test.X1.Helpers
 import X1.Types.Id
 import X1.Types.Expr1.Lit
 import X1.Types.Expr1.Number
@@ -21,10 +22,10 @@ parse :: Text -> ParseResult Impl
 parse = mkParser parser
 
 num :: Int -> Expr1
-num = E1Lit . LNumber . SInt
+num = E1Lit emptyAnn . LNumber . SInt
 
 str :: Text -> Expr1
-str = E1Lit . LString . String
+str = E1Lit emptyAnn . LString . String
 
 con :: Text -> Type
 con = TCon . Tycon . Id
@@ -36,7 +37,7 @@ app :: Type -> [Type] -> Type
 app = TApp
 
 (==>) :: Text -> Impl -> IO ()
-a ==> b = parse a `shouldParse` b
+a ==> b = (stripAnns <$> parse a) `shouldParse` b
 
 (-->) :: Type -> Type -> Type
 t1 --> t2 = app (con "->") [t1, t2]

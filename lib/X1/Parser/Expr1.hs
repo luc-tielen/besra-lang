@@ -48,7 +48,7 @@ term = term' <?> "expression" where
                  <|> caseParser
 
 litParser :: Parser Expr1
-litParser = E1Lit <$> Lit.parser
+litParser = uncurry E1Lit <$> withSpan Lit.parser
 
 applyFuncParser :: Parser Expr1
 applyFuncParser = sameLine $ do

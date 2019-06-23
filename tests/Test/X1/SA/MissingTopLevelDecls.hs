@@ -6,6 +6,8 @@ import X1.SA.MissingTopLevelDecls
 import X1.SA.Helpers
 import X1.SA.Types
 import X1.Types.Id
+import X1.Types.Ann
+import X1.Types.Span
 import X1.Types.Expr1.Module
 import X1.Types.Expr1.Expr
 import X1.Types.Expr1.Lit
@@ -35,14 +37,18 @@ missingBinding var ty =
       err = MissingTopLevelBindingDeclErr . MissingTopLevelBindingDecl file . toTypeAnnDecl
    in err ty
 
-num :: Int -> Expr1
-num = E1Lit . LNumber . SInt
+num :: Ann -> Int -> Expr1
+num ann = E1Lit ann . LNumber . SInt
 
-str :: Text -> Expr1
-str = E1Lit . LString . String
+str :: Ann -> Text -> Expr1
+str ann = E1Lit ann . LString . String
 
 c :: Text -> Type
 c = TCon . Tycon . Id
+
+span :: Int -> Int -> Ann
+span begin end = Ann TagP (Span begin end)
+
 
 (==>) :: Text -> ValidationResult [SAError] -> IO ()
 txt ==> b =
@@ -62,8 +68,9 @@ spec_missingTopLevelDecls = describe "SA: MissingTopLevelDecls" $ parallel $ do
     "x : Int\nx = 5\ny : String\ny = \"abc\"" ==> Ok
 
   it "reports an error for each missing type signature" $ do
-    "x = 5" ==> Err [missingType "x" (num 5)]
-    "x = 5\ny = \"abc\"" ==> Err [missingType "x" (num 5), missingType "y" (str "abc")]
+    "x = 5" ==> Err [missingType "x" (num (span 4 5) 5)]
+    "x = 5\ny = \"abc\"" ==> Err [ missingType "x" (num (span 4 5) 5)
+                                 , missingType "y" (str (span 10 15) "abc")]
 
   it "reports an error for each missing binding" $ do
     "x : Int" ==> Err [missingBinding "x" (c "Int")]
