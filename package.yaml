@@ -21,6 +21,7 @@ dependencies:
   - megaparsec >= 7.0.4 && < 8
   - parser-combinators >= 1.0.1 && < 2
   - parallel >= 3.2.2.0 && < 4
+  - data-default >= 0.7.1.1 && < 1
 
 default-extensions:
   - NoImplicitPrelude
