@@ -128,8 +128,8 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
 
     it "can parse multiple assignments" $
       "x = 5\ny = \"abc123\"\nz = 'a'" ==> Module [ binding "x" $ num 5
-                                               , binding "y" $ str "abc123"
-                                               , binding "z" $ char 'a']
+                                                  , binding "y" $ str "abc123"
+                                                  , binding "z" $ char 'a']
 
     it "can parse top level named functions" $ do
       "f x = 5" ==> Module [binding "f" $ lam ["x"] (num 5)]

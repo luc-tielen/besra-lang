@@ -352,3 +352,4 @@ instance Fold Expr1 where
          join $ letE fs' <$> foldAST fs decls <*> foldAST fs body
        E1Parens ann e ->
          parenE fs' ann =<< foldAST fs e
+
