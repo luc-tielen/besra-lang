@@ -3,6 +3,7 @@ module X1.Transforms.Expr1 ( Compos(..)
                            , Proof(..)
                            , compos
                            , Fold(..)
+                           , FoldResult
                            , HandlersE(..)
                            , HandlersED(..)
                            , HandlersB(..)
@@ -269,32 +270,32 @@ instance Applicative m
 --   specially, add a type variable so that the intermediary results
 --   can be forwarded to other handlers.
 class Fold a where
-  type Result a rM rD rI rB rED rE :: Type
-
   foldAST :: Monad m
           => Handlers m rM rD rI rB rED rE
           -> a
-          -> m (Result a rM rD rI rB rED rE)
+          -> m (FoldResult a rM rD rI rB rED rE)
+
+type family FoldResult a rM rD rI rB rED rE where
+  FoldResult [a] rM rD rI rB rED rE = [FoldResult a rM rD rI rB rED rE]
+  FoldResult (a, b) rM rD rI rB rED rE = (a, FoldResult b rM rD rI rB rED rE)
+  FoldResult Module   rM _ _ _ _ _ = rM
+  FoldResult Decl     _ rD _ _ _ _ = rD
+  FoldResult Impl     _ _ rI _ _ _ = rI
+  FoldResult Binding  _ _ _ rB _ _ = rB
+  FoldResult ExprDecl _ _ _ _ rED _ = rED
+  FoldResult Expr1    _ _ _ _ _ rE = rE
 
 instance Fold a => Fold [a] where
-  type Result [a] rM rD rI rB rED rE = [Result a rM rD rI rB rED rE]
-
   foldAST fs = traverse (foldAST fs)
 
 instance Fold b => Fold (a, b) where
-  type Result (a, b) rM rD rI rB rED rE = (a, Result b rM rD rI rB rED rE)
-
   foldAST fs = traverse (foldAST fs)
 
 instance Fold Module where
-  type Result Module rM _ _ _ _ _ = rM
-
   foldAST fs (Module decls) =
     moduleM (handlersM fs) =<< foldAST fs decls
 
 instance Fold Decl where
-  type Result Decl _ rDecl _ _ _ _ = rDecl
-
   foldAST fs d =
     let fs' = handlersD fs
      in case d of
@@ -306,22 +307,16 @@ instance Fold Decl where
         FixityDecl fixity prec var -> fixityD fs' fixity prec var
 
 instance Fold Impl where
-  type Result Impl _ _ rImpl _ _ _ = rImpl
-
   foldAST fs (Impl ps p bindings) =
     let fs' = handlersI fs
      in implI fs' ps p =<< foldAST fs bindings
 
 instance Fold Binding where
-  type Result Binding _ _ _ rBinding _ _ = rBinding
-
   foldAST fs (Binding var expr) =
     let fs' = handlersB fs
      in bindingB fs' var =<< foldAST fs expr
 
 instance Fold ExprDecl where
-  type Result ExprDecl _ _ _ _ rExprDecl _ = rExprDecl
-
   foldAST fs ed =
     let fs' = handlersED fs
      in case ed of
@@ -330,8 +325,6 @@ instance Fold ExprDecl where
        ExprFixityDecl fixity prec var -> fixityED fs' fixity prec var
 
 instance Fold Expr1 where
-  type Result Expr1 _ _ _ _ _ rExpr = rExpr
-
   foldAST fs expr =
     let fs' = handlersE fs
      in case expr of

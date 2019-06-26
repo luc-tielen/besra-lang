@@ -16,7 +16,7 @@ type Transform =
 emptyAnn :: Ann
 emptyAnn = Ann TagT ()
 
-stripAnns :: Fold a => a -> Result a Module Decl Impl Binding ExprDecl Expr1
+stripAnns :: Fold a => a -> FoldResult a Module Decl Impl Binding ExprDecl Expr1
 stripAnns ast =
   let fs :: Transform
       fs = def { handlersE = def { litE = stripLitAnn
