@@ -246,7 +246,7 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
   describe "function application" $ parallel $ do
     let app = E1App
         num = E1Lit emptyAnn . LNumber . SInt
-        con = E1Con . Id
+        con = E1Con emptyAnn . Id
 
     it "can parse application with 1 argument" $ do
       "f 1" ==> app (var "f") [num 1]
@@ -318,7 +318,7 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
     let num = E1Lit emptyAnn . LNumber . SInt
         fixity ty prio op' = ExprFixityDecl ty prio (Id op')
         app = E1App
-        con = E1Con . Id
+        con = E1Con emptyAnn . Id
 
     it "can parse a type declaration for an operator in a let" $ do
       "let (+) : Int\nin\n 1" ==> let' [sig "+" (c "Int")] (num 1)
@@ -407,7 +407,7 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
     "a'b" ==> var "a'b"
 
   it "can parse constructors" $ do
-    let con = E1Con . Id
+    let con = E1Con emptyAnn . Id
         app = E1App
     "True" ==> con "True"
     "X y" ==> app (con "X") [var "y"]
@@ -419,6 +419,7 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
         char' ann = E1Lit ann . LChar
         num' ann = E1Lit ann . LNumber
         var' ann = E1Var ann . Id
+        con' ann = E1Con ann . Id
 
     it "adds location information to the expression" $ do
       "(1  )" --> E1Parens (span 0 5) $ num' (span 1 2) (SInt 1)
@@ -436,6 +437,10 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
     it "adds location information to vars" $ do
       "a " --> var' (span 0 1) "a"
       "abc123 " --> var' (span 0 6) "abc123"
+
+    it "adds location information to constructors" $ do
+      "A " --> con' (span 0 1) "A"
+      "Abc123 " --> con' (span 0 6) "Abc123"
 
     it "adds location information to infix operators" $ do
       "1 + 2 " --> op (var' (span 2 3) "+") (num' (span 0 1) (SInt 1))

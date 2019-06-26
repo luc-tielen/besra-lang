@@ -280,7 +280,9 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
 
     it "can parse ADT followed by binding declaration" $
       "data X\na = X"
-        ==> Module [adt (hd "X" []) [], BindingDecl $ Binding (Id "a") $ E1Con (Id "X")]
+        ==> Module [ adt (hd "X" []) []
+                   , BindingDecl $ Binding (Id "a") $ E1Con emptyAnn (Id "X")
+                   ]
 
     it "fails with readable error message" $ do
       (parse, "dat") `shouldFailWith` err 3

@@ -21,11 +21,13 @@ stripAnns ast =
   let fs :: Transform
       fs = def { handlersE = def { litE = stripLitAnn
                                  , varE = stripVarAnn
+                                 , conE = stripConAnn
                                  , parenE = stripParenAnn
                                  }
                }
       stripParenAnn _ e = pure $ E1Parens emptyAnn e
       stripLitAnn _ lit = pure $ E1Lit emptyAnn lit
       stripVarAnn _ var = pure $ E1Var emptyAnn var
+      stripConAnn _ con = pure $ E1Con emptyAnn con
    in runIdentity $ foldAST fs ast
 

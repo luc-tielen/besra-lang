@@ -31,7 +31,7 @@ exprOperators =
     operatorParser = infixOp <|> infixFunction'
     negateOpParser = hidden $ char '-'
     infixOp = uncurry E1Var <$> withSpan (Id <$> opIdentifier)
-    infixFunction' = infixFunction E1Var (E1Con . Id)
+    infixFunction' = infixFunction E1Var E1Con
 
 term :: Parser Expr1
 term = term' <?> "expression" where
@@ -58,7 +58,7 @@ applyFuncParser = sameLine $ do
   pure $ E1App funcName args
   where
     variable = uncurry E1Var <$> withSpan (Id <$> identifier)
-    constructor = E1Con . Id <$> capitalIdentifier
+    constructor = uncurry E1Con <$> withSpan (Id <$> capitalIdentifier)
     prefixOp = uncurry E1Var <$> withSpan prefixOperator
     funcNameParser =  variable
                   <|> constructor
@@ -75,7 +75,9 @@ varParser = uncurry E1Var <$> varParser' where
   opVar = betweenParens opIdentifier
 
 conParser :: Parser Expr1
-conParser = E1Con . Id <$> lexeme capitalIdentifier
+conParser =
+  uncurry E1Con <$> lexeme (withSpan $ Id <$> capitalIdentifier)
+
 
 lamParser :: Parser Expr1
 lamParser = do
@@ -149,7 +151,7 @@ fixityDecl =  do
       parsed <- digit <?> precedenceMsg
       notFollowedBy digit <?> precedenceMsg
       pure parsed
-    infixFunction' = infixFunction (flip const) Id
+    infixFunction' = infixFunction (flip const) (flip const)
 
 namedFunctionDecl :: Parser ExprDecl
 namedFunctionDecl = do
@@ -184,14 +186,18 @@ prefixOperator = Id <$> sameLine (betweenParens opIdentifier) <?> "operator"
 assign :: Parser Char
 assign = char '=' <?> "rest of assignment"
 
-infixFunction :: (Ann -> Id -> a) -> (Text -> a) -> Parser a
-infixFunction var con =
-  -- TODO refactor after con is converted to have annotations
-  try (uncurry var <$> withSpan (betweenBackticks infixFunc))
-  <|> betweenBackticks (con <$> infixCon)
+data InfixParseResult = InfixFunc | InfixCon
+
+infixFunction :: (Ann -> Id -> a) -> (Ann -> Id -> a) -> Parser a
+infixFunction var con = do
+  (ann, (which, parsed)) <- withSpan $ betweenBackticks infixFuncOrCon
+  case which of
+    InfixFunc -> pure $ var ann parsed
+    InfixCon -> pure $ con ann parsed
   where
+    infixFuncOrCon =  (InfixFunc,) <$> infixFunc <|> (InfixCon,) <$> infixCon
     infixFunc = Id <$> identifier <?> "infix function"
-    infixCon = capitalIdentifier <?> "infix constructor"
+    infixCon = Id <$> capitalIdentifier <?> "infix constructor"
     betweenBackticks = between (backtick <?> "operator") backtick
     backtick = char '`'
 

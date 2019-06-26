@@ -20,7 +20,7 @@ data ExprDecl = ExprTypeAnnDecl TypeAnn
 
 data Expr1 = E1Lit Ann Lit
            | E1Var Ann Id
-           | E1Con Id
+           | E1Con Ann Id
            | E1Lam [Pattern] Expr1
            | E1App Expr1 [Expr1]
            | E1BinOp Expr1 Expr1 Expr1        -- operator, left side, right side

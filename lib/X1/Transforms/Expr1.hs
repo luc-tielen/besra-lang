@@ -194,7 +194,7 @@ data HandlersE m rExprDecl rExpr =
   HandlersE
     { litE :: Ann -> Lit -> m rExpr                    -- Handler for literals
     , varE :: Ann -> Id -> m rExpr                     -- Handler for vars
-    , conE :: Id -> m rExpr                            -- Handler for constructors
+    , conE :: Ann -> Id -> m rExpr                     -- Handler for constructors
     , lamE :: [Pattern] -> rExpr -> m rExpr            -- Handler for lambda expression
     , appE :: rExpr -> [rExpr] -> m rExpr              -- Handler for function application
     , binOpE :: rExpr -> rExpr -> rExpr -> m rExpr     -- Handler for bin op expression
@@ -238,7 +238,7 @@ instance Applicative m
   => Default (HandlersE m ExprDecl Expr1) where
   def = HandlersE (\ann lit -> pure $ E1Lit ann lit)
                   (\ann var -> pure $ E1Var ann var)
-                  (pure . E1Con)
+                  (\ann con -> pure $ E1Con ann con)
                   (\pats body -> pure $ E1Lam pats body)
                   (\func args -> pure $ E1App func args)
                   (\op l r -> pure $ E1BinOp op l r)
@@ -337,7 +337,7 @@ instance Fold Expr1 where
      in case expr of
        E1Lit ann lit -> litE fs' ann lit
        E1Var ann var -> varE fs' ann var
-       E1Con con -> conE fs' con
+       E1Con ann con -> conE fs' ann con
        E1Lam pats body -> lamE fs' pats =<< foldAST fs body
        E1App func args ->
          join $ appE fs' <$> foldAST fs func <*> foldAST fs args

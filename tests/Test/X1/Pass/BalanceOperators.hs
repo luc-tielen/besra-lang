@@ -75,7 +75,7 @@ var :: Text -> Expr1
 var = E1Var emptyAnn . Id
 
 con :: Text -> Expr1
-con = E1Con . Id
+con = E1Con emptyAnn . Id
 
 parens :: Expr1 -> Expr1
 parens = E1Parens emptyAnn
