@@ -46,7 +46,7 @@ lam :: [Text] -> Expr1 -> Expr1
 lam vars = E1Lam (PVar . Id <$> vars)
 
 evar :: Text -> Expr1
-evar = E1Var . Id
+evar = E1Var emptyAnn . Id
 
 eapp :: Text -> [Text] -> Expr1
 eapp x = E1App (evar x) . map evar

@@ -19,7 +19,7 @@ data ExprDecl = ExprTypeAnnDecl TypeAnn
               deriving (Eq, Show)
 
 data Expr1 = E1Lit Ann Lit
-           | E1Var Id
+           | E1Var Ann Id
            | E1Con Id
            | E1Lam [Pattern] Expr1
            | E1App Expr1 [Expr1]

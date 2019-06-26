@@ -193,7 +193,7 @@ data HandlersED m rBinding rExprDecl rExpr =
 data HandlersE m rExprDecl rExpr =
   HandlersE
     { litE :: Ann -> Lit -> m rExpr                    -- Handler for literals
-    , varE :: Id -> m rExpr                            -- Handler for vars
+    , varE :: Ann -> Id -> m rExpr                     -- Handler for vars
     , conE :: Id -> m rExpr                            -- Handler for constructors
     , lamE :: [Pattern] -> rExpr -> m rExpr            -- Handler for lambda expression
     , appE :: rExpr -> [rExpr] -> m rExpr              -- Handler for function application
@@ -237,7 +237,7 @@ instance Applicative m => Default (HandlersB m Binding Expr1) where
 instance Applicative m
   => Default (HandlersE m ExprDecl Expr1) where
   def = HandlersE (\ann lit -> pure $ E1Lit ann lit)
-                  (pure . E1Var)
+                  (\ann var -> pure $ E1Var ann var)
                   (pure . E1Con)
                   (\pats body -> pure $ E1Lam pats body)
                   (\func args -> pure $ E1App func args)
@@ -336,7 +336,7 @@ instance Fold Expr1 where
     let fs' = handlersE fs
      in case expr of
        E1Lit ann lit -> litE fs' ann lit
-       E1Var var -> varE fs' var
+       E1Var ann var -> varE fs' ann var
        E1Con con -> conE fs' con
        E1Lam pats body -> lamE fs' pats =<< foldAST fs body
        E1App func args ->

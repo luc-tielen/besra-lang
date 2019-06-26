@@ -106,7 +106,7 @@ lookupFixity fsSpecs op =
    in maybe defaultFixity identity result
 
 toTokens :: Monad m => Expr1 -> RebalanceM m [Token]
-toTokens (E1BinOp (E1Var op) e1 e2) = opToTokens E1Var op e1 e2
+toTokens (E1BinOp (E1Var ann op) e1 e2) = opToTokens (E1Var ann) op e1 e2
 toTokens (E1BinOp (E1Con op) e1 e2) = opToTokens E1Con op e1 e2
 toTokens (E1Neg e) = pure [TNeg, TExpr e]
 toTokens e = pure [TExpr e]

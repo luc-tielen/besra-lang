@@ -5,6 +5,7 @@ import Protolude hiding ( try, functionName, Fixity, Prefix )
 import Data.Char ( digitToInt )
 import GHC.Unicode (isDigit)
 import X1.Types.Id
+import X1.Types.Ann
 import X1.Types.Fixity
 import X1.Types.Expr1.Expr
 import X1.Types.Expr1.TypeAnn
@@ -13,7 +14,6 @@ import Control.Monad.Combinators.Expr
 import qualified X1.Parser.Lit as Lit
 import qualified X1.Parser.Scheme as Scheme
 import qualified X1.Parser.Pattern as Pattern
-
 
 
 parser :: Parser Expr1
@@ -30,8 +30,8 @@ exprOperators =
   where
     operatorParser = infixOp <|> infixFunction'
     negateOpParser = hidden $ char '-'
-    infixOp = E1Var . Id <$> opIdentifier
-    infixFunction' = infixFunction (E1Var . Id) (E1Con . Id)
+    infixOp = uncurry E1Var <$> withSpan (Id <$> opIdentifier)
+    infixFunction' = infixFunction E1Var (E1Con . Id)
 
 term :: Parser Expr1
 term = term' <?> "expression" where
@@ -57,9 +57,9 @@ applyFuncParser = sameLine $ do
   args <- some $ lexeme arg
   pure $ E1App funcName args
   where
-    variable = E1Var . Id <$> identifier
+    variable = uncurry E1Var <$> withSpan (Id <$> identifier)
     constructor = E1Con . Id <$> capitalIdentifier
-    prefixOp = E1Var <$> prefixOperator
+    prefixOp = uncurry E1Var <$> withSpan prefixOperator
     funcNameParser =  variable
                   <|> constructor
                   <|> try prefixOp
@@ -70,8 +70,8 @@ applyFuncParser = sameLine $ do
        <|> parens parser
 
 varParser :: Parser Expr1
-varParser = E1Var . Id <$> varParser' where
-  varParser' = lexeme (try opVar <|> identifier)
+varParser = uncurry E1Var <$> varParser' where
+  varParser' = lexeme $ withSpan $ Id <$> (try opVar <|> identifier)
   opVar = betweenParens opIdentifier
 
 conParser :: Parser Expr1
@@ -137,7 +137,7 @@ fixityDecl :: Parser ExprDecl
 fixityDecl =  do
   fixityType <- lexeme' fixityTypeParser
   precedence <- withDefault 9 $ digitToInt <$> lexeme' decimal
-  operator <- Id <$> lexeme (opIdentifier <|> infixFunction')
+  operator <- lexeme (Id <$> opIdentifier <|> infixFunction')
   pure $ ExprFixityDecl fixityType precedence operator
   where
     fixityTypeParser =  keyword "infixl" $> L
@@ -149,7 +149,7 @@ fixityDecl =  do
       parsed <- digit <?> precedenceMsg
       notFollowedBy digit <?> precedenceMsg
       pure parsed
-    infixFunction' = infixFunction identity identity
+    infixFunction' = infixFunction (flip const) Id
 
 namedFunctionDecl :: Parser ExprDecl
 namedFunctionDecl = do
@@ -184,12 +184,13 @@ prefixOperator = Id <$> sameLine (betweenParens opIdentifier) <?> "operator"
 assign :: Parser Char
 assign = char '=' <?> "rest of assignment"
 
-infixFunction :: (Text -> a) -> (Text -> a) -> Parser a
+infixFunction :: (Ann -> Id -> a) -> (Text -> a) -> Parser a
 infixFunction var con =
-  betweenBackticks $  var <$> infixFunc
-                  <|> con <$> infixCon
+  -- TODO refactor after con is converted to have annotations
+  try (uncurry var <$> withSpan (betweenBackticks infixFunc))
+  <|> betweenBackticks (con <$> infixCon)
   where
-    infixFunc = identifier <?> "infix function"
+    infixFunc = Id <$> identifier <?> "infix function"
     infixCon = capitalIdentifier <?> "infix constructor"
     betweenBackticks = between (backtick <?> "operator") backtick
     backtick = char '`'

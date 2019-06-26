@@ -42,6 +42,9 @@ op = E1BinOp
 parens :: Expr1 -> Expr1
 parens = E1Parens emptyAnn
 
+var :: Text -> Expr1
+var = E1Var emptyAnn . Id
+
 binding :: Text -> Expr1 -> ExprDecl
 binding x = ExprBindingDecl . Binding (Id x)
 
@@ -58,12 +61,9 @@ parse = mkParser parser
 spec_exprParseTest :: Spec
 spec_exprParseTest = describe "expression parser" $ parallel $ do
   describe "literals" $ parallel $ do
-    let num = num' emptyAnn
-        str = str' emptyAnn
-        char = char' emptyAnn
-        str' ann = E1Lit ann . LString . String
-        char' ann = E1Lit ann . LChar
-        num' ann = E1Lit ann . LNumber
+    let str = E1Lit emptyAnn . LString . String
+        char = E1Lit emptyAnn . LChar
+        num = E1Lit emptyAnn . LNumber
 
     it "can parse literals" $ do
       "\"\"" ==> str ""
@@ -80,13 +80,6 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       "'0'" ==> char '0'
       "'a'" ==> char 'a'
 
-    it "adds location information to the expression" $ do
-      "123 " --> num' (span 0 3) (SInt 123)
-      "0b1011 " --> num' (span 0 6) (SBin "0b1011")
-      "0xC0FF33 " --> num' (span 0 8) (SHex "0xC0FF33")
-      "'a' " --> char' (span 0 3) 'a'
-      "\"ab123\" " --> str' (span 0 7) "ab123"
-
     it "fails with readable error message for strings" $
       (parse, "\"abc") `shouldFailWith` err 4 (ueof <> etok '"')
 
@@ -102,7 +95,6 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       (parse, "0b") `shouldFailWith` err 2 (ueof <> elabel "binary digit")
 
   it "can parse variables" $ do
-    let var = E1Var . Id
     "abc123" ==> var "abc123"
     "a'" ==> var "a'"
 
@@ -127,7 +119,7 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       "if 1 then 2 else if 3 then 4 else 5" ==> if' (num 1) (num 2) (if' (num 3) (num 4) (num 5))
 
     it "can parse nested expression inside if" $ do
-      let op' x = E1BinOp (E1Var $ Id x)
+      let op' x = E1BinOp (var x)
           complex = op' "*" (op' "+" (num 1) (num 2)) (num 3)
       "if 1 + 2 * 3 then 1 else 1" ==> if' complex (num 1) (num 1)
       "if 1 then 1 + 2 * 3 else 1" ==> if' (num 1) complex (num 1)
@@ -154,8 +146,7 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       (parse, "if 1 then if 2\nthen 3 else 4 else 5") `shouldFailWith` errFancy 15 (badIndent 11 1)
 
   describe "let expressions" $ parallel $ do
-    let var = E1Var . Id
-        num = E1Lit emptyAnn . LNumber . SInt
+    let num = E1Lit emptyAnn . LNumber . SInt
         lam vars = E1Lam (PVar . Id <$> vars)
 
     it "can parse multi-line let expressions" $ do
@@ -218,7 +209,6 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
         num' = LNumber . SInt
         num = E1Lit emptyAnn . num'
         str' =  LString . String
-        var = E1Var . Id
 
     it "can parse lambda with 1 argument" $ do
       "\\x -> 1" ==> lam ["x"] (num 1)
@@ -256,7 +246,6 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
   describe "function application" $ parallel $ do
     let app = E1App
         num = E1Lit emptyAnn . LNumber . SInt
-        var = E1Var . Id
         con = E1Con . Id
 
     it "can parse application with 1 argument" $ do
@@ -289,17 +278,10 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       "(1)" ==> parens $ num 1
       "((123))" ==> parens . parens $ num 123
 
-    it "adds location information to the expression" $ do
-      "(1  )" --> E1Parens (span 0 5) $ num' (span 1 2) 1
-      "(  1  )" --> E1Parens (span 0 7) $ num' (span 3 4) 1
-      "(  (1)  )" --> E1Parens (span 0 9) $ E1Parens (span 3 6) $ num' (span 4 5) 1
-      "(  (1)  ) " --> E1Parens (span 0 9) $ E1Parens (span 3 6) $ num' (span 4 5) 1
-
   describe "case expressions" $ parallel $ do
     let case' = E1Case
         pvar = PVar . Id
         pcon x = PCon (Id x)
-        var = E1Var . Id
         num' = LNumber . SInt
         num = E1Lit emptyAnn . num'
         str = E1Lit emptyAnn . LString . String
@@ -336,7 +318,6 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
     let num = E1Lit emptyAnn . LNumber . SInt
         fixity ty prio op' = ExprFixityDecl ty prio (Id op')
         app = E1App
-        var = E1Var . Id
         con = E1Con . Id
 
     it "can parse a type declaration for an operator in a let" $ do
@@ -379,7 +360,7 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       "-0b0" ==> neg (E1Lit emptyAnn $ LNumber $ SBin "0b0")
 
     it "can parse expressions with mix of parentheses and operators" $ do
-      let op' x = E1BinOp (E1Var $ Id x)
+      let op' x = E1BinOp (var x)
           complex x y z = op' "*" (op' "+" (num x) (num y)) (num z)
       "1 + (2 + 3)" ==> op' "+" (num 1) (parens $ op' "+" (num 2) (num 3))
       "(1 + 2 * 3) <> (4 + 5 * 6)"
@@ -420,7 +401,6 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       (parse, "1 + + 2") `shouldFailWith` err 4 (utoks "+ 2" <> elabel "expression")
 
   it "can parse variables" $ do
-    let var = E1Var . Id
     "a" ==> var "a"
     "abc123" ==> var "abc123"
     "a'" ==> var "a'"
@@ -428,10 +408,53 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
 
   it "can parse constructors" $ do
     let con = E1Con . Id
-        var = E1Var . Id
         app = E1App
     "True" ==> con "True"
     "X y" ==> app (con "X") [var "y"]
     "Abc123 y" ==> app (con "Abc123") [var "y"]
     "Abc123 y z" ==> app (con "Abc123") [var "y", var "z"]
+
+  describe "location information" $ parallel $ do
+    let str' ann = E1Lit ann . LString . String
+        char' ann = E1Lit ann . LChar
+        num' ann = E1Lit ann . LNumber
+        var' ann = E1Var ann . Id
+
+    it "adds location information to the expression" $ do
+      "(1  )" --> E1Parens (span 0 5) $ num' (span 1 2) (SInt 1)
+      "(  1  )" --> E1Parens (span 0 7) $ num' (span 3 4) (SInt 1)
+      "(  (1)  )" --> E1Parens (span 0 9) $ E1Parens (span 3 6) $ num' (span 4 5) (SInt 1)
+      "(  (1)  ) " --> E1Parens (span 0 9) $ E1Parens (span 3 6) $ num' (span 4 5) (SInt 1)
+
+    it "adds location information to the expression" $ do
+      "123 " --> num' (span 0 3) (SInt 123)
+      "0b1011 " --> num' (span 0 6) (SBin "0b1011")
+      "0xC0FF33 " --> num' (span 0 8) (SHex "0xC0FF33")
+      "'a' " --> char' (span 0 3) 'a'
+      "\"ab123\" " --> str' (span 0 7) "ab123"
+
+    it "adds location information to vars" $ do
+      "a " --> var' (span 0 1) "a"
+      "abc123 " --> var' (span 0 6) "abc123"
+
+    it "adds location information to infix operators" $ do
+      "1 + 2 " --> op (var' (span 2 3) "+") (num' (span 0 1) (SInt 1))
+                                            (num' (span 4 5) (SInt 2))
+      "1 ++ 2 " --> op (var' (span 2 4) "++") (num' (span 0 1) (SInt 1))
+                                              (num' (span 5 6) (SInt 2))
+
+    it "adds location information to infix functions" $ do
+      "1 `f` 2 " --> op (var' (span 2 5) "f") (num' (span 0 1) (SInt 1))
+                                              (num' (span 6 7) (SInt 2))
+      "1 `myFunction` 2 " --> op (var' (span 2 14) "myFunction")
+                                  (num' (span 0 1) (SInt 1))
+                                  (num' (span 15 16) (SInt 2))
+
+    it "adds location information to vars in function application" $ do
+      "f 1" --> E1App (var' (span 0 1) "f") [num' (span 2 3) $ SInt 1]
+      "myFunction 1" --> E1App (var' (span 0 10) "myFunction") [num' (span 11 12) $ SInt 1]
+
+    it "adds location information to prefix operators" $ do
+      "(+) 1" --> E1App (var' (span 0 3) "+") [num' (span 4 5) $ SInt 1]
+      "(++) 1" --> E1App (var' (span 0 4) "++") [num' (span 5 6) $ SInt 1]
 

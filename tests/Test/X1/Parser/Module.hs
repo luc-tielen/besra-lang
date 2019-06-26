@@ -160,7 +160,7 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
     (parse, "1") `shouldFailWith` err 0 (utok '1' <> elabel "declaration" <> eeof)
 
   describe "operators" $ parallel $ do
-    let v = E1Var . Id
+    let v = E1Var emptyAnn . Id
         plusBinding = v "primitivePlus"
         complexBinding = lam ["a", "b"] $ E1App plusBinding [v "a", v "b"]
 

@@ -52,6 +52,7 @@ ghc-options:
   - -Wno-monomorphism-restriction
   - -optP-Wno-nonportable-include-path
   - -fhide-source-paths
+  - -fmax-valid-hole-fits=0
   - -O0
 
 library:

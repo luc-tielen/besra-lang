@@ -72,7 +72,7 @@ lam :: [Text] -> Expr1 -> Expr1
 lam vars = E1Lam (PVar . Id <$> vars)
 
 var :: Text -> Expr1
-var = E1Var . Id
+var = E1Var emptyAnn . Id
 
 con :: Text -> Expr1
 con = E1Con . Id
