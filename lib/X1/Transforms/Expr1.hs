@@ -123,7 +123,7 @@ instance Compos Expr1 where
       E1Con {} -> pure e
       E1Lam vars body -> E1Lam vars <$> f ProofE body
       E1App func args -> E1App <$> f ProofE func <*> traverse (f ProofE) args
-      E1BinOp op l r -> E1BinOp <$> f ProofE op <*> f ProofE l <*> f ProofE r
+      E1BinOp ann op l r -> E1BinOp ann <$> f ProofE op <*> f ProofE l <*> f ProofE r
       E1Neg expr -> E1Neg <$> f ProofE expr
       E1If cond tr fl -> E1If <$> f ProofE cond <*> f ProofE tr <*> f ProofE fl
       E1Case cond clauses ->
@@ -138,10 +138,10 @@ instance Compos Expr1 where
       E1Lam vars body -> E1Lam vars <$> composM prf f body
       E1App func args ->
         E1App <$> composM prf f func <*> composM prf f args
-      E1BinOp op l r ->
-        E1BinOp <$> composM prf f op
-                <*> composM prf f l
-                <*> composM prf f r
+      E1BinOp ann op l r ->
+        E1BinOp ann <$> composM prf f op
+                    <*> composM prf f l
+                    <*> composM prf f r
       E1Neg expr -> E1Neg <$> composM prf f expr
       E1If cond tr fl ->
         E1If <$> composM prf f cond
@@ -193,17 +193,17 @@ data HandlersED m rBinding rExprDecl rExpr =
 
 data HandlersE m rExprDecl rExpr =
   HandlersE
-    { litE :: Ann -> Lit -> m rExpr                    -- Handler for literals
-    , varE :: Ann -> Id -> m rExpr                     -- Handler for vars
-    , conE :: Ann -> Id -> m rExpr                     -- Handler for constructors
-    , lamE :: [Pattern] -> rExpr -> m rExpr            -- Handler for lambda expression
-    , appE :: rExpr -> [rExpr] -> m rExpr              -- Handler for function application
-    , binOpE :: rExpr -> rExpr -> rExpr -> m rExpr     -- Handler for bin op expression
-    , negE :: rExpr -> m rExpr                         -- Handler for negate expression
-    , ifE :: rExpr -> rExpr -> rExpr -> m rExpr        -- Handler for if expression
-    , caseE :: rExpr -> [(Pattern, rExpr)] -> m rExpr  -- Handler for case expression
-    , letE :: [rExprDecl] -> rExpr -> m rExpr          -- Handler for let expression
-    , parenE :: Ann -> rExpr -> m rExpr                -- Handler for parenthesized expression
+    { litE :: Ann -> Lit -> m rExpr                        -- Handler for literals
+    , varE :: Ann -> Id -> m rExpr                         -- Handler for vars
+    , conE :: Ann -> Id -> m rExpr                         -- Handler for constructors
+    , lamE :: [Pattern] -> rExpr -> m rExpr                -- Handler for lambda expression
+    , appE :: rExpr -> [rExpr] -> m rExpr                  -- Handler for function application
+    , binOpE :: Ann -> rExpr -> rExpr -> rExpr -> m rExpr  -- Handler for bin op expression
+    , negE :: rExpr -> m rExpr                             -- Handler for negate expression
+    , ifE :: rExpr -> rExpr -> rExpr -> m rExpr            -- Handler for if expression
+    , caseE :: rExpr -> [(Pattern, rExpr)] -> m rExpr      -- Handler for case expression
+    , letE :: [rExprDecl] -> rExpr -> m rExpr              -- Handler for let expression
+    , parenE :: Ann -> rExpr -> m rExpr                    -- Handler for parenthesized expression
     }
 
 data Handlers m rModule rDecl rImpl rBinding rExprDecl rExpr =
@@ -242,7 +242,7 @@ instance Applicative m
                   (\ann con -> pure $ E1Con ann con)
                   (\pats body -> pure $ E1Lam pats body)
                   (\func args -> pure $ E1App func args)
-                  (\op l r -> pure $ E1BinOp op l r)
+                  (\ann op l r -> pure $ E1BinOp ann op l r)
                   (pure . E1Neg)
                   (\c tr fl -> pure $ E1If c tr fl)
                   (\e clauses -> pure $ E1Case e clauses)
@@ -334,8 +334,8 @@ instance Fold Expr1 where
        E1Lam pats body -> lamE fs' pats =<< foldAST fs body
        E1App func args ->
          join $ appE fs' <$> foldAST fs func <*> foldAST fs args
-       E1BinOp op l r ->
-         join $ binOpE fs' <$> foldAST fs op <*> foldAST fs l <*> foldAST fs r
+       E1BinOp ann op l r ->
+         join $ binOpE fs' ann <$> foldAST fs op <*> foldAST fs l <*> foldAST fs r
        E1Neg e -> negE fs' =<< foldAST fs e
        E1If c tr fl ->
          join $ ifE fs' <$> foldAST fs c <*> foldAST fs tr <*> foldAST fs fl

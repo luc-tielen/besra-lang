@@ -17,6 +17,7 @@ import X1.Types.Expr1.Impl
 import X1.Types.Expr1.Expr
 import X1.Types.Fixity
 import X1.Types.Id
+import X1.Types.Ann
 
 
 data BalanceError = BadPrecedence FixityInfo FixityInfo Decl
@@ -27,7 +28,7 @@ data FixityInfo = FI Fixity Int Id
   deriving (Eq, Show)
 
 data Token = TExpr Expr1
-           | TOp (Id -> Expr1) FixityInfo
+           | TOp (Id -> Expr1 -> Expr1 -> Expr1) FixityInfo
            | TNeg
 
 data Env = Env { envFixities :: [FixityInfo], envDecl :: Decl }
@@ -84,8 +85,8 @@ instance Balance Expr1 where
     where
       startOp = FI M (-1) (Id "startOp")
       -- Bin op is already rebalanced, only do the rest (inner layers of AST).
-      rebalanceInner (E1BinOp op e1 e2) =
-        E1BinOp op <$> rebalanceInner e1 <*> rebalanceInner e2
+      rebalanceInner (E1BinOp ann op e1 e2) =
+        E1BinOp ann op <$> rebalanceInner e1 <*> rebalanceInner e2
       rebalanceInner (E1Parens ann e) = E1Parens ann <$> rebalance e
       rebalanceInner (E1Lam vars body) = E1Lam vars <$> rebalance body
       rebalanceInner (E1App f args) =
@@ -105,13 +106,20 @@ lookupFixity fsSpecs op =
       defaultFixity = FI L 9 op
    in maybe defaultFixity identity result
 
+toBinOp :: Ann -> (Id -> Expr1) -> Id -> (Expr1 -> Expr1 -> Expr1)
+toBinOp opAnn f opName = E1BinOp opAnn (f opName)
+
 toTokens :: Monad m => Expr1 -> RebalanceM m [Token]
-toTokens (E1BinOp (E1Var ann op) e1 e2) = opToTokens (E1Var ann) op e1 e2
-toTokens (E1BinOp (E1Con ann op) e1 e2) = opToTokens (E1Con ann) op e1 e2
+toTokens (E1BinOp opAnn (E1Var ann op) e1 e2) =
+  opToTokens (toBinOp opAnn (E1Var ann)) op e1 e2
+toTokens (E1BinOp opAnn (E1Con ann op) e1 e2) =
+  opToTokens (toBinOp opAnn (E1Con ann)) op e1 e2
 toTokens (E1Neg e) = pure [TNeg, TExpr e]
 toTokens e = pure [TExpr e]
 
-opToTokens :: Monad m => (Id -> Expr1) -> Id -> Expr1 -> Expr1 -> RebalanceM m [Token]
+opToTokens :: Monad m
+           => (Id -> Expr1 -> Expr1 -> Expr1)
+           -> Id -> Expr1 -> Expr1 -> RebalanceM m [Token]
 opToTokens f op e1 e2 = do
   fsSpecs <- asks envFixities
   let fs = lookupFixity fsSpecs op
@@ -144,7 +152,7 @@ rebalanceTokens' op1 e1 (TOp f op2 : rest)
   -- case (3): op1 and op2 should associate to the right
   | otherwise = do
     (r, rest') <- rebalanceTokens op2 rest
-    rebalanceTokens' op1 (E1BinOp (f operator) e1 r) rest'
+    rebalanceTokens' op1 ((f operator) e1 r) rest'
 
   where
     FI fix1 prec1 _ = op1

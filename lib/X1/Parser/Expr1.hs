@@ -25,10 +25,10 @@ expr = makeExprParser term exprOperators <?> "expression"
 exprOperators :: [[Operator Parser Expr1]]
 exprOperators =
   [ [ Prefix (E1Neg <$ lexeme' negateOpParser) ]
-  , [ InfixL (E1BinOp <$> lexeme' operatorParser) ]
+  , [ InfixL (lexeme' $ uncurry E1BinOp <$> operatorParser) ]
   ]
   where
-    operatorParser = infixOp <|> infixFunction'
+    operatorParser = withSpan $ infixOp <|> infixFunction'
     negateOpParser = hidden $ char '-'
     infixOp = uncurry E1Var <$> withSpan (Id <$> opIdentifier)
     infixFunction' = infixFunction E1Var E1Con

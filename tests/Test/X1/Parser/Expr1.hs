@@ -37,7 +37,7 @@ let' :: [ExprDecl] -> Expr1 -> Expr1
 let' = E1Let
 
 op :: Expr1 -> Expr1 -> Expr1 -> Expr1
-op = E1BinOp
+op = E1BinOp emptyAnn
 
 parens :: Expr1 -> Expr1
 parens = E1Parens emptyAnn
@@ -119,7 +119,7 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       "if 1 then 2 else if 3 then 4 else 5" ==> if' (num 1) (num 2) (if' (num 3) (num 4) (num 5))
 
     it "can parse nested expression inside if" $ do
-      let op' x = E1BinOp (var x)
+      let op' x = op (var x)
           complex = op' "*" (op' "+" (num 1) (num 2)) (num 3)
       "if 1 + 2 * 3 then 1 else 1" ==> if' complex (num 1) (num 1)
       "if 1 then 1 + 2 * 3 else 1" ==> if' (num 1) complex (num 1)
@@ -360,7 +360,7 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       "-0b0" ==> neg (E1Lit emptyAnn $ LNumber $ SBin "0b0")
 
     it "can parse expressions with mix of parentheses and operators" $ do
-      let op' x = E1BinOp (var x)
+      let op' x = op (var x)
           complex x y z = op' "*" (op' "+" (num x) (num y)) (num z)
       "1 + (2 + 3)" ==> op' "+" (num 1) (parens $ op' "+" (num 2) (num 3))
       "(1 + 2 * 3) <> (4 + 5 * 6)"
@@ -420,6 +420,7 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
         num' ann = E1Lit ann . LNumber
         var' ann = E1Var ann . Id
         con' ann = E1Con ann . Id
+        op' ann = E1BinOp ann
 
     it "adds location information to the expression" $ do
       "(1  )" --> E1Parens (span 0 5) $ num' (span 1 2) (SInt 1)
@@ -443,17 +444,20 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       "Abc123 " --> con' (span 0 6) "Abc123"
 
     it "adds location information to infix operators" $ do
-      "1 + 2 " --> op (var' (span 2 3) "+") (num' (span 0 1) (SInt 1))
-                                            (num' (span 4 5) (SInt 2))
-      "1 ++ 2 " --> op (var' (span 2 4) "++") (num' (span 0 1) (SInt 1))
-                                              (num' (span 5 6) (SInt 2))
+      "1 + 2 " --> op' (span 2 3) (var' (span 2 3) "+")
+                                  (num' (span 0 1) (SInt 1))
+                                  (num' (span 4 5) (SInt 2))
+      "1 ++ 2 " --> op' (span 2 4) (var' (span 2 4) "++")
+                                   (num' (span 0 1) (SInt 1))
+                                   (num' (span 5 6) (SInt 2))
 
     it "adds location information to infix functions" $ do
-      "1 `f` 2 " --> op (var' (span 2 5) "f") (num' (span 0 1) (SInt 1))
-                                              (num' (span 6 7) (SInt 2))
-      "1 `myFunction` 2 " --> op (var' (span 2 14) "myFunction")
-                                  (num' (span 0 1) (SInt 1))
-                                  (num' (span 15 16) (SInt 2))
+      "1 `f` 2 " --> op' (span 2 5) (var' (span 2 5) "f")
+                                    (num' (span 0 1) (SInt 1))
+                                    (num' (span 6 7) (SInt 2))
+      "1 `myFunction` 2 " --> op' (span 2 14) (var' (span 2 14) "myFunction")
+                                              (num' (span 0 1) (SInt 1))
+                                              (num' (span 15 16) (SInt 2))
 
     it "adds location information to vars in function application" $ do
       "f 1" --> E1App (var' (span 0 1) "f") [num' (span 2 3) $ SInt 1]
@@ -462,4 +466,12 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
     it "adds location information to prefix operators" $ do
       "(+) 1" --> E1App (var' (span 0 3) "+") [num' (span 4 5) $ SInt 1]
       "(++) 1" --> E1App (var' (span 0 4) "++") [num' (span 5 6) $ SInt 1]
+
+    it "adds location information for binary operators" $ do
+      "a + b " --> op' (span 2 3) (var' (span 2 3) "+")
+                                  (var' (span 0 1) "a")
+                                  (var' (span 4 5) "b")
+      "a `myFunction` b " --> op' (span 2 14) (var' (span 2 14) "myFunction")
+                                              (var' (span 0 1) "a")
+                                              (var' (span 15 16) "b")
 

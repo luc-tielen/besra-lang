@@ -22,6 +22,7 @@ stripAnns ast =
       fs = def { handlersE = def { litE = stripLitAnn
                                  , varE = stripVarAnn
                                  , conE = stripConAnn
+                                 , binOpE = stripBinOpAnn
                                  , parenE = stripParenAnn
                                  }
                }
@@ -29,5 +30,6 @@ stripAnns ast =
       stripLitAnn _ lit = pure $ E1Lit emptyAnn lit
       stripVarAnn _ var = pure $ E1Var emptyAnn var
       stripConAnn _ con = pure $ E1Con emptyAnn con
+      stripBinOpAnn _ op l r = pure $ E1BinOp emptyAnn op l r
    in runIdentity $ foldAST fs ast
 

@@ -81,7 +81,7 @@ parens :: Expr1 -> Expr1
 parens = E1Parens emptyAnn
 
 op :: Text -> Expr1 -> Expr1 -> Expr1
-op operator = E1BinOp (var operator)
+op operator = E1BinOp emptyAnn (var operator)
 
 infixDecls :: Text -> Text -> [Decl]
 infixDecls a b = [ FixityDecl L 4 (Id a), FixityDecl L 5 (Id b) ]
@@ -318,7 +318,7 @@ spec_balanceOperators = describe "balance operators pass" $ parallel $ do
     --  pending
 
     it "rebalances infix functions" $ do
-      let op' operator = E1BinOp (con operator)
+      let op' operator = E1BinOp emptyAnn (con operator)
       [text|
         infixl 4 `plus`
         infixl 5 `Mul`
