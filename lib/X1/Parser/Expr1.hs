@@ -34,9 +34,8 @@ exprOperators =
     infixFunction' = infixFunction E1Var E1Con
 
 term :: Parser Expr1
-term = term' <?> "expression" where
-  -- TODO move lexeme to start of term'?
-  term' =  lexeme litParser
+term = lexeme term' <?> "expression" where
+  term' =  litParser
        <|> withLineFold lineFoldedExprs
        <|> letParser
        <|> try applyFuncParser
@@ -71,18 +70,18 @@ applyFuncParser = sameLine $ do
 
 varParser :: Parser Expr1
 varParser = uncurry E1Var <$> varParser' where
-  varParser' = lexeme $ withSpan $ Id <$> (try opVar <|> identifier)
+  varParser' = withSpan $ Id <$> (try opVar <|> identifier)
   opVar = betweenParens opIdentifier
 
 conParser :: Parser Expr1
 conParser =
-  uncurry E1Con <$> lexeme (withSpan $ Id <$> capitalIdentifier)
+  uncurry E1Con <$> withSpan (Id <$> capitalIdentifier)
 
 
 lamParser :: Parser Expr1
 lamParser = do
   vars <- lexeme' lambdaHead
-  body <- lexeme parser
+  body <- parser
   pure $ E1Lam vars body
   where
     lambdaHead = sameLine $ do
@@ -136,7 +135,7 @@ declParser = withLineFold declParser' where
              <|> typeOrBindingDecl
 
 fixityDecl :: Parser ExprDecl
-fixityDecl =  do
+fixityDecl = do
   fixityType <- lexeme' fixityTypeParser
   precedence <- withDefault 9 $ digitToInt <$> lexeme' decimal
   operator <- lexeme (Id <$> opIdentifier <|> infixFunction')
@@ -203,5 +202,5 @@ infixFunction var con = do
 
 parens :: Parser Expr1 -> Parser Expr1
 parens p =
-  uncurry E1Parens <$> lexeme (withSpan $ betweenParens p)
+  uncurry E1Parens <$> withSpan (betweenParens p)
 
