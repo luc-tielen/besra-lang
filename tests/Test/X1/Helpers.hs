@@ -23,6 +23,7 @@ stripAnns ast =
                                  , varE = stripVarAnn
                                  , conE = stripConAnn
                                  , binOpE = stripBinOpAnn
+                                 , negE = stripNegAnn
                                  , parenE = stripParenAnn
                                  }
                }
@@ -30,6 +31,7 @@ stripAnns ast =
       stripLitAnn _ lit = pure $ E1Lit emptyAnn lit
       stripVarAnn _ var = pure $ E1Var emptyAnn var
       stripConAnn _ con = pure $ E1Con emptyAnn con
+      stripNegAnn _ e = pure $ E1Neg emptyAnn e
       stripBinOpAnn _ op l r = pure $ E1BinOp emptyAnn op l r
    in runIdentity $ foldAST fs ast
 

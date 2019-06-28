@@ -124,7 +124,7 @@ instance Compos Expr1 where
       E1Lam vars body -> E1Lam vars <$> f ProofE body
       E1App func args -> E1App <$> f ProofE func <*> traverse (f ProofE) args
       E1BinOp ann op l r -> E1BinOp ann <$> f ProofE op <*> f ProofE l <*> f ProofE r
-      E1Neg expr -> E1Neg <$> f ProofE expr
+      E1Neg ann expr -> E1Neg ann <$> f ProofE expr
       E1If cond tr fl -> E1If <$> f ProofE cond <*> f ProofE tr <*> f ProofE fl
       E1Case cond clauses ->
         E1Case <$> f ProofE cond <*> traverse (traverse (f ProofE)) clauses
@@ -142,7 +142,7 @@ instance Compos Expr1 where
         E1BinOp ann <$> composM prf f op
                     <*> composM prf f l
                     <*> composM prf f r
-      E1Neg expr -> E1Neg <$> composM prf f expr
+      E1Neg ann expr -> E1Neg ann <$> composM prf f expr
       E1If cond tr fl ->
         E1If <$> composM prf f cond
              <*> composM prf f tr
@@ -199,7 +199,7 @@ data HandlersE m rExprDecl rExpr =
     , lamE :: [Pattern] -> rExpr -> m rExpr                -- Handler for lambda expression
     , appE :: rExpr -> [rExpr] -> m rExpr                  -- Handler for function application
     , binOpE :: Ann -> rExpr -> rExpr -> rExpr -> m rExpr  -- Handler for bin op expression
-    , negE :: rExpr -> m rExpr                             -- Handler for negate expression
+    , negE :: Ann -> rExpr -> m rExpr                      -- Handler for negate expression
     , ifE :: rExpr -> rExpr -> rExpr -> m rExpr            -- Handler for if expression
     , caseE :: rExpr -> [(Pattern, rExpr)] -> m rExpr      -- Handler for case expression
     , letE :: [rExprDecl] -> rExpr -> m rExpr              -- Handler for let expression
@@ -243,7 +243,7 @@ instance Applicative m
                   (\pats body -> pure $ E1Lam pats body)
                   (\func args -> pure $ E1App func args)
                   (\ann op l r -> pure $ E1BinOp ann op l r)
-                  (pure . E1Neg)
+                  (\ann e -> pure $ E1Neg ann e)
                   (\c tr fl -> pure $ E1If c tr fl)
                   (\e clauses -> pure $ E1Case e clauses)
                   (\decls body -> pure $ E1Let decls body)
@@ -336,7 +336,7 @@ instance Fold Expr1 where
          join $ appE fs' <$> foldAST fs func <*> foldAST fs args
        E1BinOp ann op l r ->
          join $ binOpE fs' ann <$> foldAST fs op <*> foldAST fs l <*> foldAST fs r
-       E1Neg e -> negE fs' =<< foldAST fs e
+       E1Neg ann e -> negE fs' ann =<< foldAST fs e
        E1If c tr fl ->
          join $ ifE fs' <$> foldAST fs c <*> foldAST fs tr <*> foldAST fs fl
        E1Case e clauses ->

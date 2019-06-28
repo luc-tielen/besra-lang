@@ -29,7 +29,7 @@ data FixityInfo = FI Fixity Int Id
 
 data Token = TExpr Expr1
            | TOp (Id -> Expr1 -> Expr1 -> Expr1) FixityInfo
-           | TNeg
+           | TNeg Ann
 
 data Env = Env { envFixities :: [FixityInfo], envDecl :: Decl }
   deriving (Eq, Show)
@@ -95,7 +95,7 @@ instance Balance Expr1 where
         E1Case <$> rebalance e <*> rebalance clauses
       rebalanceInner (E1If cond tClause fClause) =
         E1If <$> rebalance cond <*> rebalance tClause <*> rebalance fClause
-      rebalanceInner (E1Neg e) = E1Neg <$> rebalance e
+      rebalanceInner (E1Neg ann e) = E1Neg ann <$> rebalance e
       rebalanceInner (E1Let decls body) =
         E1Let <$> rebalance decls <*> rebalance body
       rebalanceInner e = pure e
@@ -114,7 +114,7 @@ toTokens (E1BinOp opAnn (E1Var ann op) e1 e2) =
   opToTokens (toBinOp opAnn (E1Var ann)) op e1 e2
 toTokens (E1BinOp opAnn (E1Con ann op) e1 e2) =
   opToTokens (toBinOp opAnn (E1Con ann)) op e1 e2
-toTokens (E1Neg e) = pure [TNeg, TExpr e]
+toTokens (E1Neg ann e) = pure [TNeg ann, TExpr e]
 toTokens e = pure [TExpr e]
 
 opToTokens :: Monad m
@@ -129,10 +129,10 @@ opToTokens f op e1 e2 = do
 
 rebalanceTokens :: Monad m => FixityInfo -> [Token] -> RebalanceM m (Expr1, [Token])
 rebalanceTokens op1 (TExpr e1 : rest) = rebalanceTokens' op1 e1 rest
-rebalanceTokens op1 (TNeg : rest) = do
+rebalanceTokens op1 (TNeg ann : rest) = do
   when (prec1 >= 6) $ throwError . InvalidPrefixPrecedence op1 =<< asks envDecl
   (r, rest') <- rebalanceTokens negateOp rest
-  rebalanceTokens' op1 (E1Neg r) rest'
+  rebalanceTokens' op1 (E1Neg ann r) rest'
   where
     negateOp = FI L 6 (Id "-")
     FI _ prec1 _  = op1

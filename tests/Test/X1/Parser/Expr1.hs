@@ -350,7 +350,7 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
         ==> op (var "&&") (op (var "||") (con "True") (con "False")) (con "True")
 
     it "can parse prefix negation operator" $ do
-      let neg = E1Neg
+      let neg = E1Neg emptyAnn
       "-1 + 2" ==> op (var "+") (neg $ num 1) (num 2)
       "- 1 + 2" ==> op (var "+") (neg $ num 1) (num 2)
       "1 + -2" ==> op (var "+") (num 1) (neg $ num 2)
@@ -420,7 +420,8 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
         num' ann = E1Lit ann . LNumber
         var' ann = E1Var ann . Id
         con' ann = E1Con ann . Id
-        op' ann = E1BinOp ann
+        op' = E1BinOp
+        neg' = E1Neg
 
     it "adds location information to the expression" $ do
       "(1  )" --> E1Parens (span 0 5) $ num' (span 1 2) (SInt 1)
@@ -468,10 +469,15 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       "(++) 1" --> E1App (var' (span 0 4) "++") [num' (span 5 6) $ SInt 1]
 
     it "adds location information for binary operators" $ do
-      "a + b " --> op' (span 2 3) (var' (span 2 3) "+")
+      "a + b " --> op' (span 0 5) (var' (span 2 3) "+")
                                   (var' (span 0 1) "a")
                                   (var' (span 4 5) "b")
-      "a `myFunction` b " --> op' (span 2 14) (var' (span 2 14) "myFunction")
+      "a `myFunction` b " --> op' (span 0 16) (var' (span 2 14) "myFunction")
                                               (var' (span 0 1) "a")
                                               (var' (span 15 16) "b")
+
+    it "adds location information for unary negation operator" $ do
+      "-a " --> neg' (span 0 2) (var' (span 1 2) "a")
+      "-abc " --> neg' (span 0 4) (var' (span 1 4) "abc")
+      "- abc " --> neg' (span 0 5) (var' (span 2 5) "abc")
 

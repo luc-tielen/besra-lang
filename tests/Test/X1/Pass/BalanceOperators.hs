@@ -187,7 +187,7 @@ spec_balanceOperators = describe "balance operators pass" $ parallel $ do
       mkScript' bindingStr L 5 L 6 ==> expected L 5 L 6 expr
 
     it "can deal with unary negation" $ do
-      let neg = E1Neg
+      let neg = E1Neg emptyAnn
           expr1 = op "+" (num 1) (parens $ neg $ num 2)
           expr2 = op "+" (num 1) (neg $ num 2)
           expr3 =  op "+" (neg $ num 1) (num 2)
@@ -197,7 +197,7 @@ spec_balanceOperators = describe "balance operators pass" $ parallel $ do
       mkScript' "a = -1 + 2" L 6 L 6 ==> expected L 6 L 6 expr3
 
     it "fails on exprs with unary negation preceded by higher precedence op" $ do
-      let decl = BindingDecl $ binding "a" (op "+" (num 1) (E1Neg $ num 2))
+      let decl = BindingDecl $ binding "a" (op "+" (num 1) (E1Neg emptyAnn $ num 2))
       mkScript' "a = 1 + -2" L 6 L 6
         ==> InvalidPrefixPrecedence (FI L 6 (Id "+")) decl
 

@@ -24,7 +24,7 @@ data Expr1 = E1Lit Ann Lit
            | E1Lam [Pattern] Expr1
            | E1App Expr1 [Expr1]
            | E1BinOp Ann Expr1 Expr1 Expr1    -- operator, left side, right side
-           | E1Neg Expr1                      -- negation operator
+           | E1Neg Ann Expr1                  -- negation operator
            | E1If Expr1 Expr1 Expr1           -- condition, true clause, false clause
            | E1Case Expr1 [(Pattern, Expr1)]  -- expression to match on, multiple branches
            | E1Let [ExprDecl] Expr1           -- bindings end result
