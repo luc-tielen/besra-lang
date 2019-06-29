@@ -6,6 +6,7 @@ import Data.Char ( digitToInt )
 import GHC.Unicode (isDigit)
 import X1.Types.Id
 import X1.Types.Ann
+import X1.Types.Span
 import X1.Types.Fixity
 import X1.Types.Expr1.Expr
 import X1.Types.Expr1.TypeAnn
@@ -28,10 +29,16 @@ expr = makeExprParser term exprOperators <?> "expression"
 
 exprOperators :: [[Operator Parser Expr1']]
 exprOperators =
-  [ [ Prefix (lexeme' $ E1Neg <$> negateOpParser) ]
-  , [ InfixL (lexeme' $ uncurry E1BinOp <$> operatorParser) ]
+  [ [ Prefix (lexeme' negateOp) ]
+  , [ InfixL (lexeme' binOp) ]
   ]
   where
+    binOp = do
+      (opSpan, op) <- operatorParser
+      pure $ \e1 e2 -> E1BinOp (opSpan <> span e1 <> span e2) op e1 e2
+    negateOp = do
+      opSpan <- negateOpParser
+      pure $ \e -> E1Neg (opSpan <> span e) e
     operatorParser = withSpan $ infixOp <|> infixFunction'
     negateOpParser = fst <$> withSpan (hidden $ char '-')
     infixOp = uncurry E1Var <$> withSpan (Id <$> opIdentifier)

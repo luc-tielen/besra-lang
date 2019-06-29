@@ -58,9 +58,6 @@ binding x = ExprBindingDecl . Binding (Id x)
 sig :: Text -> Type -> ExprDecl'
 sig x ty = ExprTypeAnnDecl $ TypeAnn (Id x) (Scheme [] ty)
 
-span :: Int -> Int -> Ann'
-span = Span
-
 
 spec_exprParseTest :: Spec
 spec_exprParseTest = describe "expression parser" $ parallel $ do
@@ -428,62 +425,60 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
         neg' = E1Neg
 
     it "adds location information to the expression" $ do
-      "(1  )" --> E1Parens (span 0 5) $ num' (span 1 2) (SInt 1)
-      "(  1  )" --> E1Parens (span 0 7) $ num' (span 3 4) (SInt 1)
-      "(  (1)  )" --> E1Parens (span 0 9) $ E1Parens (span 3 6) $ num' (span 4 5) (SInt 1)
-      "(  (1)  ) " --> E1Parens (span 0 9) $ E1Parens (span 3 6) $ num' (span 4 5) (SInt 1)
+      "(1  )" --> E1Parens (Span 0 5) $ num' (Span 1 2) (SInt 1)
+      "(  1  )" --> E1Parens (Span 0 7) $ num' (Span 3 4) (SInt 1)
+      "(  (1)  )" --> E1Parens (Span 0 9) $ E1Parens (Span 3 6) $ num' (Span 4 5) (SInt 1)
+      "(  (1)  ) " --> E1Parens (Span 0 9) $ E1Parens (Span 3 6) $ num' (Span 4 5) (SInt 1)
 
     it "adds location information to the expression" $ do
-      "123 " --> num' (span 0 3) (SInt 123)
-      "0b1011 " --> num' (span 0 6) (SBin "0b1011")
-      "0xC0FF33 " --> num' (span 0 8) (SHex "0xC0FF33")
-      "'a' " --> char' (span 0 3) 'a'
-      "\"ab123\" " --> str' (span 0 7) "ab123"
+      "123 " --> num' (Span 0 3) (SInt 123)
+      "0b1011 " --> num' (Span 0 6) (SBin "0b1011")
+      "0xC0FF33 " --> num' (Span 0 8) (SHex "0xC0FF33")
+      "'a' " --> char' (Span 0 3) 'a'
+      "\"ab123\" " --> str' (Span 0 7) "ab123"
 
     it "adds location information to vars" $ do
-      "a " --> var' (span 0 1) "a"
-      "abc123 " --> var' (span 0 6) "abc123"
+      "a " --> var' (Span 0 1) "a"
+      "abc123 " --> var' (Span 0 6) "abc123"
 
     it "adds location information to constructors" $ do
-      "A " --> con' (span 0 1) "A"
-      "Abc123 " --> con' (span 0 6) "Abc123"
+      "A " --> con' (Span 0 1) "A"
+      "Abc123 " --> con' (Span 0 6) "Abc123"
 
     it "adds location information to infix operators" $ do
-      "1 + 2 " --> op' (span 2 3) (var' (span 2 3) "+")
-                                  (num' (span 0 1) (SInt 1))
-                                  (num' (span 4 5) (SInt 2))
-      "1 ++ 2 " --> op' (span 2 4) (var' (span 2 4) "++")
-                                   (num' (span 0 1) (SInt 1))
-                                   (num' (span 5 6) (SInt 2))
+      "1 + 2 " --> op' (Span 0 5) (var' (Span 2 3) "+")
+                                  (num' (Span 0 1) (SInt 1))
+                                  (num' (Span 4 5) (SInt 2))
+      "1 ++ 2 " --> op' (Span 0 6) (var' (Span 2 4) "++")
+                                   (num' (Span 0 1) (SInt 1))
+                                   (num' (Span 5 6) (SInt 2))
 
     it "adds location information to infix functions" $ do
-      "1 `f` 2 " --> op' (span 2 5) (var' (span 2 5) "f")
-                                    (num' (span 0 1) (SInt 1))
-                                    (num' (span 6 7) (SInt 2))
-      "1 `myFunction` 2 " --> op' (span 2 14) (var' (span 2 14) "myFunction")
-                                              (num' (span 0 1) (SInt 1))
-                                              (num' (span 15 16) (SInt 2))
+      "1 `f` 2 " --> op' (Span 0 7) (var' (Span 2 5) "f")
+                                    (num' (Span 0 1) (SInt 1))
+                                    (num' (Span 6 7) (SInt 2))
+      "1 `myFunction` 2 " --> op' (Span 0 16) (var' (Span 2 14) "myFunction")
+                                              (num' (Span 0 1) (SInt 1))
+                                              (num' (Span 15 16) (SInt 2))
 
     it "adds location information to vars in function application" $ do
-      "f 1" --> E1App (var' (span 0 1) "f") [num' (span 2 3) $ SInt 1]
-      "myFunction 1" --> E1App (var' (span 0 10) "myFunction") [num' (span 11 12) $ SInt 1]
+      "f 1" --> E1App (var' (Span 0 1) "f") [num' (Span 2 3) $ SInt 1]
+      "myFunction 1" --> E1App (var' (Span 0 10) "myFunction") [num' (Span 11 12) $ SInt 1]
 
     it "adds location information to prefix operators" $ do
-      "(+) 1" --> E1App (var' (span 0 3) "+") [num' (span 4 5) $ SInt 1]
-      "(++) 1" --> E1App (var' (span 0 4) "++") [num' (span 5 6) $ SInt 1]
+      "(+) 1" --> E1App (var' (Span 0 3) "+") [num' (Span 4 5) $ SInt 1]
+      "(++) 1" --> E1App (var' (Span 0 4) "++") [num' (Span 5 6) $ SInt 1]
 
     it "adds location information for binary operators" $ do
-      -- TODO make bin op span cover entire thing
-      "a + b " --> op' (span 2 3) (var' (span 2 3) "+")
-                                  (var' (span 0 1) "a")
-                                  (var' (span 4 5) "b")
-      "a `myFunction` b " --> op' (span 2 14) (var' (span 2 14) "myFunction")
-                                              (var' (span 0 1) "a")
-                                              (var' (span 15 16) "b")
+      "a + b " --> op' (Span 0 5) (var' (Span 2 3) "+")
+                                  (var' (Span 0 1) "a")
+                                  (var' (Span 4 5) "b")
+      "a `myFunction` b " --> op' (Span 0 16) (var' (Span 2 14) "myFunction")
+                                              (var' (Span 0 1) "a")
+                                              (var' (Span 15 16) "b")
 
     it "adds location information for unary negation operator" $ do
-      -- TODO make negate op span cover entire thing
-      "-a " --> neg' (span 0 1) (var' (span 1 2) "a")  -- 0 2
-      "-abc " --> neg' (span 0 1) (var' (span 1 4) "abc")  -- 0 4
-      "- abc " --> neg' (span 0 1) (var' (span 2 5) "abc") -- 0 5
+      "-a " --> neg' (Span 0 2) (var' (Span 1 2) "a")
+      "-abc " --> neg' (Span 0 4) (var' (Span 1 4) "abc")
+      "- abc " --> neg' (Span 0 5) (var' (Span 2 5) "abc")
 

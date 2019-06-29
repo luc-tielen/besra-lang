@@ -6,37 +6,53 @@ module X1.Types.Expr1.Expr ( Expr1(..), ExprDecl(..), Binding(..) ) where
 import Protolude hiding ( Fixity )
 import X1.Types.Id
 import X1.Types.Ann
+import X1.Types.Span
 import X1.Types.Fixity
 import X1.Types.Expr1.Lit
 import X1.Types.Expr1.Pattern
 import X1.Types.Expr1.TypeAnn
 
 
-data Binding (phase :: Phase)
-  = Binding Id (Expr1 phase)
+data Binding (ph :: Phase)
+  = Binding Id (Expr1 ph)
 
-data ExprDecl (phase :: Phase)
+data ExprDecl (ph :: Phase)
   = ExprTypeAnnDecl TypeAnn
-  | ExprBindingDecl (Binding phase)
+  | ExprBindingDecl (Binding ph)
   | ExprFixityDecl Fixity Int Id
 
-data Expr1 (phase :: Phase)
-  = E1Lit (Ann phase) Lit
-  | E1Var (Ann phase) Id
-  | E1Con (Ann phase) Id
-  | E1Lam [Pattern] (Expr1 phase)
-  | E1App (Expr1 phase) [(Expr1 phase)]
-  | E1BinOp (Ann phase) (Expr1 phase) (Expr1 phase) (Expr1 phase)  -- operator, left side, right side
-  | E1Neg (Ann phase) (Expr1 phase)                                -- negation operator
-  | E1If (Expr1 phase) (Expr1 phase) (Expr1 phase)                 -- condition, true clause, false clause
-  | E1Case (Expr1 phase) [(Pattern, (Expr1 phase))]                -- expression to match on, multiple branches
-  | E1Let [ExprDecl phase] (Expr1 phase)                           -- bindings end result
-  | E1Parens (Ann phase) (Expr1 phase)
+data Expr1 (ph :: Phase)
+  = E1Lit (Ann ph) Lit
+  | E1Var (Ann ph) Id
+  | E1Con (Ann ph) Id
+  | E1Lam [Pattern] (Expr1 ph)
+  | E1App (Expr1 ph) [Expr1 ph]
+  | E1BinOp (Ann ph) (Expr1 ph) (Expr1 ph) (Expr1 ph)  -- operator, left side, right side
+  | E1Neg (Ann ph) (Expr1 ph)                          -- negation operator
+  | E1If (Expr1 ph) (Expr1 ph) (Expr1 ph)              -- condition, true clause, false clause
+  | E1Case (Expr1 ph) [(Pattern, Expr1 ph)]            -- expression to match on, multiple branches
+  | E1Let [ExprDecl ph] (Expr1 ph)                     -- bindings end result
+  | E1Parens (Ann ph) (Expr1 ph)
 
-deriving instance Eq (Ann phase) => Eq (ExprDecl phase)
-deriving instance Show (Ann phase) => Show (ExprDecl phase)
-deriving instance Eq (Ann phase) => Eq (Binding phase)
-deriving instance Show (Ann phase) => Show( Binding phase)
-deriving instance Eq (Ann phase) => Eq (Expr1 phase)
-deriving instance Show (Ann phase) => Show (Expr1 phase)
+deriving instance Eq (Ann ph) => Eq (ExprDecl ph)
+deriving instance Show (Ann ph) => Show (ExprDecl ph)
+deriving instance Eq (Ann ph) => Eq (Binding ph)
+deriving instance Show (Ann ph) => Show( Binding ph)
+deriving instance Eq (Ann ph) => Eq (Expr1 ph)
+deriving instance Show (Ann ph) => Show (Expr1 ph)
+
+instance HasSpan (Ann ph) => HasSpan (Expr1 ph) where
+  -- TODO handle cases without spans
+  span = \case
+    E1Lit ann _ -> span ann
+    E1Var ann _ -> span ann
+    E1Con ann _ -> span ann
+    E1Lam _ _ -> panic "Not implemented!"
+    E1App _ _ -> panic "Not implemented!"
+    E1BinOp ann _ _ _ -> span ann
+    E1Neg ann _ -> span ann
+    E1If _ _ _ -> panic "Not implemented!"
+    E1Case _ _ -> panic "Not implemented!"
+    E1Let _ _ -> panic "Not implemented!"
+    E1Parens ann _ -> span ann
 

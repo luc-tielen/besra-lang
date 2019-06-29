@@ -50,9 +50,6 @@ str ann = E1Lit ann . LString . String
 c :: Text -> Type
 c = TCon . Tycon . Id
 
-span :: Int -> Int -> Ann'
-span = Span
-
 
 (==>) :: Text -> ValidationResult [SAError] -> IO ()
 txt ==> b =
@@ -72,9 +69,9 @@ spec_missingTopLevelDecls = describe "SA: MissingTopLevelDecls" $ parallel $ do
     "x : Int\nx = 5\ny : String\ny = \"abc\"" ==> Ok
 
   it "reports an error for each missing type signature" $ do
-    "x = 5" ==> Err [missingType "x" (num (span 4 5) 5)]
-    "x = 5\ny = \"abc\"" ==> Err [ missingType "x" (num (span 4 5) 5)
-                                 , missingType "y" (str (span 10 15) "abc")]
+    "x = 5" ==> Err [missingType "x" (num (Span 4 5) 5)]
+    "x = 5\ny = \"abc\"" ==> Err [ missingType "x" (num (Span 4 5) 5)
+                                 , missingType "y" (str (Span 10 15) "abc")]
 
   it "reports an error for each missing binding" $ do
     "x : Int" ==> Err [missingBinding "x" (c "Int")]
