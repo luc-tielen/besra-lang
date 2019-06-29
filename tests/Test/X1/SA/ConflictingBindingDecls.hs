@@ -17,26 +17,30 @@ import X1.Parser
 import Test.Tasty.Hspec
 
 
+type Module' = Module 'Parsed
+type Expr1' = Expr1 'Parsed
+type Ann' = Ann 'Parsed
+
 file :: FilePath
 file = "Test.x1"
 
-analyze' :: Validation [SAError] Module
+analyze' :: Validation [SAError] Module'
 analyze' = analyze [validate file]
 
-conflict :: Text -> [Expr1] -> SAError
+conflict :: Text -> [Expr1'] -> SAError
 conflict var exprs =
   let toBindingDecls = map (BindingDecl . Binding (Id var))
       err = ConflictingBindingDeclErr . ConflictingBindingDecl file . toBindingDecls
    in err exprs
 
-num :: Ann -> Int -> Expr1
+num :: Ann' -> Int -> Expr1'
 num ann = E1Lit ann . LNumber . SInt
 
-str :: Ann -> Text -> Expr1
+str :: Ann' -> Text -> Expr1'
 str ann = E1Lit ann . LString . String
 
-span :: Int -> Int -> Ann
-span begin end = Ann TagP (Span begin end)
+span :: Int -> Int -> Ann'
+span = Span
 
 (==>) :: Text -> ValidationResult [SAError] -> IO ()
 txt ==> b =

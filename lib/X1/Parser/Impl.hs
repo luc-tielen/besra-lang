@@ -3,6 +3,7 @@ module X1.Parser.Impl ( parser ) where
 
 import Protolude hiding ( Type, try, functionName )
 import X1.Types.Id
+import X1.Types.Ann
 import X1.Types.Expr1.Expr
 import X1.Types.Expr1.Type
 import X1.Types.Expr1.Pred
@@ -15,7 +16,10 @@ import qualified X1.Parser.Tycon as Tycon
 import qualified X1.Parser.Tyvar as Tyvar
 
 
-parser :: Parser Impl
+type Impl' = Impl 'Parsed
+type Binding' = Binding 'Parsed
+
+parser :: Parser Impl'
 parser = parser' <?> "impl declaration" where
   parser' = withLineFold $ do
     keyword "impl"
@@ -48,10 +52,10 @@ implParser = IsIn <$> traitId <*> some (implTypeParser <?> "type")
 
 
 -- TODO remove duplication with expr1 parser once type decls are supported in instances
-bindingParser :: Parser Binding
+bindingParser :: Parser Binding'
 bindingParser = try namedFunctionDecl <|> simpleBinding
 
-namedFunctionDecl :: Parser Binding
+namedFunctionDecl :: Parser Binding'
 namedFunctionDecl = do
   (funcName, vars) <- lexeme' functionHead
   body <- E1Lam vars <$> Expr1.parser
@@ -63,7 +67,7 @@ namedFunctionDecl = do
       void $ lexeme assign
       pure (funcName, vars)
 
-simpleBinding :: Parser Binding
+simpleBinding :: Parser Binding'
 simpleBinding = do
   var <- lexeme' declIdentifier
   void $ lexeme' assign

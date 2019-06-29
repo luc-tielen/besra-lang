@@ -20,13 +20,17 @@ import X1.Parser
 import Test.Tasty.Hspec
 
 
+type Module' = Module 'Parsed
+type Expr1' = Expr1 'Parsed
+type Ann' = Ann 'Parsed
+
 file :: FilePath
 file = "Test.x1"
 
-analyze' :: Validation [SAError] Module
+analyze' :: Validation [SAError] Module'
 analyze' = analyze [validate file]
 
-missingType :: Text -> Expr1 -> SAError
+missingType :: Text -> Expr1' -> SAError
 missingType var expr =
   let bindingDecl = BindingDecl $ Binding (Id var) expr
    in MissingTopLevelTypeAnnDeclErr $ MissingTopLevelTypeAnnDecl file bindingDecl
@@ -37,17 +41,17 @@ missingBinding var ty =
       err = MissingTopLevelBindingDeclErr . MissingTopLevelBindingDecl file . toTypeAnnDecl
    in err ty
 
-num :: Ann -> Int -> Expr1
+num :: Ann' -> Int -> Expr1'
 num ann = E1Lit ann . LNumber . SInt
 
-str :: Ann -> Text -> Expr1
+str :: Ann' -> Text -> Expr1'
 str ann = E1Lit ann . LString . String
 
 c :: Text -> Type
 c = TCon . Tycon . Id
 
-span :: Int -> Int -> Ann
-span begin end = Ann TagP (Span begin end)
+span :: Int -> Int -> Ann'
+span = Span
 
 
 (==>) :: Text -> ValidationResult [SAError] -> IO ()

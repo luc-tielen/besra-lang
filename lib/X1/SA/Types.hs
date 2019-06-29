@@ -1,3 +1,6 @@
+
+{-# LANGUAGE UndecidableInstances #-}
+
 module X1.SA.Types ( ConflictingTypeAnnDecl(..)
                    , ConflictingBindingDecl(..)
                    , MissingTopLevelTypeAnnDecl(..)
@@ -8,26 +11,36 @@ module X1.SA.Types ( ConflictingTypeAnnDecl(..)
 
 import Protolude
 import X1.Types.Expr1.Module
+import X1.Types.Ann
 
+type Decl' = Decl 'Parsed
 
-data ConflictingTypeAnnDecl = ConflictingTypeAnnDecl FilePath [Decl]
-  deriving (Eq, Show)
+data ConflictingTypeAnnDecl = ConflictingTypeAnnDecl FilePath [Decl']
 
-data ConflictingBindingDecl = ConflictingBindingDecl FilePath [Decl]
-  deriving (Eq, Show)
+data ConflictingBindingDecl = ConflictingBindingDecl FilePath [Decl']
 
-data MissingTopLevelTypeAnnDecl = MissingTopLevelTypeAnnDecl FilePath Decl
-  deriving (Eq, Show)
+data MissingTopLevelTypeAnnDecl = MissingTopLevelTypeAnnDecl FilePath Decl'
 
-data MissingTopLevelBindingDecl = MissingTopLevelBindingDecl FilePath Decl
-  deriving (Eq, Show)
+data MissingTopLevelBindingDecl = MissingTopLevelBindingDecl FilePath Decl'
 
 data SAError = ConflictingTypeAnnDeclErr ConflictingTypeAnnDecl
              | ConflictingBindingDeclErr ConflictingBindingDecl
              | MissingTopLevelTypeAnnDeclErr MissingTopLevelTypeAnnDecl
              | MissingTopLevelBindingDeclErr MissingTopLevelBindingDecl
-  deriving (Eq, Show)
 
 newtype SemanticError = SemanticError [SAError]
-  deriving (Eq, Show)
+
+deriving instance Eq (Decl 'Parsed) => Eq ConflictingTypeAnnDecl
+deriving instance Eq (Decl 'Parsed) => Eq ConflictingBindingDecl
+deriving instance Eq (Decl 'Parsed) => Eq MissingTopLevelTypeAnnDecl
+deriving instance Eq (Decl 'Parsed) => Eq MissingTopLevelBindingDecl
+deriving instance Eq (Decl 'Parsed) => Eq SAError
+deriving instance Eq (Decl 'Parsed) => Eq SemanticError
+
+deriving instance Show (Decl 'Parsed) => Show ConflictingTypeAnnDecl
+deriving instance Show (Decl 'Parsed) => Show ConflictingBindingDecl
+deriving instance Show (Decl 'Parsed) => Show MissingTopLevelTypeAnnDecl
+deriving instance Show (Decl 'Parsed) => Show MissingTopLevelBindingDecl
+deriving instance Show (Decl 'Parsed) => Show SAError
+deriving instance Show (Decl 'Parsed) => Show SemanticError
 

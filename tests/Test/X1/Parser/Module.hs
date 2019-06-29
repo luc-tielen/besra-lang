@@ -8,6 +8,7 @@ import Test.Tasty.Hspec
 import Test.X1.Parser.Helpers
 import Test.X1.Helpers
 import X1.Types.Id
+import X1.Types.Ann
 import X1.Types.Fixity
 import X1.Types.Expr1.Module
 import X1.Types.Expr1.Expr
@@ -27,7 +28,11 @@ import Test.Hspec.Megaparsec hiding (shouldFailWith)
 import NeatInterpolation
 
 
-parse :: Text -> ParseResult Module
+type Module' = Module 'Testing
+type Expr1' = Expr1 'Testing
+type Decl' = Decl 'Testing
+
+parse :: Text -> ParseResult (Module 'Parsed)
 parse = mkParser parser
 
 con :: Text -> Type
@@ -39,28 +44,28 @@ var = TVar . Tyvar . Id
 app :: Type -> [Type] -> Type
 app = TApp
 
-(==>) :: Text -> Module -> IO ()
+(==>) :: Text -> Module' -> IO ()
 a ==> b = (stripAnns <$> parse a) `shouldParse` b
 
 (-->) :: Type -> Type -> Type
 t1 --> t2 = app (con "->") [t1, t2]
 
-num :: Int -> Expr1
+num :: Int -> Expr1'
 num = E1Lit emptyAnn . LNumber . SInt
 
-str :: Text -> Expr1
+str :: Text -> Expr1'
 str = E1Lit emptyAnn . LString . String
 
-char :: Char -> Expr1
+char :: Char -> Expr1'
 char = E1Lit emptyAnn . LChar
 
-lam :: [Text] -> Expr1 -> Expr1
+lam :: [Text] -> Expr1' -> Expr1'
 lam vars = E1Lam (PVar . Id <$> vars)
 
-typeAnn :: Id -> Scheme -> Decl
+typeAnn :: Id -> Scheme -> Decl'
 typeAnn name scheme = TypeAnnDecl (TypeAnn name scheme)
 
-binding :: Text -> Expr1 -> Decl
+binding :: Text -> Expr1' -> Decl'
 binding x = BindingDecl . Binding (Id x)
 
 

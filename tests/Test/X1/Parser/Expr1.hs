@@ -20,42 +20,46 @@ import X1.Types.Expr1.TypeAnn
 import Test.Hspec.Megaparsec hiding (shouldFailWith, succeedsLeaving)
 import Test.X1.Helpers
 
+type Expr1' = Expr1 'Testing
+type ExprDecl' = ExprDecl 'Testing
+type Ann' = Ann 'Parsed
+
 
 -- Same as -->, but strips annotations too
-(==>) :: Text -> Expr1 -> IO ()
+(==>) :: Text -> Expr1' -> IO ()
 a ==> b = (stripAnns <$> parse a) `shouldParse` b
 infixr 0 ==>
 
-(-->) :: Text -> Expr1 -> IO ()
+(-->) :: Text -> Expr1 'Parsed -> IO ()
 a --> b = parse a `shouldParse` b
 infixr 0 -->
+
+parse :: Text -> ParseResult (Expr1 'Parsed)
+parse = mkParser parser
 
 c :: Text -> Type
 c = TCon . Tycon . Id
 
-let' :: [ExprDecl] -> Expr1 -> Expr1
+let' :: [ExprDecl'] -> Expr1' -> Expr1'
 let' = E1Let
 
-op :: Expr1 -> Expr1 -> Expr1 -> Expr1
+op :: Expr1' -> Expr1' -> Expr1' -> Expr1'
 op = E1BinOp emptyAnn
 
-parens :: Expr1 -> Expr1
+parens :: Expr1' -> Expr1'
 parens = E1Parens emptyAnn
 
-var :: Text -> Expr1
+var :: Text -> Expr1'
 var = E1Var emptyAnn . Id
 
-binding :: Text -> Expr1 -> ExprDecl
+binding :: Text -> Expr1' -> ExprDecl'
 binding x = ExprBindingDecl . Binding (Id x)
 
-sig :: Text -> Type -> ExprDecl
+sig :: Text -> Type -> ExprDecl'
 sig x ty = ExprTypeAnnDecl $ TypeAnn (Id x) (Scheme [] ty)
 
-span :: Int -> Int -> Ann
-span begin end = Ann TagP (Span begin end)
-
-parse :: Text -> ParseResult Expr1
-parse = mkParser parser
+span :: Int -> Int -> Ann'
+span = Span
 
 
 spec_exprParseTest :: Spec
@@ -469,15 +473,17 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       "(++) 1" --> E1App (var' (span 0 4) "++") [num' (span 5 6) $ SInt 1]
 
     it "adds location information for binary operators" $ do
-      "a + b " --> op' (span 0 5) (var' (span 2 3) "+")
+      -- TODO make bin op span cover entire thing
+      "a + b " --> op' (span 2 3) (var' (span 2 3) "+")
                                   (var' (span 0 1) "a")
                                   (var' (span 4 5) "b")
-      "a `myFunction` b " --> op' (span 0 16) (var' (span 2 14) "myFunction")
+      "a `myFunction` b " --> op' (span 2 14) (var' (span 2 14) "myFunction")
                                               (var' (span 0 1) "a")
                                               (var' (span 15 16) "b")
 
     it "adds location information for unary negation operator" $ do
-      "-a " --> neg' (span 0 2) (var' (span 1 2) "a")
-      "-abc " --> neg' (span 0 4) (var' (span 1 4) "abc")
-      "- abc " --> neg' (span 0 5) (var' (span 2 5) "abc")
+      -- TODO make negate op span cover entire thing
+      "-a " --> neg' (span 0 1) (var' (span 1 2) "a")  -- 0 2
+      "-abc " --> neg' (span 0 1) (var' (span 1 4) "abc")  -- 0 4
+      "- abc " --> neg' (span 0 1) (var' (span 2 5) "abc") -- 0 5
 

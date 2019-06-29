@@ -6,6 +6,7 @@ import Test.Tasty.Hspec
 import Test.X1.Parser.Helpers
 import Test.X1.Helpers
 import X1.Types.Id
+import X1.Types.Ann
 import X1.Types.Expr1.Lit
 import X1.Types.Expr1.Number
 import X1.Types.Expr1.String
@@ -18,13 +19,17 @@ import X1.Parser.Impl (parser)
 import Test.Hspec.Megaparsec hiding (shouldFailWith, succeedsLeaving)
 
 
-parse :: Text -> ParseResult Impl
+type Impl' = Impl 'Testing
+type Expr1' = Expr1 'Testing
+type Binding' = Binding 'Testing
+
+parse :: Text -> ParseResult (Impl 'Parsed)
 parse = mkParser parser
 
-num :: Int -> Expr1
+num :: Int -> Expr1'
 num = E1Lit emptyAnn . LNumber . SInt
 
-str :: Text -> Expr1
+str :: Text -> Expr1'
 str = E1Lit emptyAnn . LString . String
 
 con :: Text -> Type
@@ -36,22 +41,22 @@ var = TVar . Tyvar . Id
 app :: Type -> [Type] -> Type
 app = TApp
 
-(==>) :: Text -> Impl -> IO ()
+(==>) :: Text -> Impl' -> IO ()
 a ==> b = (stripAnns <$> parse a) `shouldParse` b
 
 (-->) :: Type -> Type -> Type
 t1 --> t2 = app (con "->") [t1, t2]
 
-lam :: [Text] -> Expr1 -> Expr1
+lam :: [Text] -> Expr1' -> Expr1'
 lam vars = E1Lam (PVar . Id <$> vars)
 
-evar :: Text -> Expr1
+evar :: Text -> Expr1'
 evar = E1Var emptyAnn . Id
 
-eapp :: Text -> [Text] -> Expr1
+eapp :: Text -> [Text] -> Expr1'
 eapp x = E1App (evar x) . map evar
 
-binding :: Text -> Expr1 -> Binding
+binding :: Text -> Expr1' -> Binding'
 binding x = Binding (Id x)
 
 pred :: Text -> [Type] -> Pred

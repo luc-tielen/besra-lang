@@ -6,6 +6,7 @@ import X1.SA.ConflictingTypeAnnDecls
 import X1.SA.Helpers
 import X1.SA.Types
 import X1.Types.Id
+import X1.Types.Ann
 import X1.Types.Expr1.Module
 import X1.Types.Expr1.Type
 import X1.Types.Expr1.Scheme
@@ -14,10 +15,12 @@ import X1.Parser
 import Test.Tasty.Hspec
 
 
+type Module' = Module 'Parsed
+
 file :: FilePath
 file = "Test.x1"
 
-analyze' :: Validation [SAError] Module
+analyze' :: Validation [SAError] Module'
 analyze' = analyze [validate file]
 
 conflict :: Text -> [Type] -> SAError

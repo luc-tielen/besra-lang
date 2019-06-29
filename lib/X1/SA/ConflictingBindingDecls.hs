@@ -7,24 +7,28 @@ import X1.SA.Types
 import X1.Types.Expr1.Module
 import X1.Types.Expr1.Expr
 import X1.Types.Id
+import X1.Types.Ann
 
 
-validate :: FilePath -> Validation [SAError] Module
+type Module' = Module 'Parsed
+type Decl' = Decl 'Parsed
+
+validate :: FilePath -> Validation [SAError] Module'
 validate path (Module decls) =
   let typeDecls = filter isBindingDecl decls
       groupedDecls = groupBy sameVar typeDecls
       result = mconcat $ map (checkConflict path) groupedDecls
    in result
 
-isBindingDecl :: Decl -> Bool
+isBindingDecl :: Decl' -> Bool
 isBindingDecl (BindingDecl _) = True
 isBindingDecl _ = False
 
-sameVar :: Decl -> Decl -> Bool
+sameVar :: Decl' -> Decl' -> Bool
 sameVar (BindingDecl (Binding (Id a) _)) (BindingDecl (Binding (Id b) _)) = a == b
 sameVar _ _ = False
 
-checkConflict :: FilePath -> [Decl] -> ValidationResult [SAError]
+checkConflict :: FilePath -> [Decl'] -> ValidationResult [SAError]
 checkConflict _ [] = Ok
 checkConflict _ [_] = Ok
 checkConflict path conflicts = Err [err conflicts] where

@@ -16,13 +16,17 @@ import qualified X1.Parser.Scheme as Scheme
 import qualified X1.Parser.Pattern as Pattern
 
 
-parser :: Parser Expr1
+type Expr1' = Expr1 'Parsed
+type ExprDecl' = ExprDecl 'Parsed
+type Ann' = Ann 'Parsed
+
+parser :: Parser Expr1'
 parser = expr
 
-expr :: Parser Expr1
+expr :: Parser Expr1'
 expr = makeExprParser term exprOperators <?> "expression"
 
-exprOperators :: [[Operator Parser Expr1]]
+exprOperators :: [[Operator Parser Expr1']]
 exprOperators =
   [ [ Prefix (lexeme' $ E1Neg <$> negateOpParser) ]
   , [ InfixL (lexeme' $ uncurry E1BinOp <$> operatorParser) ]
@@ -33,7 +37,7 @@ exprOperators =
     infixOp = uncurry E1Var <$> withSpan (Id <$> opIdentifier)
     infixFunction' = infixFunction E1Var E1Con
 
-term :: Parser Expr1
+term :: Parser Expr1'
 term = lexeme term' <?> "expression" where
   term' =  litParser
        <|> withLineFold lineFoldedExprs
@@ -46,10 +50,10 @@ term = lexeme term' <?> "expression" where
                  <|> ifParser
                  <|> caseParser
 
-litParser :: Parser Expr1
+litParser :: Parser Expr1'
 litParser = uncurry E1Lit <$> withSpan Lit.parser
 
-applyFuncParser :: Parser Expr1
+applyFuncParser :: Parser Expr1'
 applyFuncParser = sameLine $ do
   funcName <- lexeme funcNameParser
   -- NOTE: next line is to prevent wrong order of parentheses in nested applications
@@ -68,17 +72,17 @@ applyFuncParser = sameLine $ do
        <|> conParser
        <|> parens parser
 
-varParser :: Parser Expr1
+varParser :: Parser Expr1'
 varParser = uncurry E1Var <$> varParser' where
   varParser' = withSpan $ Id <$> (try opVar <|> identifier)
   opVar = betweenParens opIdentifier
 
-conParser :: Parser Expr1
+conParser :: Parser Expr1'
 conParser =
   uncurry E1Con <$> withSpan (Id <$> capitalIdentifier)
 
 
-lamParser :: Parser Expr1
+lamParser :: Parser Expr1'
 lamParser = do
   vars <- lexeme' lambdaHead
   body <- parser
@@ -90,7 +94,7 @@ lamParser = do
       void $ lexeme (chunk "->" <?> "lambda arrow")
       pure vars
 
-ifParser :: Parser Expr1
+ifParser :: Parser Expr1'
 ifParser = do
   keyword "if"
   cond <- lexeme' parser
@@ -99,7 +103,7 @@ ifParser = do
   keyword "else"
   E1If cond trueClause <$> parser
 
-caseParser :: Parser Expr1
+caseParser :: Parser Expr1'
 caseParser = do
   keyword "case"
   expr' <- lexeme' parser
@@ -116,7 +120,7 @@ caseParser = do
       expr' <- parser
       pure (pat, expr')
 
-letParser :: Parser Expr1
+letParser :: Parser Expr1'
 letParser = do
   bindings <- withLineFold $ do
     keyword "let"
@@ -128,13 +132,13 @@ letParser = do
   where
     inLabel = "properly indented declaration or 'in' keyword"
 
-declParser :: Parser ExprDecl
+declParser :: Parser ExprDecl'
 declParser = withLineFold declParser' where
   declParser' =  try fixityDecl
              <|> try namedFunctionDecl
              <|> typeOrBindingDecl
 
-fixityDecl :: Parser ExprDecl
+fixityDecl :: Parser ExprDecl'
 fixityDecl = do
   fixityType <- lexeme' fixityTypeParser
   precedence <- withDefault 9 $ digitToInt <$> lexeme' decimal
@@ -152,7 +156,7 @@ fixityDecl = do
       pure parsed
     infixFunction' = infixFunction (flip const) (flip const)
 
-namedFunctionDecl :: Parser ExprDecl
+namedFunctionDecl :: Parser ExprDecl'
 namedFunctionDecl = do
   (funcName, vars) <- lexeme' functionHead
   body <- E1Lam vars <$> parser
@@ -166,7 +170,7 @@ namedFunctionDecl = do
       void $ lexeme assign
       pure (funcName, vars)
 
-typeOrBindingDecl :: Parser ExprDecl
+typeOrBindingDecl :: Parser ExprDecl'
 typeOrBindingDecl = do
   var <- lexeme' declIdentifier
   separator <- lexeme' $ typeSeparator <|> assign
@@ -187,7 +191,7 @@ assign = char '=' <?> "rest of assignment"
 
 data InfixParseResult = InfixFunc | InfixCon
 
-infixFunction :: (Ann -> Id -> a) -> (Ann -> Id -> a) -> Parser a
+infixFunction :: (Ann' -> Id -> a) -> (Ann' -> Id -> a) -> Parser a
 infixFunction var con = do
   (ann, (which, parsed)) <- withSpan $ betweenBackticks infixFuncOrCon
   case which of
@@ -200,7 +204,7 @@ infixFunction var con = do
     betweenBackticks = between (backtick <?> "operator") backtick
     backtick = char '`'
 
-parens :: Parser Expr1 -> Parser Expr1
+parens :: Parser Expr1' -> Parser Expr1'
 parens p =
   uncurry E1Parens <$> withSpan (betweenParens p)
 

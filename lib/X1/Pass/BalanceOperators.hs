@@ -1,4 +1,6 @@
 
+{-# LANGUAGE UndecidableInstances #-}
+
 module X1.Pass.BalanceOperators ( BalanceError(..), FixityInfo(..), pass ) where
 
 {-
@@ -20,24 +22,36 @@ import X1.Types.Id
 import X1.Types.Ann
 
 
-data BalanceError = BadPrecedence FixityInfo FixityInfo Decl
-                  | InvalidPrefixPrecedence FixityInfo Decl
-                  deriving (Eq, Show)
+type Module' = Module 'Parsed
+type Decl' = Decl 'Parsed
+type Binding' = Binding 'Parsed
+type Expr1' = Expr1 'Parsed
+type ExprDecl' = ExprDecl 'Parsed
+type Ann' = Ann 'Parsed
+type BalanceError' = BalanceError 'Parsed
+
+data BalanceError ph
+  = BadPrecedence FixityInfo FixityInfo (Decl ph)
+  | InvalidPrefixPrecedence FixityInfo (Decl ph)
+
+deriving instance Eq (Decl a) => Eq (BalanceError a)
+deriving instance Show (Decl a) => Show (BalanceError a)
 
 data FixityInfo = FI Fixity Int Id
   deriving (Eq, Show)
 
-data Token = TExpr Expr1
-           | TOp (Id -> Expr1 -> Expr1 -> Expr1) FixityInfo
-           | TNeg Ann
+data Token = TExpr Expr1'
+           | TOp (Id -> Expr1' -> Expr1' -> Expr1') FixityInfo
+           | TNeg Ann'
 
-data Env = Env { envFixities :: [FixityInfo], envDecl :: Decl }
-  deriving (Eq, Show)
+data Env = Env { envFixities :: [FixityInfo]
+               , envDecl :: Decl'
+               }
 
-type RebalanceM m = ReaderT Env (ExceptT BalanceError m)
+type RebalanceM m = ReaderT Env (ExceptT BalanceError' m)
 
 
-pass :: Monad m => Module -> ExceptT BalanceError m Module
+pass :: Monad m => Module' -> ExceptT BalanceError' m Module'
 pass (Module decls) =
   let fixities = map toFixityInfo $ filter isFixityDecl decls
       isFixityDecl FixityDecl {} = True
@@ -48,7 +62,7 @@ pass (Module decls) =
    in Module <$> sequenceA (parMap' (runRebalance fixities) decls)
 
 
-runRebalance :: Monad m => [FixityInfo] -> Decl -> ExceptT BalanceError m Decl
+runRebalance :: Monad m => [FixityInfo] -> Decl' -> ExceptT BalanceError' m Decl'
 runRebalance fsSpecs decl = runReaderT (rebalance decl) env
   where env = Env fsSpecs decl
 
@@ -61,23 +75,23 @@ instance Balance a => Balance [a] where
 instance Balance b => Balance (a, b) where
   rebalance = traverse rebalance
 
-instance Balance Decl where
+instance Balance Decl' where
   rebalance (ImplDecl (Impl preds p bindings)) =
     ImplDecl . Impl preds p <$> rebalance bindings
   rebalance (BindingDecl (Binding id expr)) =
     BindingDecl . Binding id <$> rebalance expr
   rebalance d = pure d
 
-instance Balance ExprDecl where
+instance Balance ExprDecl' where
   rebalance (ExprBindingDecl binding) =
     ExprBindingDecl <$> rebalance binding
   rebalance d = pure d
 
-instance Balance Binding where
+instance Balance Binding' where
   rebalance (Binding id expr) =
     Binding id <$> rebalance expr
 
-instance Balance Expr1 where
+instance Balance Expr1' where
   rebalance expr = do
     tokens <- toTokens expr
     rebalancedExpr <- fst <$> rebalanceTokens startOp tokens
@@ -106,10 +120,10 @@ lookupFixity fsSpecs op =
       defaultFixity = FI L 9 op
    in maybe defaultFixity identity result
 
-toBinOp :: Ann -> (Id -> Expr1) -> Id -> (Expr1 -> Expr1 -> Expr1)
+toBinOp :: Ann' -> (Id -> Expr1') -> Id -> (Expr1' -> Expr1' -> Expr1')
 toBinOp opAnn f opName = E1BinOp opAnn (f opName)
 
-toTokens :: Monad m => Expr1 -> RebalanceM m [Token]
+toTokens :: Monad m => Expr1' -> RebalanceM m [Token]
 toTokens (E1BinOp opAnn (E1Var ann op) e1 e2) =
   opToTokens (toBinOp opAnn (E1Var ann)) op e1 e2
 toTokens (E1BinOp opAnn (E1Con ann op) e1 e2) =
@@ -118,8 +132,8 @@ toTokens (E1Neg ann e) = pure [TNeg ann, TExpr e]
 toTokens e = pure [TExpr e]
 
 opToTokens :: Monad m
-           => (Id -> Expr1 -> Expr1 -> Expr1)
-           -> Id -> Expr1 -> Expr1 -> RebalanceM m [Token]
+           => (Id -> Expr1' -> Expr1' -> Expr1')
+           -> Id -> Expr1' -> Expr1' -> RebalanceM m [Token]
 opToTokens f op e1 e2 = do
   fsSpecs <- asks envFixities
   let fs = lookupFixity fsSpecs op
@@ -127,7 +141,7 @@ opToTokens f op e1 e2 = do
   e2Tokens <- toTokens e2
   pure $ e1Tokens <> [TOp f fs] <> e2Tokens
 
-rebalanceTokens :: Monad m => FixityInfo -> [Token] -> RebalanceM m (Expr1, [Token])
+rebalanceTokens :: Monad m => FixityInfo -> [Token] -> RebalanceM m (Expr1', [Token])
 rebalanceTokens op1 (TExpr e1 : rest) = rebalanceTokens' op1 e1 rest
 rebalanceTokens op1 (TNeg ann : rest) = do
   when (prec1 >= 6) $ throwError . InvalidPrefixPrecedence op1 =<< asks envDecl
@@ -138,7 +152,7 @@ rebalanceTokens op1 (TNeg ann : rest) = do
     FI _ prec1 _  = op1
 rebalanceTokens _ _ = panic "Error while rebalancing tokens!"
 
-rebalanceTokens' :: Monad m => FixityInfo -> Expr1 -> [Token] -> RebalanceM m (Expr1, [Token])
+rebalanceTokens' :: Monad m => FixityInfo -> Expr1' -> [Token] -> RebalanceM m (Expr1', [Token])
 rebalanceTokens' _ e1 [] = pure (e1, [])
 rebalanceTokens' op1 e1 (TOp f op2 : rest)
   -- case (1): check for illegal expressions

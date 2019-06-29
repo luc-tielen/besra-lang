@@ -16,74 +16,84 @@ import X1.Types.Expr1.Type
 import X1.Types.Expr1.Pattern
 import X1.Types.Id
 import X1.Types.Fixity
+import X1.Types.Ann
 import X1.Parser
 import Test.Tasty.Hspec
 import NeatInterpolation
 import Test.X1.Helpers
 
 
-runPass :: Text -> IO (Either BalanceError Module)
+type Module' = Module 'Testing
+type Decl' = Decl 'Testing
+type Binding' = Binding 'Testing
+type Expr1' = Expr1 'Testing
+type BalanceError' = BalanceError 'Parsed
+
+runPass :: Text -> IO (Either BalanceError' Module')
 runPass input =
   let
-    parseResult = stripAnns <$> parseFile "balance_operators.test" input
-   in
-    runExceptT $ case parseResult of
+    parseResult = parseFile "balance_operators.test" input
+    passResult = case parseResult of
       Left err -> panic $ printError err
       Right result -> pass result
+  in
+    runExceptT $ stripAnns <$> passResult
 
 class Testable a where
   (==>) :: Text -> a -> IO ()
 
 infixr 0 ==>
 
-instance Testable Module where
+instance Testable Module' where
   a ==> b = do
     result <- runPass a
     result `shouldBe` Right b
 
-instance Testable Decl where
+instance Testable Decl' where
   a ==> b = a ==> Module $ infixDecls "+" "*" ++ [b]
 
-instance Testable Binding where
+instance Testable Binding' where
   a ==> b = a ==> BindingDecl b
 
-instance Testable Expr1 where
+instance Testable Expr1' where
   a ==> b = a ==> binding "a" b
 
-instance Testable BalanceError where
+instance Testable (BalanceError 'Testing) where
   a ==> b = do
     result <- runPass a
-    result `shouldBe` Left b
+    (first stripAnn result) `shouldBe` Left b
+      where stripAnn (BadPrecedence fi1 fi2 d) = BadPrecedence fi1 fi2 (stripAnns d)
+            stripAnn (InvalidPrefixPrecedence fi d) = InvalidPrefixPrecedence fi (stripAnns d)
 
 
 c :: Text -> Type
 c = TCon . Tycon . Id
 
-binding :: Text -> Expr1 -> Binding
+binding :: Text -> Expr1' -> Binding'
 binding x = Binding (Id x)
 
-num :: Int -> Expr1
+num :: Int -> Expr1'
 num = E1Lit emptyAnn . LNumber . SInt
 
-app :: Expr1 -> [Expr1] -> Expr1
+app :: Expr1' -> [Expr1'] -> Expr1'
 app = E1App
 
-lam :: [Text] -> Expr1 -> Expr1
+lam :: [Text] -> Expr1' -> Expr1'
 lam vars = E1Lam (PVar . Id <$> vars)
 
-var :: Text -> Expr1
+var :: Text -> Expr1'
 var = E1Var emptyAnn . Id
 
-con :: Text -> Expr1
+con :: Text -> Expr1'
 con = E1Con emptyAnn . Id
 
-parens :: Expr1 -> Expr1
+parens :: Expr1' -> Expr1'
 parens = E1Parens emptyAnn
 
-op :: Text -> Expr1 -> Expr1 -> Expr1
+op :: Text -> Expr1' -> Expr1' -> Expr1'
 op operator = E1BinOp emptyAnn (var operator)
 
-infixDecls :: Text -> Text -> [Decl]
+infixDecls :: Text -> Text -> [Decl']
 infixDecls a b = [ FixityDecl L 4 (Id a), FixityDecl L 5 (Id b) ]
 
 fixityTypeToStr :: Fixity -> Text
