@@ -101,7 +101,7 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
 
   describe "if expressions" $ parallel $ do
     -- NOTE: does not take typesystem into account, only parsing.
-    let if' = E1If
+    let if' = E1If emptyAnn
         num = E1Lit emptyAnn . LNumber . SInt
         str = E1Lit emptyAnn . LString . String
         char = E1Lit emptyAnn . LChar
@@ -425,6 +425,7 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
         app' = E1App
         op' = E1BinOp
         neg' = E1Neg
+        if' = E1If
 
     it "adds location information to the expression" $ do
       "(1  )" --> E1Parens (Span 0 5) $ num' (Span 1 2) (SInt 1)
@@ -489,3 +490,8 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       "\\a b -> 1 " --> lam' (Span 0 9) ["a", "b"] $ num' (Span 8 9) (SInt 1)
       "\\abc def -> 123 " --> lam' (Span 0 15) ["abc", "def"] $ num' (Span 12 15) (SInt 123)
 
+    it "adds location information to if expressions" $
+      "if 123 then 456 else 789 "
+        --> if' (Span 0 24) (num' (Span 3 6) $ SInt 123)
+                            (num' (Span 12 15) $ SInt 456)
+                            (num' (Span 21 24) $ SInt 789)

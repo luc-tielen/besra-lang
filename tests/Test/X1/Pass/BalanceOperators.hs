@@ -269,21 +269,21 @@ spec_balanceOperators = describe "balance operators pass" $ parallel $ do
         infixl 4 +
         infixl 5 *
         a = if 1 + 2 * 3 then 1 else 1
-        |] ==> E1If (op "+" (num 1) (op "*" (num 2) (num 3)))
-                    (num 1) (num 1)
+        |] ==> E1If emptyAnn (op "+" (num 1) (op "*" (num 2) (num 3)))
+                              (num 1) (num 1)
       [text|
         infixl 4 +
         infixl 5 *
         a = if 1 then 1 + 2 * 3 else 1
-        |] ==> E1If (num 1)
-                    (op "+" (num 1) (op "*" (num 2) (num 3)))
-                    (num 1)
+        |] ==> E1If emptyAnn (num 1)
+                              (op "+" (num 1) (op "*" (num 2) (num 3)))
+                              (num 1)
       [text|
         infixl 4 +
         infixl 5 *
         a = if 1 then 1 else 1 + 2 * 3
-        |] ==> E1If (num 1) (num 1)
-                    (op "+" (num 1) (op "*" (num 2) (num 3)))
+        |] ==> E1If emptyAnn (num 1) (num 1)
+                              (op "+" (num 1) (op "*" (num 2) (num 3)))
 
     it "rebalances operators in case" $ do
       [text|

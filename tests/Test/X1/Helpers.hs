@@ -49,7 +49,7 @@ stripAnns ast =
                       , appE = stripAppAnn
                       , binOpE = stripBinOpAnn
                       , negE = stripNegAnn
-                      , ifE = \c tr fl -> pure $ E1If c tr fl
+                      , ifE = stripIfAnn
                       , caseE = \e cs -> pure $ E1Case e cs
                       , letE = \decls body -> pure $ E1Let decls body
                       , parenE = stripParenAnn
@@ -65,6 +65,7 @@ stripAnns ast =
       stripParenAnn _ e = pure $ E1Parens emptyAnn e
       stripLamAnn _ pats body = pure $ E1Lam emptyAnn pats body
       stripAppAnn _ func args = pure $ E1App emptyAnn func args
+      stripIfAnn _ c tr fl = pure $ E1If emptyAnn c tr fl
    in runIdentity $ foldAST fs ast
 
 

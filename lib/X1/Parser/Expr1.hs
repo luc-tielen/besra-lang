@@ -113,12 +113,13 @@ lamParser = do
 
 ifParser :: Parser Expr1'
 ifParser = do
-  keyword "if"
+  (sp1, _) <- withSpan $ keyword "if"
   cond <- lexeme' parser
   keyword "then"
   trueClause <- lexeme' parser
   keyword "else"
-  E1If cond trueClause <$> parser
+  (sp2, falseClause) <- expr
+  pure $ E1If (sp1 <> sp2) cond trueClause falseClause
 
 caseParser :: Parser Expr1'
 caseParser = do

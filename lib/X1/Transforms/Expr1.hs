@@ -66,7 +66,7 @@ data HandlersE m ph rExprDecl rExpr =
     , appE :: Ann ph -> rExpr -> [rExpr] -> m rExpr           -- Handler for function application
     , binOpE :: Ann ph -> rExpr -> rExpr -> rExpr -> m rExpr  -- Handler for bin op expression
     , negE :: Ann ph -> rExpr -> m rExpr                      -- Handler for negate expression
-    , ifE :: rExpr -> rExpr -> rExpr -> m rExpr               -- Handler for if expression
+    , ifE :: Ann ph -> rExpr -> rExpr -> rExpr -> m rExpr     -- Handler for if expression
     , caseE :: rExpr -> [(Pattern, rExpr)] -> m rExpr         -- Handler for case expression
     , letE :: [rExprDecl] -> rExpr -> m rExpr                 -- Handler for let expression
     , parenE :: Ann ph -> rExpr -> m rExpr                    -- Handler for parenthesized expression
@@ -158,8 +158,8 @@ instance Fold Expr1 where
        E1BinOp ann op l r ->
          join $ binOpE fs' ann <$> foldAST fs op <*> foldAST fs l <*> foldAST fs r
        E1Neg ann e -> negE fs' ann =<< foldAST fs e
-       E1If c tr fl ->
-         join $ ifE fs' <$> foldAST fs c <*> foldAST fs tr <*> foldAST fs fl
+       E1If ann c tr fl ->
+         join $ ifE fs' ann <$> foldAST fs c <*> foldAST fs tr <*> foldAST fs fl
        E1Case e clauses ->
          join $ caseE fs' <$> foldAST fs e <*> traverse (traverse (foldAST fs)) clauses
        E1Let decls body ->
