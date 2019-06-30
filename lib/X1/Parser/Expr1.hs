@@ -35,18 +35,17 @@ exprOperators =
   , [ InfixL (lexeme' binOp) ]
   ]
   where
-    -- TODO refactor
     binOp = do
-      (opSpan, op) <- operatorParser
+      op <- operatorParser
       pure $ \(span1', e1) (span2', e2) ->
-        let sp = opSpan <> span1' <> span2'
+        let sp = span1' <> span2'
          in (sp, E1BinOp sp op e1 e2)
     negateOp = do
       opSpan <- negateOpParser
       pure $ \(span', e) ->
         let sp = opSpan <> span'
          in (sp, E1Neg sp e)
-    operatorParser = withSpan $ infixOp <|> infixFunction'
+    operatorParser = infixOp <|> infixFunction'
     negateOpParser = fst <$> withSpan (hidden $ char '-')
     infixOp = uncurry E1Var <$> withSpan (Id <$> opIdentifier)
     infixFunction' = infixFunction E1Var E1Con
@@ -69,12 +68,13 @@ litParser = uncurry E1Lit <$> withSpan Lit.parser
 
 applyFuncParser :: Parser Expr1'
 applyFuncParser = sameLine $ do
-  (sp1, funcName) <- withSpan $ lexeme funcNameParser
+  startPos <- getOffset
+  funcName <- lexeme funcNameParser
   -- NOTE: next line is to prevent wrong order of parentheses in nested applications
   args <- some $ lexeme arg
   let (spans, args') = unzip args
       spans' = fromJust $ nonEmpty spans
-  pure $ E1App (sp1 <> sconcat spans') funcName args'
+  pure $ E1App (startPos .> sconcat spans') funcName args'
   where
     variable = uncurry E1Var <$> withSpan (Id <$> identifier)
     constructor = uncurry E1Con <$> withSpan (Id <$> capitalIdentifier)
@@ -98,12 +98,12 @@ conParser :: Parser Expr1'
 conParser =
   uncurry E1Con <$> withSpan (Id <$> capitalIdentifier)
 
-
 lamParser :: Parser Expr1'
 lamParser = do
-  (sp1, vars) <- withSpan $ lexeme' lambdaHead
+  startPos <- getOffset
+  vars <- lexeme' lambdaHead
   (sp2, body) <- expr
-  pure $ E1Lam (sp1 <> sp2) vars body
+  pure $ E1Lam (startPos .> sp2) vars body
   where
     lambdaHead = sameLine $ do
       void . lexeme $ char '\\'
@@ -113,13 +113,14 @@ lamParser = do
 
 ifParser :: Parser Expr1'
 ifParser = do
-  (sp1, _) <- withSpan $ keyword "if"
+  startPos <- getOffset
+  keyword "if"
   cond <- lexeme' parser
   keyword "then"
   trueClause <- lexeme' parser
   keyword "else"
-  (sp2, falseClause) <- expr
-  pure $ E1If (sp1 <> sp2) cond trueClause falseClause
+  (sp, falseClause) <- expr
+  pure $ E1If (startPos .> sp) cond trueClause falseClause
 
 caseParser :: Parser Expr1'
 caseParser = do
@@ -158,10 +159,11 @@ declParser = withLineFold declParser' where
 
 fixityDecl :: Parser ExprDecl'
 fixityDecl = do
-  (sp1, fixityType) <- withSpan $ lexeme' fixityTypeParser
+  startPos <- getOffset
+  fixityType <- lexeme' fixityTypeParser
   precedence <- withDefault 9 $ digitToInt <$> lexeme' decimal
-  (sp2, operator) <- lexeme (withSpan $ Id <$> opIdentifier <|> infixFunction')
-  pure $ ExprFixityDecl (sp1 <> sp2) fixityType precedence operator
+  (sp, operator) <- lexeme (withSpan $ Id <$> opIdentifier <|> infixFunction')
+  pure $ ExprFixityDecl (startPos .> sp) fixityType precedence operator
   where
     fixityTypeParser =  keyword "infixl" $> L
                     <|> keyword "infixr" $> R
@@ -176,10 +178,11 @@ fixityDecl = do
 
 namedFunctionDecl :: Parser ExprDecl'
 namedFunctionDecl = do
-  (sp1, (funcName, vars)) <- withSpan $ lexeme' functionHead
-  (sp2, expr') <- expr
-  let body = E1Lam (sp1 <> sp2) vars expr'
-  pure $ ExprBindingDecl $ Binding (sp1 <> sp2) funcName body
+  startPos <- getOffset
+  (funcName, vars) <- lexeme' functionHead
+  (sp, expr') <- expr
+  let body = E1Lam (startPos .> sp) vars expr'
+  pure $ ExprBindingDecl $ Binding (startPos .> sp) funcName body
   where
     functionName =  Id <$> identifier
                 <|> prefixOperator
@@ -191,13 +194,14 @@ namedFunctionDecl = do
 
 typeOrBindingDecl :: Parser ExprDecl'
 typeOrBindingDecl = do
-  (varSpan, var) <- lexeme' $ withSpan declIdentifier
+  startPos <- getOffset
+  var <- lexeme' declIdentifier
   separator <- lexeme' $ typeSeparator <|> assign
   case separator of
     ':' -> ExprTypeAnnDecl . TypeAnn var <$> Scheme.parser
     '=' -> do
       (exprSpan, e) <- expr
-      pure $ ExprBindingDecl $ Binding (varSpan <> exprSpan) var e
+      pure $ ExprBindingDecl $ Binding (startPos .> exprSpan) var e
     _ -> panic "Parse error when parsing declaration."
   where
     declIdentifier = declVar <|> prefixOperator

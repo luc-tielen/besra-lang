@@ -21,51 +21,43 @@ type Result a ph =
 stripAnns :: Fold a => a 'Parsed -> Result a 'Testing
 stripAnns ast =
   let fs :: Transform
-      fs = Handlers { handlersM = fsM
-                    , handlersD = fsD
-                    , handlersI = fsI
-                    , handlersB = fsB
-                    , handlersED = fsED
-                    , handlersE = fsE
-                    }
+      fs = Handlers
+        { handlersM = fsM
+        , handlersD = fsD
+        , handlersI = fsI
+        , handlersB = fsB
+        , handlersED = fsED
+        , handlersE = fsE
+        }
       fsM = HandlersM { moduleM = pure . Module }
-      fsD = HandlersD { typeAnnD = pure . TypeAnnDecl
-                      , adtD = pure . DataDecl
-                      , traitD = pure . TraitDecl
-                      , implD = pure . ImplDecl
-                      , bindingD = pure . BindingDecl
-                      , fixityD = stripFixityDeclAnn
-                      }
+      fsD = HandlersD
+        { typeAnnD = pure . TypeAnnDecl
+        , adtD = pure . DataDecl
+        , traitD = pure . TraitDecl
+        , implD = pure . ImplDecl
+        , bindingD = pure . BindingDecl
+        , fixityD = \_ fx prec name -> pure $ FixityDecl emptyAnn fx prec name
+        }
       fsI = HandlersI { implI = \ps p bs -> pure $ Impl ps p bs }
-      fsB = HandlersB { bindingB = stripBindingAnn }
-      fsED = HandlersED { typeAnnED = pure . ExprTypeAnnDecl
-                        , bindingED = pure . ExprBindingDecl
-                        , fixityED = stripExprFixityDeclAnn
-                        }
-      fsE = HandlersE { litE = stripLitAnn
-                      , varE = stripVarAnn
-                      , conE = stripConAnn
-                      , lamE = stripLamAnn
-                      , appE = stripAppAnn
-                      , binOpE = stripBinOpAnn
-                      , negE = stripNegAnn
-                      , ifE = stripIfAnn
-                      , caseE = \e cs -> pure $ E1Case e cs
-                      , letE = \decls body -> pure $ E1Let decls body
-                      , parenE = stripParenAnn
-                      }
-      stripExprFixityDeclAnn _ fx prec name = pure $ ExprFixityDecl emptyAnn fx prec name
-      stripFixityDeclAnn _ fx prec name = pure $ FixityDecl emptyAnn fx prec name
-      stripBindingAnn _ name expr = pure $ Binding emptyAnn name expr
-      stripLitAnn _ lit = pure $ E1Lit emptyAnn lit
-      stripVarAnn _ var = pure $ E1Var emptyAnn var
-      stripConAnn _ con = pure $ E1Con emptyAnn con
-      stripNegAnn _ e = pure $ E1Neg emptyAnn e
-      stripBinOpAnn _ op l r = pure $ E1BinOp emptyAnn op l r
-      stripParenAnn _ e = pure $ E1Parens emptyAnn e
-      stripLamAnn _ pats body = pure $ E1Lam emptyAnn pats body
-      stripAppAnn _ func args = pure $ E1App emptyAnn func args
-      stripIfAnn _ c tr fl = pure $ E1If emptyAnn c tr fl
+      fsB = HandlersB { bindingB = \_ name expr -> pure $ Binding emptyAnn name expr }
+      fsED = HandlersED
+        { typeAnnED = pure . ExprTypeAnnDecl
+        , bindingED = pure . ExprBindingDecl
+        , fixityED = \_ fx prec name -> pure $ ExprFixityDecl emptyAnn fx prec name
+        }
+      fsE = HandlersE
+        { litE = \_ lit -> pure $ E1Lit emptyAnn lit
+        , varE = \_ var -> pure $ E1Var emptyAnn var
+        , conE = \_ con -> pure $ E1Con emptyAnn con
+        , lamE = \_ pats body -> pure $ E1Lam emptyAnn pats body
+        , appE = \_ func args -> pure $ E1App emptyAnn func args
+        , binOpE = \_ op l r -> pure $ E1BinOp emptyAnn op l r
+        , negE = \_ e -> pure $ E1Neg emptyAnn e
+        , ifE = \_ c tr fl -> pure $ E1If emptyAnn c tr fl
+        , caseE = \e cs -> pure $ E1Case e cs
+        , letE = \decls body -> pure $ E1Let decls body
+        , parenE = \_ e -> pure $ E1Parens emptyAnn e
+        }
    in runIdentity $ foldAST fs ast
 
 
