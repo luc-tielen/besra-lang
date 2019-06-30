@@ -45,7 +45,7 @@ stripAnns ast =
       fsE = HandlersE { litE = stripLitAnn
                       , varE = stripVarAnn
                       , conE = stripConAnn
-                      , lamE = \pats body -> pure $ E1Lam pats body
+                      , lamE = stripLamAnn
                       , appE = \func args -> pure $ E1App func args
                       , binOpE = stripBinOpAnn
                       , negE = stripNegAnn
@@ -63,6 +63,7 @@ stripAnns ast =
       stripNegAnn _ e = pure $ E1Neg emptyAnn e
       stripBinOpAnn _ op l r = pure $ E1BinOp emptyAnn op l r
       stripParenAnn _ e = pure $ E1Parens emptyAnn e
+      stripLamAnn _ pats body = pure $ E1Lam emptyAnn pats body
    in runIdentity $ foldAST fs ast
 
 

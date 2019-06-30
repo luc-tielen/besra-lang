@@ -79,7 +79,7 @@ app :: Expr1' -> [Expr1'] -> Expr1'
 app = E1App
 
 lam :: [Text] -> Expr1' -> Expr1'
-lam vars = E1Lam (PVar . Id <$> vars)
+lam vars = E1Lam emptyAnn (PVar . Id <$> vars)
 
 var :: Text -> Expr1'
 var = E1Var emptyAnn . Id

@@ -97,9 +97,9 @@ conParser =
 
 lamParser :: Parser Expr1'
 lamParser = do
-  vars <- lexeme' lambdaHead
-  body <- parser
-  pure $ E1Lam vars body
+  (sp1, vars) <- withSpan $ lexeme' lambdaHead
+  (sp2, body) <- expr
+  pure $ E1Lam (sp1 <> sp2) vars body
   where
     lambdaHead = sameLine $ do
       void . lexeme $ char '\\'
@@ -173,7 +173,7 @@ namedFunctionDecl :: Parser ExprDecl'
 namedFunctionDecl = do
   (sp1, (funcName, vars)) <- withSpan $ lexeme' functionHead
   (sp2, expr') <- expr
-  let body = E1Lam vars expr'
+  let body = E1Lam (sp1 <> sp2) vars expr'
   pure $ ExprBindingDecl $ Binding (sp1 <> sp2) funcName body
   where
     functionName =  Id <$> identifier

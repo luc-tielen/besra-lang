@@ -59,7 +59,7 @@ namedFunctionDecl :: Parser Binding'
 namedFunctionDecl = do
   (sp1, (funcName, vars)) <- withSpan $ lexeme' functionHead
   (sp2, expr') <- Expr1.expr
-  let body = E1Lam vars expr'
+  let body = E1Lam (sp1 <> sp2) vars expr'
   pure $ Binding (sp1 <> sp2) funcName body
   where
     functionHead = sameLine $ do

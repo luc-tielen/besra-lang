@@ -65,7 +65,7 @@ char :: Char -> Expr1'
 char = E1Lit emptyAnn . LChar
 
 lam :: [Text] -> Expr1' -> Expr1'
-lam vars = E1Lam (PVar . Id <$> vars)
+lam vars = E1Lam emptyAnn (PVar . Id <$> vars)
 
 typeAnn :: Id -> Scheme -> Decl'
 typeAnn name scheme = TypeAnnDecl (TypeAnn name scheme)
@@ -151,12 +151,12 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
       "f x y =\n \"abc123\"" ==> Module [binding "f" $ lam ["x", "y"] (str "abc123")]
 
     it "can parse a named function containing patterns" $ do
-      "f 1 \"abc\" = 123" ==> Module [binding "f" (E1Lam [ PLit (LNumber (SInt 1))
-                                                             , PLit (LString (String "abc"))]
-                                                             (num 123))]
-      "f a@(X y) = 123" ==> Module [binding "f" (E1Lam [ PAs (Id "a")
-                                                               (PCon (Id "X") [PVar (Id "y")])]
-                                                               (num 123))]
+      "f 1 \"abc\" = 123"
+        ==> Module [binding "f" (E1Lam emptyAnn [ PLit (LNumber (SInt 1))
+                                                , PLit (LString (String "abc"))] (num 123))]
+      "f a@(X y) = 123"
+        ==> Module [binding "f" (E1Lam emptyAnn [ PAs (Id "a")
+                                                  (PCon (Id "X") [PVar (Id "y")])] (num 123))]
 
     it "can parse multiple named functions" $
       "f x = 5\ng x y = \"abc123\""
@@ -438,7 +438,7 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
     let binding' :: Span -> Text -> Expr1 'Parsed -> Binding 'Parsed
         binding' sp name = Binding sp (Id name)
         num' ann = E1Lit ann . LNumber . SInt
-        lam' vars = E1Lam (PVar . Id <$> vars)
+        lam' ann vars = E1Lam ann (PVar . Id <$> vars)
 
     it "keeps track of location info for constant bindings" $ do
       "a = 3  " ~~> Module [BindingDecl $ binding' (Span 0 5) "a" (num' (Span 4 5) 3)]
@@ -446,9 +446,9 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
 
     it "keeps track of location info for named function bindings" $ do
       "a b c = 1 " ~~> Module [BindingDecl $ binding' (Span 0 9) "a"
-                                          $ lam' ["b", "c"] $ num' (Span 8 9) 1]
+                                          $ lam' (Span 0 9) ["b", "c"] $ num' (Span 8 9) 1]
       "abc def ghi = 1234 " ~~> Module [BindingDecl $ binding' (Span 0 18) "abc"
-                                        $ lam' ["def", "ghi"] $ num' (Span 14 18) 1234]
+                                        $ lam' (Span 0 18) ["def", "ghi"] $ num' (Span 14 18) 1234]
 
     it "keeps track of location info for fixity declarations" $ do
       "infixl 6 +++ " ~~> Module [FixityDecl (Span 0 12) L 6 (Id "+++")]

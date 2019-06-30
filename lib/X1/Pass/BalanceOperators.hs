@@ -102,7 +102,7 @@ instance Balance Expr1' where
       rebalanceInner (E1BinOp ann op e1 e2) =
         E1BinOp ann op <$> rebalanceInner e1 <*> rebalanceInner e2
       rebalanceInner (E1Parens ann e) = E1Parens ann <$> rebalance e
-      rebalanceInner (E1Lam vars body) = E1Lam vars <$> rebalance body
+      rebalanceInner (E1Lam ann vars body) = E1Lam ann vars <$> rebalance body
       rebalanceInner (E1App f args) =
         E1App <$> rebalance f <*> rebalance args
       rebalanceInner (E1Case e clauses) =

@@ -52,7 +52,7 @@ a ~~> b = parse a `shouldParse` b
 t1 --> t2 = app (con "->") [t1, t2]
 
 lam :: [Text] -> Expr1' -> Expr1'
-lam vars = E1Lam (PVar . Id <$> vars)
+lam vars = E1Lam emptyAnn (PVar . Id <$> vars)
 
 evar :: Text -> Expr1'
 evar = E1Var emptyAnn . Id
@@ -167,7 +167,7 @@ spec_implParseTest = describe "impl parser" $ parallel $ do
   describe "annotations" $ parallel $ do
     let binding' ann x = Binding ann (Id x)
         num' ann = E1Lit ann . LNumber . SInt
-        lam' vars = E1Lam (PVar . Id <$> vars)
+        lam' ann vars = E1Lam ann (PVar . Id <$> vars)
 
     it "keeps track of location info for constant bindings" $ do
       "impl MyClass Int where\n a = 3  "
@@ -181,9 +181,9 @@ spec_implParseTest = describe "impl parser" $ parallel $ do
       "impl MyClass Int where\n a b c = 1 "
         ~~> Impl [] (pred "MyClass" [con "Int"])
                 [binding' (Span 24 33) "a" $
-                  lam' ["b", "c"] $ num' (Span 32 33) 1]
+                  lam' (Span 24 33) ["b", "c"] $ num' (Span 32 33) 1]
       "impl MyClass Int where\n abc def ghi = 123 "
         ~~> Impl [] (pred "MyClass" [con "Int"])
                 [binding' (Span 24 41) "abc" $
-                  lam' ["def", "ghi"] $ num' (Span 38 41) 123]
+                  lam' (Span 24 41) ["def", "ghi"] $ num' (Span 38 41) 123]
 

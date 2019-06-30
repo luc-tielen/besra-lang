@@ -148,7 +148,7 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
 
   describe "let expressions" $ parallel $ do
     let num = E1Lit emptyAnn . LNumber . SInt
-        lam vars = E1Lam (PVar . Id <$> vars)
+        lam vars = E1Lam emptyAnn (PVar . Id <$> vars)
 
     it "can parse multi-line let expressions" $ do
       "let x = 1 in x" ==> let' [binding "x" (num 1)] (var "x")  -- special case, for now
@@ -206,7 +206,7 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
         (utoks "y " <> elabel "properly indented declaration or 'in' keyword")
 
   describe "lambdas" $ parallel $ do
-    let lam vars = E1Lam (PVar . Id <$> vars)
+    let lam vars = E1Lam emptyAnn (PVar . Id <$> vars)
         num' = LNumber . SInt
         num = E1Lit emptyAnn . num'
         str' =  LString . String
@@ -222,8 +222,8 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       "\\ a b c -> 1" ==> lam ["a", "b", "c"] (num 1)
 
     it "can parse lambdas containing patterns" $ do
-      "\\1 \"abc\" -> 123" ==> E1Lam [PLit (num' 1), PLit (str' "abc")] (num 123)
-      "\\a@(X y) -> 123" ==> E1Lam [PAs (Id "a") $ PCon (Id "X") [PVar (Id "y")]] (num 123)
+      "\\1 \"abc\" -> 123" ==> E1Lam emptyAnn [PLit (num' 1), PLit (str' "abc")] (num 123)
+      "\\a@(X y) -> 123" ==> E1Lam emptyAnn [PAs (Id "a") $ PCon (Id "X") [PVar (Id "y")]] (num 123)
 
     it "can parse lambda over multiple lines" $ do
       "\\a b -> \n a" ==> lam ["a", "b"] (var "a")
@@ -421,6 +421,7 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
         num' ann = E1Lit ann . LNumber
         var' ann = E1Var ann . Id
         con' ann = E1Con ann . Id
+        lam' ann vars = E1Lam ann (PVar . Id <$> vars)
         op' = E1BinOp
         neg' = E1Neg
 
@@ -481,4 +482,8 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       "-a " --> neg' (Span 0 2) (var' (Span 1 2) "a")
       "-abc " --> neg' (Span 0 4) (var' (Span 1 4) "abc")
       "- abc " --> neg' (Span 0 5) (var' (Span 2 5) "abc")
+
+    it "adds location information for lambda expressions" $ do
+      "\\a b -> 1 " --> lam' (Span 0 9) ["a", "b"] $ num' (Span 8 9) (SInt 1)
+      "\\abc def -> 123 " --> lam' (Span 0 15) ["abc", "def"] $ num' (Span 12 15) (SInt 123)
 
