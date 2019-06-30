@@ -37,7 +37,7 @@ stripAnns ast =
                       , fixityD = \fx prec name -> pure $ FixityDecl fx prec name
                       }
       fsI = HandlersI { implI = \ps p bs -> pure $ Impl ps p bs }
-      fsB = HandlersB { bindingB = \name expr -> pure $ Binding name expr }
+      fsB = HandlersB { bindingB = stripBindingAnn }
       fsED = HandlersED { typeAnnED = pure . ExprTypeAnnDecl
                         , bindingED = pure . ExprBindingDecl
                         , fixityED = \fx prec name -> pure $ ExprFixityDecl fx prec name
@@ -54,6 +54,7 @@ stripAnns ast =
                       , letE = \decls body -> pure $ E1Let decls body
                       , parenE = stripParenAnn
                       }
+      stripBindingAnn _ name expr = pure $ Binding emptyAnn name expr
       stripLitAnn _ lit = pure $ E1Lit emptyAnn lit
       stripVarAnn _ var = pure $ E1Var emptyAnn var
       stripConAnn _ con = pure $ E1Con emptyAnn con

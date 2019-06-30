@@ -27,9 +27,10 @@ file = "Test.x1"
 analyze' :: Validation [SAError] Module'
 analyze' = analyze [validate file]
 
-conflict :: Text -> [Expr1'] -> SAError
-conflict var exprs =
-  let toBindingDecls = map (BindingDecl . Binding (Id var))
+conflict :: [Span] -> Text -> [Expr1'] -> SAError
+conflict spans var exprs =
+  let toBindingDecls = zipWith combine spans
+      combine sp = BindingDecl . Binding sp (Id var)
       err = ConflictingBindingDeclErr . ConflictingBindingDecl file . toBindingDecls
    in err exprs
 
@@ -58,21 +59,25 @@ spec_conflictingBindingDecls = describe "SA: ConflictingBindingDecls" $ parallel
     "x = 5\nx1 = 3" ==> Ok
 
   it "reports an error when a conflict is found" $ do
-    "x = 5\nx = \"abc123\"" ==> Err [conflict "x" [ num (Span 4 5) 5
-                                                  , str (Span 10 18) "abc123"]]
-    "x = 5\nx = 3" ==> Err [conflict "x" [num (Span 4 5) 5, num (Span 10 11) 3]]
+    "x = 5\nx = \"abc123\"" ==> Err [conflict [Span 0 5, Span 6 18] "x"
+                                      [ num (Span 4 5) 5, str (Span 10 18) "abc123"]]
+    "x = 5\nx = 3" ==> Err [conflict [Span 0 5, Span 6 11] "x"
+                            [num (Span 4 5) 5, num (Span 10 11) 3]]
 
   it "reports an error when a duplicate is found" $ do
-    "x = 5\nx = 5" ==> Err [conflict "x" [num (Span 4 5) 5, num (Span 10 11) 5]]
-    "x = \"abc\"\nx = \"abc\"" ==> Err [conflict "x" [str (Span 4 9) "abc"
-                                                     , str (Span 14 19) "abc"]]
+    "x = 5\nx = 5" ==> Err [conflict [Span 0 5, Span 6 11] "x"
+                            [num (Span 4 5) 5, num (Span 10 11) 5]]
+    "x = \"abc\"\nx = \"abc\"" ==> Err [conflict [Span 0 9, Span 10 19] "x"
+                                        [str (Span 4 9) "abc", str (Span 14 19) "abc"]]
 
   it "reports multiple errors for each found conflict" $
     "x = 5\nx = \"abc\"\ny = \"123\"\ny = 123"
-      ==> Err [ conflict "x" [num (Span 4 5) 5, str (Span 10 15) "abc"]
-              , conflict "y" [str (Span 20 25) "123", num (Span 30 33) 123]]
+      ==> Err [ conflict [Span 0 5, Span 6 15] "x"
+                [num (Span 4 5) 5, str (Span 10 15) "abc"]
+              , conflict [Span 16 25, Span 26 33] "y"
+                [str (Span 20 25) "123", num (Span 30 33) 123]]
 
   it "reports multiple errors for each conflict for a specific var" $ do
     let locations = uncurry num <$> [(Span 4 5, 1), (Span 10 11, 2), (Span 16 17, 3)]
-    "x = 1\nx = 2\nx = 3" ==> Err [conflict "x" locations]
+    "x = 1\nx = 2\nx = 3" ==> Err [conflict [Span 0 5, Span 6 11, Span 12 17] "x" locations]
 

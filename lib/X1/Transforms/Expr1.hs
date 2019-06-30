@@ -45,9 +45,9 @@ newtype HandlersI m rImpl rBinding =
     { implI :: [Pred] -> Pred -> [rBinding] -> m rImpl  -- Handler for impl decls
     }
 
-newtype HandlersB m rBinding rExpr =
+newtype HandlersB m ph rBinding rExpr =
   HandlersB
-    { bindingB :: Id -> rExpr -> m rBinding  -- Handler for bindings
+    { bindingB :: Ann ph -> Id -> rExpr -> m rBinding  -- Handler for bindings
     }
 
 data HandlersED m rBinding rExprDecl rExpr =
@@ -62,13 +62,13 @@ data HandlersE m ph rExprDecl rExpr =
     { litE :: Ann ph -> Lit -> m rExpr                        -- Handler for literals
     , varE :: Ann ph -> Id -> m rExpr                         -- Handler for vars
     , conE :: Ann ph -> Id -> m rExpr                         -- Handler for constructors
-    , lamE :: [Pattern] -> rExpr -> m rExpr                      -- Handler for lambda expression
-    , appE :: rExpr -> [rExpr] -> m rExpr                        -- Handler for function application
+    , lamE :: [Pattern] -> rExpr -> m rExpr                   -- Handler for lambda expression
+    , appE :: rExpr -> [rExpr] -> m rExpr                     -- Handler for function application
     , binOpE :: Ann ph -> rExpr -> rExpr -> rExpr -> m rExpr  -- Handler for bin op expression
     , negE :: Ann ph -> rExpr -> m rExpr                      -- Handler for negate expression
-    , ifE :: rExpr -> rExpr -> rExpr -> m rExpr                  -- Handler for if expression
-    , caseE :: rExpr -> [(Pattern, rExpr)] -> m rExpr            -- Handler for case expression
-    , letE :: [rExprDecl] -> rExpr -> m rExpr                    -- Handler for let expression
+    , ifE :: rExpr -> rExpr -> rExpr -> m rExpr               -- Handler for if expression
+    , caseE :: rExpr -> [(Pattern, rExpr)] -> m rExpr         -- Handler for case expression
+    , letE :: [rExprDecl] -> rExpr -> m rExpr                 -- Handler for let expression
     , parenE :: Ann ph -> rExpr -> m rExpr                    -- Handler for parenthesized expression
     }
 
@@ -77,7 +77,7 @@ data Handlers m ph rModule rDecl rImpl rBinding rExprDecl rExpr =
     { handlersM  :: HandlersM m rModule rDecl               -- Handlers for module
     , handlersD  :: HandlersD m rDecl rImpl rBinding rExpr  -- Handlers for decls
     , handlersI  :: HandlersI m rImpl rBinding              -- Handlers for impls
-    , handlersB  :: HandlersB m rBinding rExpr              -- Handlers for bindings
+    , handlersB  :: HandlersB m ph rBinding rExpr           -- Handlers for bindings
     , handlersED :: HandlersED m rBinding rExprDecl rExpr   -- Handlers for decls in exprs
     , handlersE  :: HandlersE m ph rExprDecl rExpr          -- Handlers for exprs
     }
@@ -133,9 +133,9 @@ instance Fold Impl where
      in implI fs' ps p =<< traverse (foldAST fs) bindings
 
 instance Fold Binding where
-  foldAST fs (Binding var expr) =
+  foldAST fs (Binding ann var expr) =
     let fs' = handlersB fs
-     in bindingB fs' var =<< foldAST fs expr
+     in bindingB fs' ann var =<< foldAST fs expr
 
 instance Fold ExprDecl where
   foldAST fs ed =

@@ -1,12 +1,11 @@
 
-module X1.Parser.Expr1 ( parser, declParser ) where
+module X1.Parser.Expr1 ( parser, expr, declParser ) where
 
 import Protolude hiding ( try, functionName, Fixity, Prefix )
 import Data.Char ( digitToInt )
 import GHC.Unicode (isDigit)
 import X1.Types.Id
 import X1.Types.Ann
-import X1.Types.Span
 import X1.Types.Fixity
 import X1.Types.Expr1.Expr
 import X1.Types.Expr1.TypeAnn
@@ -20,32 +19,39 @@ import qualified X1.Parser.Pattern as Pattern
 type Expr1' = Expr1 'Parsed
 type ExprDecl' = ExprDecl 'Parsed
 type Ann' = Ann 'Parsed
+type AnnExpr1' = (Ann', Expr1')
 
+-- TODO refactor possible with usage of 'span' once everything is annotated?
 parser :: Parser Expr1'
-parser = expr
+parser = map snd expr
 
-expr :: Parser Expr1'
+expr :: Parser AnnExpr1'
 expr = makeExprParser term exprOperators <?> "expression"
 
-exprOperators :: [[Operator Parser Expr1']]
+exprOperators :: [[Operator Parser AnnExpr1']]
 exprOperators =
   [ [ Prefix (lexeme' negateOp) ]
   , [ InfixL (lexeme' binOp) ]
   ]
   where
+    -- TODO refactor
     binOp = do
       (opSpan, op) <- operatorParser
-      pure $ \e1 e2 -> E1BinOp (opSpan <> span e1 <> span e2) op e1 e2
+      pure $ \(span1', e1) (span2', e2) ->
+        let sp = opSpan <> span1' <> span2'
+         in (sp, E1BinOp sp op e1 e2)
     negateOp = do
       opSpan <- negateOpParser
-      pure $ \e -> E1Neg (opSpan <> span e) e
+      pure $ \(span', e) ->
+        let sp = opSpan <> span'
+         in (sp, E1Neg sp e)
     operatorParser = withSpan $ infixOp <|> infixFunction'
     negateOpParser = fst <$> withSpan (hidden $ char '-')
     infixOp = uncurry E1Var <$> withSpan (Id <$> opIdentifier)
     infixFunction' = infixFunction E1Var E1Con
 
-term :: Parser Expr1'
-term = lexeme term' <?> "expression" where
+term :: Parser AnnExpr1'
+term = lexeme (withSpan term') <?> "expression" where
   term' =  litParser
        <|> withLineFold lineFoldedExprs
        <|> letParser
@@ -165,9 +171,10 @@ fixityDecl = do
 
 namedFunctionDecl :: Parser ExprDecl'
 namedFunctionDecl = do
-  (funcName, vars) <- lexeme' functionHead
-  body <- E1Lam vars <$> parser
-  pure $ ExprBindingDecl $ Binding funcName body
+  (sp1, (funcName, vars)) <- withSpan $ lexeme' functionHead
+  (sp2, expr') <- expr
+  let body = E1Lam vars expr'
+  pure $ ExprBindingDecl $ Binding (sp1 <> sp2) funcName body
   where
     functionName =  Id <$> identifier
                 <|> prefixOperator
@@ -179,11 +186,13 @@ namedFunctionDecl = do
 
 typeOrBindingDecl :: Parser ExprDecl'
 typeOrBindingDecl = do
-  var <- lexeme' declIdentifier
+  (varSpan, var) <- lexeme' $ withSpan declIdentifier
   separator <- lexeme' $ typeSeparator <|> assign
   case separator of
     ':' -> ExprTypeAnnDecl . TypeAnn var <$> Scheme.parser
-    '=' -> ExprBindingDecl . Binding var <$> parser
+    '=' -> do
+      (exprSpan, e) <- expr
+      pure $ ExprBindingDecl $ Binding (varSpan <> exprSpan) var e
     _ -> panic "Parse error when parsing declaration."
   where
     declIdentifier = declVar <|> prefixOperator

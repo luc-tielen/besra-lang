@@ -57,9 +57,10 @@ bindingParser = try namedFunctionDecl <|> simpleBinding
 
 namedFunctionDecl :: Parser Binding'
 namedFunctionDecl = do
-  (funcName, vars) <- lexeme' functionHead
-  body <- E1Lam vars <$> Expr1.parser
-  pure $ Binding funcName body
+  (sp1, (funcName, vars)) <- withSpan $ lexeme' functionHead
+  (sp2, expr') <- Expr1.expr
+  let body = E1Lam vars expr'
+  pure $ Binding (sp1 <> sp2) funcName body
   where
     functionHead = sameLine $ do
       funcName <- lexeme declIdentifier
@@ -69,9 +70,10 @@ namedFunctionDecl = do
 
 simpleBinding :: Parser Binding'
 simpleBinding = do
-  var <- lexeme' declIdentifier
+  (varSpan, var) <- withSpan $ lexeme' declIdentifier
   void $ lexeme' assign
-  Binding var <$> Expr1.parser
+  (exprSpan, expr') <- Expr1.expr
+  pure $ Binding (varSpan <> exprSpan) var expr'
 
 declIdentifier :: Parser Id
 declIdentifier = Id <$> identifier <|> prefixOperator

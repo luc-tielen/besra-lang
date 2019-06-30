@@ -9,6 +9,7 @@ import Test.X1.Parser.Helpers
 import Test.X1.Helpers
 import X1.Types.Id
 import X1.Types.Ann
+import X1.Types.Span
 import X1.Types.Fixity
 import X1.Types.Expr1.Module
 import X1.Types.Expr1.Expr
@@ -35,6 +36,13 @@ type Decl' = Decl 'Testing
 parse :: Text -> ParseResult (Module 'Parsed)
 parse = mkParser parser
 
+(==>) :: Text -> Module' -> IO ()
+a ==> b = (stripAnns <$> parse a) `shouldParse` b
+
+
+(~~>) :: Text -> Module 'Parsed -> IO ()
+a ~~> b = parse a `shouldParse` b
+
 con :: Text -> Type
 con = TCon . Tycon . Id
 
@@ -43,9 +51,6 @@ var = TVar . Tyvar . Id
 
 app :: Type -> [Type] -> Type
 app = TApp
-
-(==>) :: Text -> Module' -> IO ()
-a ==> b = (stripAnns <$> parse a) `shouldParse` b
 
 (-->) :: Type -> Type -> Type
 t1 --> t2 = app (con "->") [t1, t2]
@@ -66,7 +71,7 @@ typeAnn :: Id -> Scheme -> Decl'
 typeAnn name scheme = TypeAnnDecl (TypeAnn name scheme)
 
 binding :: Text -> Expr1' -> Decl'
-binding x = BindingDecl . Binding (Id x)
+binding x = BindingDecl . Binding emptyAnn (Id x)
 
 
 infixr 2 -->
@@ -286,7 +291,7 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
     it "can parse ADT followed by binding declaration" $
       "data X\na = X"
         ==> Module [ adt (hd "X" []) []
-                   , BindingDecl $ Binding (Id "a") $ E1Con emptyAnn (Id "X")
+                   , BindingDecl $ Binding emptyAnn (Id "a") $ E1Con emptyAnn (Id "X")
                    ]
 
     it "fails with readable error message" $ do
@@ -337,7 +342,7 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
           x : Int
         a = 3
         |] ==> Module [ trait (pred "Eq" ["a"]) [typeAnn' "x" $ Scheme [] (con "Int")]
-                      , BindingDecl $ Binding (Id "a") $ num 3]
+                      , BindingDecl $ Binding emptyAnn (Id "a") $ num 3]
       [text|
         trait Eq a where
           x : Int
@@ -348,7 +353,7 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
         trait Eq a where
         a = 3
         |] ==> Module [ trait (pred "Eq" ["a"]) []
-                      , BindingDecl $ Binding (Id "a") $ num 3]
+                      , BindingDecl $ Binding emptyAnn (Id "a") $ num 3]
       [text|
         trait Eq a where
         a : Int
@@ -375,7 +380,7 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
   describe "impl declarations" $ parallel $ do
     let impl p bindings = ImplDecl $ Impl [] p bindings
         pred clazz = IsIn (Id clazz)
-        binding' x = Binding (Id x)
+        binding' x = Binding emptyAnn (Id x)
 
     it "can parse multiple impls in a row" $ do
       [text|
@@ -428,4 +433,22 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
           <> elabel "type" <> elabel "type variable")
       (parse, "impl Eq X where\n x = 3\n  y = 4") `shouldFailWith` err 25
         (utok 'y' <> elabel "properly indented binding declaration in impl")
+
+  describe "location information" $ parallel $ do
+    let binding' :: Span -> Text -> Expr1 'Parsed -> Binding 'Parsed
+        binding' sp name = Binding sp (Id name)
+        num' ann = E1Lit ann . LNumber . SInt
+        lam' vars = E1Lam (PVar . Id <$> vars)
+
+    it "keeps track of location info for constant bindings" $ do
+      "a = 3  " ~~> Module [BindingDecl $ binding' (Span 0 5) "a" (num' (Span 4 5) 3)]
+      "abc = 123  " ~~> Module [BindingDecl $ binding' (Span 0 9) "abc" (num' (Span 6 9) 123)]
+
+    it "keeps track of location info for named function bindings" $ do
+      "a b c = 1 " ~~> Module [BindingDecl $ binding' (Span 0 9) "a"
+                                          $ lam' ["b", "c"] $ num' (Span 8 9) 1]
+      "abc def ghi = 1234 " ~~> Module [BindingDecl $ binding' (Span 0 18) "abc"
+                                        $ lam' ["def", "ghi"] $ num' (Span 14 18) 1234]
+
+    -- TODO same 2 tests inside impl
 

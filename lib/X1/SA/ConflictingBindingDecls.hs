@@ -25,7 +25,7 @@ isBindingDecl (BindingDecl _) = True
 isBindingDecl _ = False
 
 sameVar :: Decl' -> Decl' -> Bool
-sameVar (BindingDecl (Binding (Id a) _)) (BindingDecl (Binding (Id b) _)) = a == b
+sameVar (BindingDecl (Binding _ (Id a) _)) (BindingDecl (Binding _ (Id b) _)) = a == b
 sameVar _ _ = False
 
 checkConflict :: FilePath -> [Decl'] -> ValidationResult [SAError]

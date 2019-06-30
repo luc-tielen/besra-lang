@@ -40,7 +40,7 @@ type IndentLevel = Pos
 data ParseMode = Normal | SameLine
   deriving (Eq, Show)
 
-data ParseState = ParseState { psIndentLevel :: IndentLevel, psParseMode :: ParseMode }
+data ParseState  = ParseState { psIndentLevel :: IndentLevel, psParseMode :: ParseMode }
   deriving (Eq, Show)
 
 type ParseErr = Void

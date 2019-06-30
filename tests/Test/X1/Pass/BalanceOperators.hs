@@ -70,7 +70,7 @@ c :: Text -> Type
 c = TCon . Tycon . Id
 
 binding :: Text -> Expr1' -> Binding'
-binding x = Binding (Id x)
+binding x = Binding emptyAnn (Id x)
 
 num :: Int -> Expr1'
 num = E1Lit emptyAnn . LNumber . SInt

@@ -53,7 +53,7 @@ var :: Text -> Expr1'
 var = E1Var emptyAnn . Id
 
 binding :: Text -> Expr1' -> ExprDecl'
-binding x = ExprBindingDecl . Binding (Id x)
+binding x = ExprBindingDecl . Binding emptyAnn (Id x)
 
 sig :: Text -> Type -> ExprDecl'
 sig x ty = ExprTypeAnnDecl $ TypeAnn (Id x) (Scheme [] ty)

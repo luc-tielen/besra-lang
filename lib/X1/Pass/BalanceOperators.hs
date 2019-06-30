@@ -78,8 +78,8 @@ instance Balance b => Balance (a, b) where
 instance Balance Decl' where
   rebalance (ImplDecl (Impl preds p bindings)) =
     ImplDecl . Impl preds p <$> rebalance bindings
-  rebalance (BindingDecl (Binding id expr)) =
-    BindingDecl . Binding id <$> rebalance expr
+  rebalance (BindingDecl (Binding ann id expr)) =
+    BindingDecl . Binding ann id <$> rebalance expr
   rebalance d = pure d
 
 instance Balance ExprDecl' where
@@ -88,8 +88,8 @@ instance Balance ExprDecl' where
   rebalance d = pure d
 
 instance Balance Binding' where
-  rebalance (Binding id expr) =
-    Binding id <$> rebalance expr
+  rebalance (Binding ann id expr) =
+    Binding ann id <$> rebalance expr
 
 instance Balance Expr1' where
   rebalance expr = do

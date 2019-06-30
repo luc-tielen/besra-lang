@@ -30,9 +30,9 @@ file = "Test.x1"
 analyze' :: Validation [SAError] Module'
 analyze' = analyze [validate file]
 
-missingType :: Text -> Expr1' -> SAError
-missingType var expr =
-  let bindingDecl = BindingDecl $ Binding (Id var) expr
+missingType :: Span -> Text -> Expr1' -> SAError
+missingType sp var expr =
+  let bindingDecl = BindingDecl $ Binding sp (Id var) expr
    in MissingTopLevelTypeAnnDeclErr $ MissingTopLevelTypeAnnDecl file bindingDecl
 
 missingBinding :: Text -> Type -> SAError
@@ -69,9 +69,9 @@ spec_missingTopLevelDecls = describe "SA: MissingTopLevelDecls" $ parallel $ do
     "x : Int\nx = 5\ny : String\ny = \"abc\"" ==> Ok
 
   it "reports an error for each missing type signature" $ do
-    "x = 5" ==> Err [missingType "x" (num (Span 4 5) 5)]
-    "x = 5\ny = \"abc\"" ==> Err [ missingType "x" (num (Span 4 5) 5)
-                                 , missingType "y" (str (Span 10 15) "abc")]
+    "x = 5" ==> Err [missingType (Span 0 5) "x" (num (Span 4 5) 5)]
+    "x = 5\ny = \"abc\"" ==> Err [ missingType (Span 0 5) "x" (num (Span 4 5) 5)
+                                 , missingType (Span 6 15) "y" (str (Span 10 15) "abc")]
 
   it "reports an error for each missing binding" $ do
     "x : Int" ==> Err [missingBinding "x" (c "Int")]

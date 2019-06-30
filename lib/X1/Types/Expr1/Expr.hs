@@ -14,7 +14,7 @@ import X1.Types.Expr1.TypeAnn
 
 
 data Binding (ph :: Phase)
-  = Binding Id (Expr1 ph)
+  = Binding (Ann ph) Id (Expr1 ph)
 
 data ExprDecl (ph :: Phase)
   = ExprTypeAnnDecl TypeAnn

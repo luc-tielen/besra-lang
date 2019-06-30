@@ -7,6 +7,7 @@ import Test.X1.Parser.Helpers
 import Test.X1.Helpers
 import X1.Types.Id
 import X1.Types.Ann
+import X1.Types.Span
 import X1.Types.Expr1.Lit
 import X1.Types.Expr1.Number
 import X1.Types.Expr1.String
@@ -44,6 +45,9 @@ app = TApp
 (==>) :: Text -> Impl' -> IO ()
 a ==> b = (stripAnns <$> parse a) `shouldParse` b
 
+(~~>) :: Text -> Impl 'Parsed -> IO ()
+a ~~> b = parse a `shouldParse` b
+
 (-->) :: Type -> Type -> Type
 t1 --> t2 = app (con "->") [t1, t2]
 
@@ -57,7 +61,7 @@ eapp :: Text -> [Text] -> Expr1'
 eapp x = E1App (evar x) . map evar
 
 binding :: Text -> Expr1' -> Binding'
-binding x = Binding (Id x)
+binding x = Binding emptyAnn (Id x)
 
 pred :: Text -> [Type] -> Pred
 pred clazz = IsIn (Id clazz)
@@ -159,4 +163,27 @@ spec_implParseTest = describe "impl parser" $ parallel $ do
       (utok 'y' <> elabel "properly indented binding declaration in impl")
     (parse, "impl Eq X where\n x = 3\n  y = 4") `shouldFailWith` err 25
       (utok 'y' <> elabel "properly indented binding declaration in impl")
+
+  describe "annotations" $ parallel $ do
+    let binding' ann x = Binding ann (Id x)
+        num' ann = E1Lit ann . LNumber . SInt
+        lam' vars = E1Lam (PVar . Id <$> vars)
+
+    it "keeps track of location info for constant bindings" $ do
+      "impl MyClass Int where\n a = 3  "
+        ~~> Impl [] (pred "MyClass" [con "Int"])
+                [binding' (Span 24 29) "a" $ num' (Span 28 29) 3]
+      "impl MyClass Int where\n abc = 123  "
+        ~~> Impl [] (pred "MyClass" [con "Int"])
+                [binding' (Span 24 33) "abc" $ num' (Span 30 33) 123]
+
+    it "keeps track of location info for named function bindings" $ do
+      "impl MyClass Int where\n a b c = 1 "
+        ~~> Impl [] (pred "MyClass" [con "Int"])
+                [binding' (Span 24 33) "a" $
+                  lam' ["b", "c"] $ num' (Span 32 33) 1]
+      "impl MyClass Int where\n abc def ghi = 123 "
+        ~~> Impl [] (pred "MyClass" [con "Int"])
+                [binding' (Span 24 41) "abc" $
+                  lam' ["def", "ghi"] $ num' (Span 38 41) 123]
 
