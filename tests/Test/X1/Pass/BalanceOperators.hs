@@ -76,7 +76,7 @@ num :: Int -> Expr1'
 num = E1Lit emptyAnn . LNumber . SInt
 
 app :: Expr1' -> [Expr1'] -> Expr1'
-app = E1App
+app = E1App emptyAnn
 
 lam :: [Text] -> Expr1' -> Expr1'
 lam vars = E1Lam emptyAnn (PVar . Id <$> vars)

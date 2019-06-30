@@ -63,7 +63,7 @@ data HandlersE m ph rExprDecl rExpr =
     , varE :: Ann ph -> Id -> m rExpr                         -- Handler for vars
     , conE :: Ann ph -> Id -> m rExpr                         -- Handler for constructors
     , lamE :: Ann ph -> [Pattern] -> rExpr -> m rExpr         -- Handler for lambda expression
-    , appE :: rExpr -> [rExpr] -> m rExpr                     -- Handler for function application
+    , appE :: Ann ph -> rExpr -> [rExpr] -> m rExpr           -- Handler for function application
     , binOpE :: Ann ph -> rExpr -> rExpr -> rExpr -> m rExpr  -- Handler for bin op expression
     , negE :: Ann ph -> rExpr -> m rExpr                      -- Handler for negate expression
     , ifE :: rExpr -> rExpr -> rExpr -> m rExpr               -- Handler for if expression
@@ -153,8 +153,8 @@ instance Fold Expr1 where
        E1Var ann var -> varE fs' ann var
        E1Con ann con -> conE fs' ann con
        E1Lam ann pats body -> lamE fs' ann pats =<< foldAST fs body
-       E1App func args ->
-         join $ appE fs' <$> foldAST fs func <*> traverse (foldAST fs) args
+       E1App ann func args ->
+         join $ appE fs' ann <$> foldAST fs func <*> traverse (foldAST fs) args
        E1BinOp ann op l r ->
          join $ binOpE fs' ann <$> foldAST fs op <*> foldAST fs l <*> foldAST fs r
        E1Neg ann e -> negE fs' ann =<< foldAST fs e

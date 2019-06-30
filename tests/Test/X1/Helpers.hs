@@ -46,7 +46,7 @@ stripAnns ast =
                       , varE = stripVarAnn
                       , conE = stripConAnn
                       , lamE = stripLamAnn
-                      , appE = \func args -> pure $ E1App func args
+                      , appE = stripAppAnn
                       , binOpE = stripBinOpAnn
                       , negE = stripNegAnn
                       , ifE = \c tr fl -> pure $ E1If c tr fl
@@ -64,6 +64,7 @@ stripAnns ast =
       stripBinOpAnn _ op l r = pure $ E1BinOp emptyAnn op l r
       stripParenAnn _ e = pure $ E1Parens emptyAnn e
       stripLamAnn _ pats body = pure $ E1Lam emptyAnn pats body
+      stripAppAnn _ func args = pure $ E1App emptyAnn func args
    in runIdentity $ foldAST fs ast
 
 

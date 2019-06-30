@@ -3,6 +3,7 @@ module X1.Parser.Expr1 ( parser, expr, declParser ) where
 
 import Protolude hiding ( try, functionName, Fixity, Prefix )
 import Data.Char ( digitToInt )
+import Data.Maybe ( fromJust )
 import GHC.Unicode (isDigit)
 import X1.Types.Id
 import X1.Types.Ann
@@ -68,10 +69,12 @@ litParser = uncurry E1Lit <$> withSpan Lit.parser
 
 applyFuncParser :: Parser Expr1'
 applyFuncParser = sameLine $ do
-  funcName <- lexeme funcNameParser
+  (sp1, funcName) <- withSpan $ lexeme funcNameParser
   -- NOTE: next line is to prevent wrong order of parentheses in nested applications
   args <- some $ lexeme arg
-  pure $ E1App funcName args
+  let (spans, args') = unzip args
+      spans' = fromJust $ nonEmpty spans
+  pure $ E1App (sp1 <> sconcat spans') funcName args'
   where
     variable = uncurry E1Var <$> withSpan (Id <$> identifier)
     constructor = uncurry E1Con <$> withSpan (Id <$> capitalIdentifier)
@@ -80,7 +83,8 @@ applyFuncParser = sameLine $ do
                   <|> constructor
                   <|> try prefixOp
                   <|> parens parser
-    arg =  litParser
+    arg =  withSpan
+        $  litParser
        <|> varParser
        <|> conParser
        <|> parens parser

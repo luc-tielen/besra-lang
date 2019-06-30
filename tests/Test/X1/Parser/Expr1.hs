@@ -245,7 +245,7 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       (parse, "\\a ->\na") `shouldFailWith` errFancy 6 (badIndent 1 1)
 
   describe "function application" $ parallel $ do
-    let app = E1App
+    let app = E1App emptyAnn
         num = E1Lit emptyAnn . LNumber . SInt
         con = E1Con emptyAnn . Id
 
@@ -318,7 +318,7 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
   describe "operators" $ parallel $ do
     let num = E1Lit emptyAnn . LNumber . SInt
         fixity ty prio op' = ExprFixityDecl emptyAnn ty prio (Id op')
-        app = E1App
+        app = E1App emptyAnn
         con = E1Con emptyAnn . Id
 
     it "can parse a type declaration for an operator in a let" $ do
@@ -409,7 +409,7 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
 
   it "can parse constructors" $ do
     let con = E1Con emptyAnn . Id
-        app = E1App
+        app = E1App emptyAnn
     "True" ==> con "True"
     "X y" ==> app (con "X") [var "y"]
     "Abc123 y" ==> app (con "Abc123") [var "y"]
@@ -422,6 +422,7 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
         var' ann = E1Var ann . Id
         con' ann = E1Con ann . Id
         lam' ann vars = E1Lam ann (PVar . Id <$> vars)
+        app' = E1App
         op' = E1BinOp
         neg' = E1Neg
 
@@ -462,13 +463,14 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
                                               (num' (Span 0 1) (SInt 1))
                                               (num' (Span 15 16) (SInt 2))
 
-    it "adds location information to vars in function application" $ do
-      "f 1" --> E1App (var' (Span 0 1) "f") [num' (Span 2 3) $ SInt 1]
-      "myFunction 1" --> E1App (var' (Span 0 10) "myFunction") [num' (Span 11 12) $ SInt 1]
+    it "adds location information to function and vars in function application" $ do
+      "f 1" --> app' (Span 0 3) (var' (Span 0 1) "f") [num' (Span 2 3) $ SInt 1]
+      "myFunction 1"
+        --> app' (Span 0 12) (var' (Span 0 10) "myFunction") [num' (Span 11 12) $ SInt 1]
 
     it "adds location information to prefix operators" $ do
-      "(+) 1" --> E1App (var' (Span 0 3) "+") [num' (Span 4 5) $ SInt 1]
-      "(++) 1" --> E1App (var' (Span 0 4) "++") [num' (Span 5 6) $ SInt 1]
+      "(+) 1" --> app' (Span 0 5) (var' (Span 0 3) "+") [num' (Span 4 5) $ SInt 1]
+      "(++) 1" --> app' (Span 0 6) (var' (Span 0 4) "++") [num' (Span 5 6) $ SInt 1]
 
     it "adds location information for binary operators" $ do
       "a + b " --> op' (Span 0 5) (var' (Span 2 3) "+")

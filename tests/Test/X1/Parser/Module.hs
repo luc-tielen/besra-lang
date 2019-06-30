@@ -172,7 +172,7 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
   describe "operators" $ parallel $ do
     let v = E1Var emptyAnn . Id
         plusBinding = v "primitivePlus"
-        complexBinding = lam ["a", "b"] $ E1App plusBinding [v "a", v "b"]
+        complexBinding = lam ["a", "b"] $ E1App emptyAnn plusBinding [v "a", v "b"]
 
     it "can parse a top level type declaration for an operator" $ do
       "(+) : Int -> Int -> Int"

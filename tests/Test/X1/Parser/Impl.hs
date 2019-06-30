@@ -58,7 +58,7 @@ evar :: Text -> Expr1'
 evar = E1Var emptyAnn . Id
 
 eapp :: Text -> [Text] -> Expr1'
-eapp x = E1App (evar x) . map evar
+eapp x = E1App emptyAnn (evar x) . map evar
 
 binding :: Text -> Expr1' -> Binding'
 binding x = Binding emptyAnn (Id x)

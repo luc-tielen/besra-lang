@@ -26,7 +26,7 @@ data Expr1 (ph :: Phase)
   | E1Var (Ann ph) Id
   | E1Con (Ann ph) Id
   | E1Lam (Ann ph) [Pattern] (Expr1 ph)
-  | E1App (Expr1 ph) [Expr1 ph]
+  | E1App (Ann ph) (Expr1 ph) [Expr1 ph]
   | E1BinOp (Ann ph) (Expr1 ph) (Expr1 ph) (Expr1 ph)  -- operator, left side, right side
   | E1Neg (Ann ph) (Expr1 ph)                          -- negation operator
   | E1If (Expr1 ph) (Expr1 ph) (Expr1 ph)              -- condition, true clause, false clause
@@ -48,7 +48,7 @@ instance HasSpan (Ann ph) => HasSpan (Expr1 ph) where
     E1Var ann _ -> span ann
     E1Con ann _ -> span ann
     E1Lam ann _ _ -> span ann
-    E1App _ _ -> panic "Not implemented!"
+    E1App ann _ _ -> span ann
     E1BinOp ann _ _ _ -> span ann
     E1Neg ann _ -> span ann
     E1If _ _ _ -> panic "Not implemented!"
