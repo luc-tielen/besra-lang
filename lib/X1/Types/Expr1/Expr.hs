@@ -55,3 +55,5 @@ instance HasSpan (Ann ph) => HasSpan (Expr1 ph) where
     E1Let ann _ _ -> span ann
     E1Parens ann _ -> span ann
 
+instance HasSpan (Ann ph) => HasSpan (Binding ph) where
+  span (Binding ann _ _) = span ann

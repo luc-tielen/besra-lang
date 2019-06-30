@@ -35,14 +35,14 @@ data HandlersD m ph rDecl rImpl rBinding rExpr =
     { typeAnnD :: TypeAnn -> m rDecl                       -- Handler for type ann decls
     , adtD :: ADT ph -> m rDecl                            -- Handler for data decls
     , traitD :: Trait -> m rDecl                           -- Handler for trait decls
-    , implD :: rImpl -> m rDecl                            -- Handler for impl decls
+    , implD :: Ann ph -> rImpl -> m rDecl                  -- Handler for impl decls
     , bindingD :: rBinding -> m rDecl                      -- Handler for binding decls
     , fixityD :: Ann ph -> Fixity -> Int -> Id -> m rDecl  -- Handler for fixity decls
     }
 
-newtype HandlersI m rImpl rBinding =
+newtype HandlersI m ph rImpl rBinding =
   HandlersI
-    { implI :: [Pred] -> Pred -> [rBinding] -> m rImpl  -- Handler for impl decls
+    { implI :: Ann ph -> [Pred] -> Pred -> [rBinding] -> m rImpl  -- Handler for impl decls
     }
 
 newtype HandlersB m ph rBinding rExpr =
@@ -76,7 +76,7 @@ data Handlers m ph rModule rDecl rImpl rBinding rExprDecl rExpr =
   Handlers
     { handlersM  :: HandlersM m rModule rDecl                  -- Handlers for module
     , handlersD  :: HandlersD m ph rDecl rImpl rBinding rExpr  -- Handlers for decls
-    , handlersI  :: HandlersI m rImpl rBinding                 -- Handlers for impls
+    , handlersI  :: HandlersI m ph rImpl rBinding              -- Handlers for impls
     , handlersB  :: HandlersB m ph rBinding rExpr              -- Handlers for bindings
     , handlersED :: HandlersED m ph rBinding rExprDecl rExpr   -- Handlers for decls in exprs
     , handlersE  :: HandlersE m ph rExprDecl rExpr             -- Handlers for exprs
@@ -123,14 +123,14 @@ instance Fold Decl where
         TypeAnnDecl typeAnn -> typeAnnD fs' typeAnn
         DataDecl adt -> adtD fs' adt
         TraitDecl trait -> traitD fs' trait
-        ImplDecl impl -> implD fs' =<< foldAST fs impl
+        ImplDecl ann impl -> implD fs' ann =<< foldAST fs impl
         BindingDecl binding -> bindingD fs' =<< foldAST fs binding
         FixityDecl ann fixity prec var -> fixityD fs' ann fixity prec var
 
 instance Fold Impl where
-  foldAST fs (Impl ps p bindings) =
+  foldAST fs (Impl ann ps p bindings) =
     let fs' = handlersI fs
-     in implI fs' ps p =<< traverse (foldAST fs) bindings
+     in implI fs' ann ps p =<< traverse (foldAST fs) bindings
 
 instance Fold Binding where
   foldAST fs (Binding ann var expr) =

@@ -42,6 +42,9 @@ var = TVar . Tyvar . Id
 app :: Type -> [Type] -> Type
 app = TApp
 
+impl :: [Pred] -> Pred -> [Binding'] -> Impl'
+impl = Impl emptyAnn
+
 (==>) :: Text -> Impl' -> IO ()
 a ==> b = (stripAnns <$> parse a) `shouldParse` b
 
@@ -73,25 +76,25 @@ infixr 1 ==>
 spec_implParseTest :: Spec
 spec_implParseTest = describe "impl parser" $ parallel $ do
   it "can parse impl without body" $ do
-    "impl Eq Int where" ==> Impl [] (pred "Eq" [con "Int"]) []
-    "impl Show String where " ==> Impl [] (pred "Show" [con "String"]) []
+    "impl Eq Int where" ==> impl [] (pred "Eq" [con "Int"]) []
+    "impl Show String where " ==> impl [] (pred "Show" [con "String"]) []
 
   it "can parse impl with no superclasses" $ do
     "impl Default Int where\n def = 0"
-      ==> Impl [] (pred "Default" [con "Int"]) [binding "def" $ num 0]
+      ==> impl [] (pred "Default" [con "Int"]) [binding "def" $ num 0]
     "impl Show Int where\n show x = \"<Number>\""
-      ==> Impl [] (pred "Show" [con "Int"]) [binding "show" (lam ["x"] $ str "<Number>")]
+      ==> impl [] (pred "Show" [con "Int"]) [binding "show" (lam ["x"] $ str "<Number>")]
     "impl Show Int where\n show a b c = \"<Number>\""
-      ==> Impl [] (pred "Show" [con "Int"]) [binding "show"
+      ==> impl [] (pred "Show" [con "Int"]) [binding "show"
                                               (lam ["a", "b", "c"] $ str "<Number>")]
     "impl Num Int where\n (+) = plus\n (*) a b = mul a b"
-      ==> Impl [] (pred "Num" [con "Int"]) [ binding "+" (evar "plus")
+      ==> impl [] (pred "Num" [con "Int"]) [ binding "+" (evar "plus")
                                            , binding "*" (lam ["a", "b"] $
                                                eapp "mul" ["a", "b"])
                                            ]
 
   it "can parse impl with a single superclass" $ do
-    let result = Impl [pred "Show" [var "a"]]
+    let result = impl [pred "Show" [var "a"]]
                   (pred "Show" [app (con "Maybe") [var "a"]])
                   [binding "show" $ str "Nothing"]
     "impl Show a => Show (Maybe a) where\n show = \"Nothing\"" ==> result
@@ -99,43 +102,43 @@ spec_implParseTest = describe "impl parser" $ parallel $ do
 
   it "can parse impl with multiple superclasses" $ do
     "impl (A a, B a) => C (Maybe a) where\n x = 3"
-      ==> Impl [pred "A" [var "a"], pred "B" [var "a"]]
+      ==> impl [pred "A" [var "a"], pred "B" [var "a"]]
                 (pred "C" [app (con "Maybe") [var "a"]])
                 [binding "x" $ num 3]
     "impl (A a, B a, C a) => D (Maybe a) where\n x = 3"
-      ==> Impl [pred "A" [var "a"], pred "B" [var "a"], pred "C" [var "a"]]
+      ==> impl [pred "A" [var "a"], pred "B" [var "a"], pred "C" [var "a"]]
                 (pred "D" [app (con "Maybe") [var "a"]])
                 [binding "x" $ num 3]
     "impl (A a, B a, C a) => D Maybe a where\n x = 3"
-      ==> Impl [pred "A" [var "a"], pred "B" [var "a"], pred "C" [var "a"]]
+      ==> impl [pred "A" [var "a"], pred "B" [var "a"], pred "C" [var "a"]]
                 (pred "D" [app (con "Maybe") [var "a"]])
                 [binding "x" $ num 3]
 
   it "can parse impl requiring multiple types" $ do
     let pred' x = pred x . map var
     "impl A a b c => B (C a b c) where\n x = 3"
-      ==> Impl [pred' "A" ["a", "b", "c"]]
+      ==> impl [pred' "A" ["a", "b", "c"]]
                 (pred "B" [app (con "C") $ var <$> ["a", "b", "c"]])
                 [binding "x" $ num 3]
     "impl (A a, B b, C c) => D (E a b c) where\n x = 3"
-      ==> Impl [pred' "A" ["a"], pred' "B" ["b"], pred' "C" ["c"]]
+      ==> impl [pred' "A" ["a"], pred' "B" ["b"], pred' "C" ["c"]]
                 (pred "D" [app (con "E") $ var <$> ["a", "b", "c"]])
                 [binding "x" $ num 3]
 
   it "can parse multiline impl" $ do
     "impl (Eq a)\n => Eq (Maybe a)\n where\n x = 3"
-      ==> Impl [pred "Eq" [var "a"]]
+      ==> impl [pred "Eq" [var "a"]]
             (pred "Eq" [app (con "Maybe") $ var <$> ["a"]])
             [binding "x" $ num 3]
     "impl (Eq a) => Eq (Maybe a) where\n x\n  = \n  3"
-      ==> Impl [pred "Eq" [var "a"]]
+      ==> impl [pred "Eq" [var "a"]]
             (pred "Eq" [app (con "Maybe") $ var <$> ["a"]])
             [binding "x" $ num 3]
 
   it "fails with readable error message when part is missing" $ do
-    let impl = elabel "impl declaration"
-    (parse, "") `shouldFailWith` err 0 (ueof <> impl)
-    (parse, "imp") `shouldFailWith` err 0 (utoks "imp" <> impl)
+    let impl' = elabel "impl declaration"
+    (parse, "") `shouldFailWith` err 0 (ueof <> impl')
+    (parse, "imp") `shouldFailWith` err 0 (utoks "imp" <> impl')
     (parse, "impl") `shouldFailWith` err 4 (ueof <> elabel "whitespace")
     (parse, "impl ") `shouldFailWith` err 5
       (ueof <> etok '(' <> elabel "trait identifier" <> elabel "typeclass identifier")
@@ -171,19 +174,19 @@ spec_implParseTest = describe "impl parser" $ parallel $ do
 
     it "keeps track of location info for constant bindings" $ do
       "impl MyClass Int where\n a = 3  "
-        ~~> Impl [] (pred "MyClass" [con "Int"])
+        ~~> Impl (Span 0 29) [] (pred "MyClass" [con "Int"])
                 [binding' (Span 24 29) "a" $ num' (Span 28 29) 3]
       "impl MyClass Int where\n abc = 123  "
-        ~~> Impl [] (pred "MyClass" [con "Int"])
+        ~~> Impl (Span 0 33) [] (pred "MyClass" [con "Int"])
                 [binding' (Span 24 33) "abc" $ num' (Span 30 33) 123]
 
     it "keeps track of location info for named function bindings" $ do
       "impl MyClass Int where\n a b c = 1 "
-        ~~> Impl [] (pred "MyClass" [con "Int"])
+        ~~> Impl (Span 0 33) [] (pred "MyClass" [con "Int"])
                 [binding' (Span 24 33) "a" $
                   lam' (Span 24 33) ["b", "c"] $ num' (Span 32 33) 1]
       "impl MyClass Int where\n abc def ghi = 123 "
-        ~~> Impl [] (pred "MyClass" [con "Int"])
+        ~~> Impl (Span 0 41) [] (pred "MyClass" [con "Int"])
                 [binding' (Span 24 41) "abc" $
                   lam' (Span 24 41) ["def", "ghi"] $ num' (Span 38 41) 123]
 

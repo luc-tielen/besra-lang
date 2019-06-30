@@ -35,11 +35,11 @@ stripAnns ast =
         { typeAnnD = pure . TypeAnnDecl
         , adtD = pure . DataDecl . stripAnnAdt
         , traitD = pure . TraitDecl
-        , implD = pure . ImplDecl
+        , implD = \_ impl -> pure $ ImplDecl emptyAnn impl
         , bindingD = pure . BindingDecl
         , fixityD = \_ fx prec name -> pure $ FixityDecl emptyAnn fx prec name
         }
-      fsI = HandlersI { implI = \ps p bs -> pure $ Impl ps p bs }
+      fsI = HandlersI { implI = \_ ps p bs -> pure $ Impl emptyAnn ps p bs }
       fsB = HandlersB { bindingB = \_ name expr -> pure $ Binding emptyAnn name expr }
       fsED = HandlersED
         { typeAnnED = pure . ExprTypeAnnDecl

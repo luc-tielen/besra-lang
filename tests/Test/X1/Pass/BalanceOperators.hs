@@ -343,7 +343,8 @@ spec_balanceOperators = describe "balance operators pass" $ parallel $ do
         infixl 5 *
         impl X A where
           a = 1 + 2 * 3
-        |] ==> ImplDecl $ Impl [] (IsIn (Id "X") [c "A"])
+        |] ==> ImplDecl emptyAnn
+                $ Impl emptyAnn [] (IsIn (Id "X") [c "A"])
                           [binding "a" $ op "+" (num 1) (op "*" (num 2) (num 3))]
 
     it "rebalances operators in binding declaration" $

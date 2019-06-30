@@ -378,7 +378,7 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
         (utok ':' <> elabel "properly indented type declaration in trait")
 
   describe "impl declarations" $ parallel $ do
-    let impl p bindings = ImplDecl $ Impl [] p bindings
+    let impl p bindings = ImplDecl emptyAnn $ Impl emptyAnn [] p bindings
         pred clazz = IsIn (Id clazz)
         binding' x = Binding emptyAnn (Id x)
 
@@ -439,6 +439,8 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
         binding' sp name = Binding sp (Id name)
         num' ann = E1Lit ann . LNumber . SInt
         lam' ann vars = E1Lam ann (PVar . Id <$> vars)
+        pred :: Text -> [Type] -> Pred
+        pred clazz = IsIn (Id clazz)
 
     it "keeps track of location info for constant bindings" $ do
       "a = 3  " ~~> Module [BindingDecl $ binding' (Span 0 5) "a" (num' (Span 4 5) 3)]
@@ -454,4 +456,15 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
       "infixl 6 +++ " ~~> Module [FixityDecl (Span 0 12) L 6 (Id "+++")]
       "infix 4 ** " ~~> Module [FixityDecl (Span 0 10) M 4 (Id "**")]
       "infixr 5 >> " ~~> Module [FixityDecl (Span 0 11) R 5 (Id ">>")]
+
+    it "keeps track of location info for impl declaration" $ do
+      "impl MyClass Int where "
+        ~~> Module [ImplDecl (Span 0 22)
+                   $ Impl (Span 0 22) [] (pred "MyClass" [con "Int"]) []]
+      "impl MyClass Int where\n abc def ghi = 123 "
+        ~~> Module [ImplDecl (Span 0 41)
+                   $ Impl (Span 0 41) [] (pred "MyClass" [con "Int"])
+                      [binding' (Span 24 41) "abc" $
+                        lam' (Span 24 41) ["def", "ghi"] $ num' (Span 38 41) 123]
+                   ]
 

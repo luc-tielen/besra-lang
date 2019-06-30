@@ -4,6 +4,7 @@ module X1.Parser.Impl ( parser ) where
 import Protolude hiding ( Type, try, functionName )
 import X1.Types.Id
 import X1.Types.Ann
+import X1.Types.Span
 import X1.Types.Expr1.Expr
 import X1.Types.Expr1.Type
 import X1.Types.Expr1.Pred
@@ -22,18 +23,22 @@ type Binding' = Binding 'Parsed
 parser :: Parser Impl'
 parser = parser' <?> "impl declaration" where
   parser' = withLineFold $ do
+    startPos <- getOffset
     keyword "impl"
     predicates <- Scheme.predicatesPrefix
     typeInfo <- lexeme' implParser
+    posBeforeWhere <- getOffset
     kwResult <- keyword' "where"
+    let sp1 = Span startPos (posBeforeWhere + 5)
     case kwResult of
-      NoTrailingWS -> pure $ Impl predicates typeInfo []
+      NoTrailingWS -> pure $ Impl sp1 predicates typeInfo []
       TrailingWS -> do
         indent <- indentLevel
         let bindingParser' = withIndent indent (withLineFold bindingParser)
         bindings <- many bindingParser'
         notFollowedBy badlyIndentedDecl <?> badIndentMsg
-        pure $ Impl predicates typeInfo bindings
+        let spans = sp1 :| map span bindings
+        pure $ Impl (sconcat spans) predicates typeInfo bindings
   badlyIndentedDecl = indented bindingParser
   badIndentMsg = "properly indented binding declaration in impl"
 

@@ -14,6 +14,8 @@ import qualified X1.Parser.Tyvar as Tyvar
 import X1.Parser.Helpers
 
 
+-- TODO: can be simplified once tycon/tyvar have span info?
+
 parser :: Parser (ADT 'Parsed)
 parser = do
   startPos <- getOffset
