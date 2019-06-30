@@ -274,7 +274,7 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
         con' = Tycon . Id
         var' = Tyvar . Id
         body constr = ConDecl (Id constr)
-        adt adtHead adtBody = DataDecl (ADT adtHead adtBody)
+        adt adtHead adtBody = DataDecl (ADT emptyAnn adtHead adtBody)
 
     it "can parse multiple ADTs in a row" $ do
       "data X\ndata Y" ==> Module [adt (hd "X" []) [], adt (hd "Y" []) []]

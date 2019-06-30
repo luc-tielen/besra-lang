@@ -6,6 +6,7 @@ import X1.Transforms.Expr1
 import X1.Types.Expr1.Module
 import X1.Types.Expr1.Impl
 import X1.Types.Expr1.Expr
+import X1.Types.Expr1.ADT
 import X1.Types.Ann
 
 
@@ -32,7 +33,7 @@ stripAnns ast =
       fsM = HandlersM { moduleM = pure . Module }
       fsD = HandlersD
         { typeAnnD = pure . TypeAnnDecl
-        , adtD = pure . DataDecl
+        , adtD = pure . DataDecl . stripAnnAdt
         , traitD = pure . TraitDecl
         , implD = pure . ImplDecl
         , bindingD = pure . BindingDecl
@@ -60,6 +61,8 @@ stripAnns ast =
         }
    in runIdentity $ foldAST fs ast
 
+stripAnnAdt :: ADT 'Parsed -> ADT 'Testing
+stripAnnAdt (ADT _ adtHead adtBody) = ADT emptyAnn adtHead adtBody
 
 emptyAnn :: Ann 'Testing
 emptyAnn = ()

@@ -33,7 +33,7 @@ newtype HandlersM m rModule rDecl =
 data HandlersD m ph rDecl rImpl rBinding rExpr =
   HandlersD
     { typeAnnD :: TypeAnn -> m rDecl                       -- Handler for type ann decls
-    , adtD :: ADT -> m rDecl                               -- Handler for data decls
+    , adtD :: ADT ph -> m rDecl                            -- Handler for data decls
     , traitD :: Trait -> m rDecl                           -- Handler for trait decls
     , implD :: rImpl -> m rDecl                            -- Handler for impl decls
     , bindingD :: rBinding -> m rDecl                      -- Handler for binding decls

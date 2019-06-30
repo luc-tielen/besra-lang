@@ -1,4 +1,6 @@
 
+{-# LANGUAGE UndecidableInstances #-}
+
 module X1.Types.Expr1.ADT ( ConDecl(..)
                           , ADTHead(..)
                           , ADTBody
@@ -8,6 +10,7 @@ module X1.Types.Expr1.ADT ( ConDecl(..)
 import Protolude hiding ( Type )
 import X1.Types.Expr1.Type
 import X1.Types.Id
+import X1.Types.Ann
 
 
 data ConDecl = ConDecl Id [Type]
@@ -18,6 +21,8 @@ data ADTHead = ADTHead Tycon [Tyvar]
 
 type ADTBody = [ConDecl]
 
-data ADT = ADT ADTHead ADTBody
-  deriving (Eq, Show)
+data ADT (ph :: Phase)
+  = ADT (Ann ph) ADTHead ADTBody
 
+deriving instance Eq (Ann ph) => Eq (ADT ph)
+deriving instance Show (Ann ph) => Show (ADT ph)
