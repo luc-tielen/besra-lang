@@ -61,7 +61,7 @@ instance Testable Expr1' where
 instance Testable (BalanceError 'Testing) where
   a ==> b = do
     result <- runPass a
-    (first stripAnn result) `shouldBe` Left b
+    first stripAnn result `shouldBe` Left b
       where stripAnn (BadPrecedence fi1 fi2 d) = BadPrecedence fi1 fi2 (stripAnns d)
             stripAnn (InvalidPrefixPrecedence fi d) = InvalidPrefixPrecedence fi (stripAnns d)
 
@@ -318,10 +318,10 @@ spec_balanceOperators = describe "balance operators pass" $ parallel $ do
         a = let b = 1 + 2 * 3
                 c = 4 + 5 * 6
              in b + c * c
-        |] ==> E1Let [ bindingDecl "b" $ complex (num 1) (num 2) (num 3)
-                     , bindingDecl "c" $ complex (num 4) (num 5) (num 6)
-                     ]
-                     (complex (var "b") (var "c") (var "c"))
+        |] ==> E1Let emptyAnn [ bindingDecl "b" $ complex (num 1) (num 2) (num 3)
+                              , bindingDecl "c" $ complex (num 4) (num 5) (num 6)
+                              ]
+                              (complex (var "b") (var "c") (var "c"))
 
     -- TODO 2 lvls deep, 2 separate bindings to check they don't collide
     --it "takes fixity decls inside let into account" $

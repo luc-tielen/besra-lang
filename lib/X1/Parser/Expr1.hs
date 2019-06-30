@@ -144,13 +144,15 @@ caseParser = do
 
 letParser :: Parser Expr1'
 letParser = do
-  bindings <- withLineFold $ do
+  (startPos, bindings) <- withLineFold $ do
+    beginPos <- getOffset
     keyword "let"
     indentation <- indentLevel
     let declParser' = withIndent indentation declParser <?> "declaration"
-    lexeme declParser' `sepBy1` whitespace'
-  result <- withLineFold $ (keyword "in" <?> inLabel) *> parser
-  pure $ E1Let bindings result
+    decls <- lexeme declParser' `sepBy1` whitespace'
+    pure (beginPos, decls)
+  (sp, result) <- withLineFold $ (keyword "in" <?> inLabel) *> expr
+  pure $ E1Let (startPos .> sp) bindings result
   where
     inLabel = "properly indented declaration or 'in' keyword"
 

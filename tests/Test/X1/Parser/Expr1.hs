@@ -41,7 +41,7 @@ c :: Text -> Type
 c = TCon . Tycon . Id
 
 let' :: [ExprDecl'] -> Expr1' -> Expr1'
-let' = E1Let
+let' = E1Let emptyAnn
 
 op :: Expr1' -> Expr1' -> Expr1' -> Expr1'
 op = E1BinOp emptyAnn
@@ -507,4 +507,17 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
               [ (PLit (LNumber $ SInt 1), num' (Span 16 17) (SInt 2))
               , (pvar "x", var' (Span 24 25) "x")
               ]
+
+    it "adds location information to let expressions" $ do
+      let binding' sp x = ExprBindingDecl . Binding sp (Id x)
+      "let x = 1 in x "
+        --> E1Let (Span 0 14)
+             [binding' (Span 4 9) "x" $ num' (Span 8 9) (SInt 1)]
+             (var' (Span 13 14) "x")
+      "let x = 1\n    y = 2\nin x "
+        --> E1Let (Span 0 24)
+             [ binding' (Span 4 9) "x" $ num' (Span 8 9) (SInt 1)
+             , binding' (Span 14 19) "y" $ num' (Span 18 19) (SInt 2)
+             ]
+             (var' (Span 23 24) "x")
 

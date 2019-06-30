@@ -55,7 +55,7 @@ stripAnns ast =
         , negE = \_ e -> pure $ E1Neg emptyAnn e
         , ifE = \_ c tr fl -> pure $ E1If emptyAnn c tr fl
         , caseE = \_ e cs -> pure $ E1Case emptyAnn e cs
-        , letE = \decls body -> pure $ E1Let decls body
+        , letE = \_ decls body -> pure $ E1Let emptyAnn decls body
         , parenE = \_ e -> pure $ E1Parens emptyAnn e
         }
    in runIdentity $ foldAST fs ast

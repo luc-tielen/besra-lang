@@ -68,7 +68,7 @@ data HandlersE m ph rExprDecl rExpr =
     , negE :: Ann ph -> rExpr -> m rExpr                         -- Handler for negate expression
     , ifE :: Ann ph -> rExpr -> rExpr -> rExpr -> m rExpr        -- Handler for if expression
     , caseE :: Ann ph -> rExpr -> [(Pattern, rExpr)] -> m rExpr  -- Handler for case expression
-    , letE :: [rExprDecl] -> rExpr -> m rExpr                    -- Handler for let expression
+    , letE :: Ann ph -> [rExprDecl] -> rExpr -> m rExpr          -- Handler for let expression
     , parenE :: Ann ph -> rExpr -> m rExpr                       -- Handler for parenthesized expression
     }
 
@@ -162,8 +162,8 @@ instance Fold Expr1 where
          join $ ifE fs' ann <$> foldAST fs c <*> foldAST fs tr <*> foldAST fs fl
        E1Case ann e clauses ->
          join $ caseE fs' ann <$> foldAST fs e <*> traverse (traverse (foldAST fs)) clauses
-       E1Let decls body ->
-         join $ letE fs' <$> traverse (foldAST fs) decls <*> foldAST fs body
+       E1Let ann decls body ->
+         join $ letE fs' ann <$> traverse (foldAST fs) decls <*> foldAST fs body
        E1Parens ann e ->
          parenE fs' ann =<< foldAST fs e
 

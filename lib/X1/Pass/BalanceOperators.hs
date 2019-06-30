@@ -110,8 +110,8 @@ instance Balance Expr1' where
       rebalanceInner (E1If ann cond tClause fClause) =
         E1If ann <$> rebalance cond <*> rebalance tClause <*> rebalance fClause
       rebalanceInner (E1Neg ann e) = E1Neg ann <$> rebalance e
-      rebalanceInner (E1Let decls body) =
-        E1Let <$> rebalance decls <*> rebalance body
+      rebalanceInner (E1Let ann decls body) =
+        E1Let ann <$> rebalance decls <*> rebalance body
       rebalanceInner e = pure e
 
 lookupFixity :: [FixityInfo] -> Id -> FixityInfo
@@ -166,7 +166,7 @@ rebalanceTokens' op1 e1 (TOp f op2 : rest)
   -- case (3): op1 and op2 should associate to the right
   | otherwise = do
     (r, rest') <- rebalanceTokens op2 rest
-    rebalanceTokens' op1 ((f operator) e1 r) rest'
+    rebalanceTokens' op1 (f operator e1 r) rest'
 
   where
     FI fix1 prec1 _ = op1

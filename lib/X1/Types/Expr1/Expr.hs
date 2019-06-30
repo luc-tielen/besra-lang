@@ -31,7 +31,7 @@ data Expr1 (ph :: Phase)
   | E1Neg (Ann ph) (Expr1 ph)                          -- negation operator
   | E1If (Ann ph) (Expr1 ph) (Expr1 ph) (Expr1 ph)     -- condition, true clause, false clause
   | E1Case (Ann ph) (Expr1 ph) [(Pattern, Expr1 ph)]   -- expression to match on, multiple branches
-  | E1Let [ExprDecl ph] (Expr1 ph)                     -- bindings end result
+  | E1Let (Ann ph) [ExprDecl ph] (Expr1 ph)            -- bindings end result
   | E1Parens (Ann ph) (Expr1 ph)
 
 deriving instance Eq (Ann ph) => Eq (ExprDecl ph)
@@ -42,7 +42,6 @@ deriving instance Eq (Ann ph) => Eq (Expr1 ph)
 deriving instance Show (Ann ph) => Show (Expr1 ph)
 
 instance HasSpan (Ann ph) => HasSpan (Expr1 ph) where
-  -- TODO handle cases without spans
   span = \case
     E1Lit ann _ -> span ann
     E1Var ann _ -> span ann
@@ -53,6 +52,6 @@ instance HasSpan (Ann ph) => HasSpan (Expr1 ph) where
     E1Neg ann _ -> span ann
     E1If ann _ _ _ -> span ann
     E1Case ann _ _ -> span ann
-    E1Let _ _ -> panic "Not implemented!"
+    E1Let ann _ _ -> span ann
     E1Parens ann _ -> span ann
 
