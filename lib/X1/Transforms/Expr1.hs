@@ -30,14 +30,14 @@ newtype HandlersM m rModule rDecl =
     { moduleM :: [rDecl] -> m rModule  -- Handler for module
     }
 
-data HandlersD m rDecl rImpl rBinding rExpr =
+data HandlersD m ph rDecl rImpl rBinding rExpr =
   HandlersD
-    { typeAnnD :: TypeAnn -> m rDecl             -- Handler for type ann decls
-    , adtD :: ADT -> m rDecl                     -- Handler for data decls
-    , traitD :: Trait -> m rDecl                 -- Handler for trait decls
-    , implD :: rImpl -> m rDecl                  -- Handler for impl decls
-    , bindingD :: rBinding -> m rDecl            -- Handler for binding decls
-    , fixityD :: Fixity -> Int -> Id -> m rDecl  -- Handler for fixity decls
+    { typeAnnD :: TypeAnn -> m rDecl                       -- Handler for type ann decls
+    , adtD :: ADT -> m rDecl                               -- Handler for data decls
+    , traitD :: Trait -> m rDecl                           -- Handler for trait decls
+    , implD :: rImpl -> m rDecl                            -- Handler for impl decls
+    , bindingD :: rBinding -> m rDecl                      -- Handler for binding decls
+    , fixityD :: Ann ph -> Fixity -> Int -> Id -> m rDecl  -- Handler for fixity decls
     }
 
 newtype HandlersI m rImpl rBinding =
@@ -50,11 +50,11 @@ newtype HandlersB m ph rBinding rExpr =
     { bindingB :: Ann ph -> Id -> rExpr -> m rBinding  -- Handler for bindings
     }
 
-data HandlersED m rBinding rExprDecl rExpr =
+data HandlersED m ph rBinding rExprDecl rExpr =
   HandlersED
-    { typeAnnED :: TypeAnn -> m rExprDecl             -- handler for expr type ann decl
-    , bindingED :: rBinding -> m rExprDecl            -- Handler for expr binding decl
-    , fixityED :: Fixity -> Int -> Id -> m rExprDecl  -- Handler for expr fixity decl
+    { typeAnnED :: TypeAnn -> m rExprDecl                       -- handler for expr type ann decl
+    , bindingED :: rBinding -> m rExprDecl                      -- Handler for expr binding decl
+    , fixityED :: Ann ph -> Fixity -> Int -> Id -> m rExprDecl  -- Handler for expr fixity decl
     }
 
 data HandlersE m ph rExprDecl rExpr =
@@ -74,12 +74,12 @@ data HandlersE m ph rExprDecl rExpr =
 
 data Handlers m ph rModule rDecl rImpl rBinding rExprDecl rExpr =
   Handlers
-    { handlersM  :: HandlersM m rModule rDecl               -- Handlers for module
-    , handlersD  :: HandlersD m rDecl rImpl rBinding rExpr  -- Handlers for decls
-    , handlersI  :: HandlersI m rImpl rBinding              -- Handlers for impls
-    , handlersB  :: HandlersB m ph rBinding rExpr           -- Handlers for bindings
-    , handlersED :: HandlersED m rBinding rExprDecl rExpr   -- Handlers for decls in exprs
-    , handlersE  :: HandlersE m ph rExprDecl rExpr          -- Handlers for exprs
+    { handlersM  :: HandlersM m rModule rDecl                  -- Handlers for module
+    , handlersD  :: HandlersD m ph rDecl rImpl rBinding rExpr  -- Handlers for decls
+    , handlersI  :: HandlersI m rImpl rBinding                 -- Handlers for impls
+    , handlersB  :: HandlersB m ph rBinding rExpr              -- Handlers for bindings
+    , handlersED :: HandlersED m ph rBinding rExprDecl rExpr   -- Handlers for decls in exprs
+    , handlersE  :: HandlersE m ph rExprDecl rExpr             -- Handlers for exprs
     }
 
 
@@ -125,7 +125,7 @@ instance Fold Decl where
         TraitDecl trait -> traitD fs' trait
         ImplDecl impl -> implD fs' =<< foldAST fs impl
         BindingDecl binding -> bindingD fs' =<< foldAST fs binding
-        FixityDecl fixity prec var -> fixityD fs' fixity prec var
+        FixityDecl ann fixity prec var -> fixityD fs' ann fixity prec var
 
 instance Fold Impl where
   foldAST fs (Impl ps p bindings) =
@@ -143,7 +143,7 @@ instance Fold ExprDecl where
      in case ed of
        ExprTypeAnnDecl typeAnn -> typeAnnED fs' typeAnn
        ExprBindingDecl binding -> bindingED fs' =<< foldAST fs binding
-       ExprFixityDecl fixity prec var -> fixityED fs' fixity prec var
+       ExprFixityDecl ann fixity prec var -> fixityED fs' ann fixity prec var
 
 instance Fold Expr1 where
   foldAST fs expr =

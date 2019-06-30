@@ -153,10 +153,10 @@ declParser = withLineFold declParser' where
 
 fixityDecl :: Parser ExprDecl'
 fixityDecl = do
-  fixityType <- lexeme' fixityTypeParser
+  (sp1, fixityType) <- withSpan $ lexeme' fixityTypeParser
   precedence <- withDefault 9 $ digitToInt <$> lexeme' decimal
-  operator <- lexeme (Id <$> opIdentifier <|> infixFunction')
-  pure $ ExprFixityDecl fixityType precedence operator
+  (sp2, operator) <- lexeme (withSpan $ Id <$> opIdentifier <|> infixFunction')
+  pure $ ExprFixityDecl (sp1 <> sp2) fixityType precedence operator
   where
     fixityTypeParser =  keyword "infixl" $> L
                     <|> keyword "infixr" $> R

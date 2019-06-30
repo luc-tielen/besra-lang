@@ -317,7 +317,7 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
 
   describe "operators" $ parallel $ do
     let num = E1Lit emptyAnn . LNumber . SInt
-        fixity ty prio op' = ExprFixityDecl ty prio (Id op')
+        fixity ty prio op' = ExprFixityDecl emptyAnn ty prio (Id op')
         app = E1App
         con = E1Con emptyAnn . Id
 

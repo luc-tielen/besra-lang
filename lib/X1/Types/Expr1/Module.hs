@@ -20,7 +20,7 @@ data Decl (ph :: Phase)
   | TraitDecl Trait
   | ImplDecl (Impl ph)
   | BindingDecl (Binding ph)
-  | FixityDecl Fixity Int Id
+  | FixityDecl (Ann ph) Fixity Int Id
 
 newtype Module (ph :: Phase)
   = Module [Decl ph]

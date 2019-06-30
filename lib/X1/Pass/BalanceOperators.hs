@@ -56,7 +56,7 @@ pass (Module decls) =
   let fixities = map toFixityInfo $ filter isFixityDecl decls
       isFixityDecl FixityDecl {} = True
       isFixityDecl _ = False
-      toFixityInfo (FixityDecl fixity prec op) = FI fixity prec op
+      toFixityInfo (FixityDecl _ fixity prec op) = FI fixity prec op
       toFixityInfo _ = panic "Error while computing operator precedences."
       parMap' = parMap rpar
    in Module <$> sequenceA (parMap' (runRebalance fixities) decls)

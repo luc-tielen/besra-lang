@@ -199,7 +199,7 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
       (parse, "(+) :") `shouldFailWith` err 5 (ueof <> elabel "typescheme")
 
     describe "fixity declarations" $ parallel $ do
-      let expected op fixity prio = Module [FixityDecl fixity prio (Id op)]
+      let expected op fixity prio = Module [FixityDecl emptyAnn fixity prio (Id op)]
 
       it "can parse top level fixity declarations" $ do
         let expected' = expected "+"
@@ -221,9 +221,9 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
 
       it "can parse multiple fixity declarations" $
         "infixl 5 +\ninfixr 7 `plus`\ninfixl 6 *"
-          ==> Module [ FixityDecl L 5 (Id "+")
-                     , FixityDecl R 7 (Id "plus")
-                     , FixityDecl L 6 (Id "*")]
+          ==> Module [ FixityDecl emptyAnn L 5 (Id "+")
+                     , FixityDecl emptyAnn R 7 (Id "plus")
+                     , FixityDecl emptyAnn L 6 (Id "*")]
 
       it "can parse multiline fixity declaration" $ do
         "infixl\n 7\n  ***" ==> expected "***" L 7
@@ -450,5 +450,8 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
       "abc def ghi = 1234 " ~~> Module [BindingDecl $ binding' (Span 0 18) "abc"
                                         $ lam' ["def", "ghi"] $ num' (Span 14 18) 1234]
 
-    -- TODO same 2 tests inside impl
+    it "keeps track of location info for fixity declarations" $ do
+      "infixl 6 +++ " ~~> Module [FixityDecl (Span 0 12) L 6 (Id "+++")]
+      "infix 4 ** " ~~> Module [FixityDecl (Span 0 10) M 4 (Id "**")]
+      "infixr 5 >> " ~~> Module [FixityDecl (Span 0 11) R 5 (Id ">>")]
 

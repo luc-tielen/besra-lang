@@ -94,7 +94,7 @@ op :: Text -> Expr1' -> Expr1' -> Expr1'
 op operator = E1BinOp emptyAnn (var operator)
 
 infixDecls :: Text -> Text -> [Decl']
-infixDecls a b = [ FixityDecl L 4 (Id a), FixityDecl L 5 (Id b) ]
+infixDecls a b = [ FixityDecl emptyAnn L 4 (Id a), FixityDecl emptyAnn L 5 (Id b) ]
 
 fixityTypeToStr :: Fixity -> Text
 fixityTypeToStr L = "infixl"
@@ -121,8 +121,8 @@ spec_balanceOperators = describe "balance operators pass" $ parallel $ do
                 |]
         mkScript = mkScript' "a = 1 + 2 * 3"
         expected fixTypePlus fixityPlus fixTypeMul fixityMul expr =
-          Module [ FixityDecl fixTypePlus fixityPlus (Id "+")
-                 , FixityDecl fixTypeMul fixityMul (Id "*")
+          Module [ FixityDecl emptyAnn fixTypePlus fixityPlus (Id "+")
+                 , FixityDecl emptyAnn fixTypeMul fixityMul (Id "*")
                  , BindingDecl $ binding "a" expr
                  ]
 
@@ -230,7 +230,7 @@ spec_balanceOperators = describe "balance operators pass" $ parallel $ do
       [text|
         infixl 4 +
         a = 1 + 2 * 3
-        |] ==> Module [ FixityDecl L 4 (Id "+")
+        |] ==> Module [ FixityDecl emptyAnn L 4 (Id "+")
                       , BindingDecl $ binding "a" $ op "+" (num 1) (op "*" (num 2) (num 3))]
 
     it "rebalances operators in lambdas" $
