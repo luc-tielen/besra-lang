@@ -54,7 +54,7 @@ stripAnns ast =
         , binOpE = \_ op l r -> pure $ E1BinOp emptyAnn op l r
         , negE = \_ e -> pure $ E1Neg emptyAnn e
         , ifE = \_ c tr fl -> pure $ E1If emptyAnn c tr fl
-        , caseE = \e cs -> pure $ E1Case e cs
+        , caseE = \_ e cs -> pure $ E1Case emptyAnn e cs
         , letE = \decls body -> pure $ E1Let decls body
         , parenE = \_ e -> pure $ E1Parens emptyAnn e
         }

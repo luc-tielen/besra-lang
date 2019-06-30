@@ -280,7 +280,7 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       "((123))" ==> parens . parens $ num 123
 
   describe "case expressions" $ parallel $ do
-    let case' = E1Case
+    let case' = E1Case emptyAnn
         pvar = PVar . Id
         pcon x = PCon (Id x)
         num' = LNumber . SInt
@@ -426,6 +426,8 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
         op' = E1BinOp
         neg' = E1Neg
         if' = E1If
+        case' = E1Case
+        pvar = PVar . Id
 
     it "adds location information to the expression" $ do
       "(1  )" --> E1Parens (Span 0 5) $ num' (Span 1 2) (SInt 1)
@@ -495,3 +497,14 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
         --> if' (Span 0 24) (num' (Span 3 6) $ SInt 123)
                             (num' (Span 12 15) $ SInt 456)
                             (num' (Span 21 24) $ SInt 789)
+
+    it "adds location information to case expression" $ do
+      "case 1 of\n x -> x "
+        --> case' (Span 0 17) (num' (Span 5 6) (SInt 1))
+              [(pvar "x", var' (Span 16 17) "x")]
+      "case 1 of\n 1 -> 2\n x -> x "
+        --> case' (Span 0 25) (num' (Span 5 6) (SInt 1))
+              [ (PLit (LNumber $ SInt 1), num' (Span 16 17) (SInt 2))
+              , (pvar "x", var' (Span 24 25) "x")
+              ]
+

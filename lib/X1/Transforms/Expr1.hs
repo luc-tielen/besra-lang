@@ -59,17 +59,17 @@ data HandlersED m ph rBinding rExprDecl rExpr =
 
 data HandlersE m ph rExprDecl rExpr =
   HandlersE
-    { litE :: Ann ph -> Lit -> m rExpr                        -- Handler for literals
-    , varE :: Ann ph -> Id -> m rExpr                         -- Handler for vars
-    , conE :: Ann ph -> Id -> m rExpr                         -- Handler for constructors
-    , lamE :: Ann ph -> [Pattern] -> rExpr -> m rExpr         -- Handler for lambda expression
-    , appE :: Ann ph -> rExpr -> [rExpr] -> m rExpr           -- Handler for function application
-    , binOpE :: Ann ph -> rExpr -> rExpr -> rExpr -> m rExpr  -- Handler for bin op expression
-    , negE :: Ann ph -> rExpr -> m rExpr                      -- Handler for negate expression
-    , ifE :: Ann ph -> rExpr -> rExpr -> rExpr -> m rExpr     -- Handler for if expression
-    , caseE :: rExpr -> [(Pattern, rExpr)] -> m rExpr         -- Handler for case expression
-    , letE :: [rExprDecl] -> rExpr -> m rExpr                 -- Handler for let expression
-    , parenE :: Ann ph -> rExpr -> m rExpr                    -- Handler for parenthesized expression
+    { litE :: Ann ph -> Lit -> m rExpr                           -- Handler for literals
+    , varE :: Ann ph -> Id -> m rExpr                            -- Handler for vars
+    , conE :: Ann ph -> Id -> m rExpr                            -- Handler for constructors
+    , lamE :: Ann ph -> [Pattern] -> rExpr -> m rExpr            -- Handler for lambda expression
+    , appE :: Ann ph -> rExpr -> [rExpr] -> m rExpr              -- Handler for function application
+    , binOpE :: Ann ph -> rExpr -> rExpr -> rExpr -> m rExpr     -- Handler for bin op expression
+    , negE :: Ann ph -> rExpr -> m rExpr                         -- Handler for negate expression
+    , ifE :: Ann ph -> rExpr -> rExpr -> rExpr -> m rExpr        -- Handler for if expression
+    , caseE :: Ann ph -> rExpr -> [(Pattern, rExpr)] -> m rExpr  -- Handler for case expression
+    , letE :: [rExprDecl] -> rExpr -> m rExpr                    -- Handler for let expression
+    , parenE :: Ann ph -> rExpr -> m rExpr                       -- Handler for parenthesized expression
     }
 
 data Handlers m ph rModule rDecl rImpl rBinding rExprDecl rExpr =
@@ -160,8 +160,8 @@ instance Fold Expr1 where
        E1Neg ann e -> negE fs' ann =<< foldAST fs e
        E1If ann c tr fl ->
          join $ ifE fs' ann <$> foldAST fs c <*> foldAST fs tr <*> foldAST fs fl
-       E1Case e clauses ->
-         join $ caseE fs' <$> foldAST fs e <*> traverse (traverse (foldAST fs)) clauses
+       E1Case ann e clauses ->
+         join $ caseE fs' ann <$> foldAST fs e <*> traverse (traverse (foldAST fs)) clauses
        E1Let decls body ->
          join $ letE fs' <$> traverse (foldAST fs) decls <*> foldAST fs body
        E1Parens ann e ->

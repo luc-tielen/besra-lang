@@ -291,15 +291,15 @@ spec_balanceOperators = describe "balance operators pass" $ parallel $ do
         infixl 5 *
         a = case 1 + 2 * 3 of
               x -> x
-        |] ==> E1Case (op "+" (num 1) (op "*" (num 2) (num 3))) [ (PVar (Id "x")
-                                                                , var "x")]
+        |] ==> E1Case emptyAnn (op "+" (num 1) (op "*" (num 2) (num 3)))
+                                [ (PVar (Id "x"), var "x")]
       [text|
         infixl 4 +
         infixl 5 *
         a = case 1 of
               x -> 1 + 2 * 3
-        |] ==> E1Case (num 1) [ (PVar (Id "x")
-                              , op "+" (num 1) (op "*" (num 2) (num 3)))]
+        |] ==> E1Case emptyAnn (num 1)
+                [ (PVar (Id "x"), op "+" (num 1) (op "*" (num 2) (num 3)))]
 
     it "rebalances operators in parenthesized expression" $
       [text|

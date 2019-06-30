@@ -105,8 +105,8 @@ instance Balance Expr1' where
       rebalanceInner (E1Lam ann vars body) = E1Lam ann vars <$> rebalance body
       rebalanceInner (E1App ann f args) =
         E1App ann <$> rebalance f <*> rebalance args
-      rebalanceInner (E1Case e clauses) =
-        E1Case <$> rebalance e <*> rebalance clauses
+      rebalanceInner (E1Case ann e clauses) =
+        E1Case ann <$> rebalance e <*> rebalance clauses
       rebalanceInner (E1If ann cond tClause fClause) =
         E1If ann <$> rebalance cond <*> rebalance tClause <*> rebalance fClause
       rebalanceInner (E1Neg ann e) = E1Neg ann <$> rebalance e

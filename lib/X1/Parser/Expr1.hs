@@ -124,6 +124,7 @@ ifParser = do
 
 caseParser :: Parser Expr1'
 caseParser = do
+  startPos <- getOffset
   keyword "case"
   expr' <- lexeme' parser
   keyword "of"
@@ -131,13 +132,15 @@ caseParser = do
   let clauseParser' = withIndent indentation clauseParser <?> "case clause"
   clauses <- some clauseParser'
   notFollowedBy clauseParser <?> "properly indented case clause"
-  pure $ E1Case expr' clauses
+  let (spans, clauses') = unzip clauses
+      spans' = fromJust $ nonEmpty spans
+  pure $ E1Case (startPos .> sconcat spans') expr' clauses'
   where
     clauseParser = withLineFold $ do
       pat <- lexeme' Pattern.parser
       void . lexeme' $ chunk "->"
-      expr' <- parser
-      pure (pat, expr')
+      (sp, expr') <- expr
+      pure (sp, (pat, expr'))
 
 letParser :: Parser Expr1'
 letParser = do
