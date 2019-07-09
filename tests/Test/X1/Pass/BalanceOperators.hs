@@ -27,6 +27,7 @@ type Module' = Module 'Testing
 type Decl' = Decl 'Testing
 type Binding' = Binding 'Testing
 type Expr1' = Expr1 'Testing
+type Type' = Type 'Testing
 type BalanceError' = BalanceError 'Parsed
 
 runPass :: Text -> IO (Either BalanceError' Module')
@@ -66,8 +67,8 @@ instance Testable (BalanceError 'Testing) where
             stripAnn (InvalidPrefixPrecedence fi d) = InvalidPrefixPrecedence fi (stripAnns d)
 
 
-c :: Text -> Type
-c = TCon . Tycon . Id
+c :: Text -> Type'
+c = TCon . Tycon emptyAnn . Id
 
 binding :: Text -> Expr1' -> Binding'
 binding x = Binding emptyAnn (Id x)

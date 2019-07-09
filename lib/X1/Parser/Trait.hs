@@ -3,6 +3,7 @@ module X1.Parser.Trait ( parser ) where
 
 import Protolude
 import X1.Types.Id
+import X1.Types.Ann
 import X1.Types.Expr1.TypeAnn
 import X1.Types.Expr1.Trait
 import X1.Parser.Helpers
@@ -10,7 +11,10 @@ import qualified X1.Parser.Pred as Pred
 import qualified X1.Parser.Scheme as Scheme
 
 
-parser :: Parser Trait
+type Trait' = Trait 'Parsed
+type TypeAnn' = TypeAnn 'Parsed
+
+parser :: Parser Trait'
 parser = parser' <?> "trait declaration" where
   parser' = withLineFold $ do
     keyword "trait"
@@ -29,7 +33,7 @@ parser = parser' <?> "trait declaration" where
   badIndentMsg = "properly indented type declaration in trait"
 
 -- TODO remove duplication with expr1 parser once binding decls are supported in traits
-typeAnnParser :: Parser TypeAnn
+typeAnnParser :: Parser TypeAnn'
 typeAnnParser = do
   var <- lexeme' declIdentifier
   void $ lexeme' typeSeparator

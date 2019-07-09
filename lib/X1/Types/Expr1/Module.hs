@@ -15,9 +15,9 @@ import X1.Types.Expr1.TypeAnn
 
 
 data Decl (ph :: Phase)
-  = TypeAnnDecl TypeAnn
+  = TypeAnnDecl (TypeAnn ph)
   | DataDecl (ADT ph)
-  | TraitDecl Trait
+  | TraitDecl (Trait ph)
   | ImplDecl (Ann ph) (Impl ph)
   | BindingDecl (Binding ph)
   | FixityDecl (Ann ph) Fixity Int Id

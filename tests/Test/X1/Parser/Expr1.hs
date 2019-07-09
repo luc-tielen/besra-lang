@@ -22,6 +22,7 @@ import Test.X1.Helpers
 
 type Expr1' = Expr1 'Testing
 type ExprDecl' = ExprDecl 'Testing
+type Type' = Type 'Testing
 type Ann' = Ann 'Parsed
 
 
@@ -37,8 +38,8 @@ infixr 0 -->
 parse :: Text -> ParseResult (Expr1 'Parsed)
 parse = mkParser parser
 
-c :: Text -> Type
-c = TCon . Tycon . Id
+c :: Text -> Type'
+c = TCon . Tycon emptyAnn . Id
 
 let' :: [ExprDecl'] -> Expr1' -> Expr1'
 let' = E1Let emptyAnn
@@ -55,7 +56,7 @@ var = E1Var emptyAnn . Id
 binding :: Text -> Expr1' -> ExprDecl'
 binding x = ExprBindingDecl . Binding emptyAnn (Id x)
 
-sig :: Text -> Type -> ExprDecl'
+sig :: Text -> Type' -> ExprDecl'
 sig x ty = ExprTypeAnnDecl $ TypeAnn (Id x) (Scheme [] ty)
 
 

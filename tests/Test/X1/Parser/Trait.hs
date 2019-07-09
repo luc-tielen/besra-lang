@@ -2,40 +2,48 @@
 module Test.X1.Parser.Trait ( module Test.X1.Parser.Trait ) where
 
 import Protolude hiding ( Type, pred )
+import Test.Hspec.Megaparsec hiding (shouldFailWith, succeedsLeaving)
 import Test.Tasty.Hspec
 import Test.X1.Parser.Helpers
+import Test.X1.Helpers
 import X1.Types.Id
+import X1.Types.Ann
 import X1.Types.Expr1.Pred
 import X1.Types.Expr1.Type
 import X1.Types.Expr1.Trait
 import X1.Types.Expr1.Scheme
 import X1.Types.Expr1.TypeAnn
 import X1.Parser.Trait (parser)
-import Test.Hspec.Megaparsec hiding (shouldFailWith, succeedsLeaving)
 
 
-parse :: Text -> ParseResult Trait
+type Trait' = Trait 'Testing
+type Pred' = Pred 'Testing
+type Type' = Type 'Testing
+type Scheme' = Scheme 'Testing
+type TypeAnn' = TypeAnn 'Testing
+
+parse :: Text -> ParseResult (Trait 'Parsed)
 parse = mkParser parser
 
-con :: Text -> Type
-con = TCon . Tycon . Id
+con :: Text -> Type'
+con = TCon . Tycon emptyAnn . Id
 
-var :: Text -> Type
-var = TVar . Tyvar . Id
+var :: Text -> Type'
+var = TVar . Tyvar emptyAnn . Id
 
-app :: Type -> [Type] -> Type
+app :: Type' -> [Type'] -> Type'
 app = TApp
 
-(==>) :: Text -> Trait -> IO ()
-a ==> b = parse a `shouldParse` b
+(==>) :: Text -> Trait' -> IO ()
+a ==> b = (stripAnns <$> parse a) `shouldParse` b
 
-(-->) :: Type -> Type -> Type
+(-->) :: Type' -> Type' -> Type'
 t1 --> t2 = app (con "->") [t1, t2]
 
-typeAnn :: Text -> Scheme -> TypeAnn
+typeAnn :: Text -> Scheme' -> TypeAnn'
 typeAnn x = TypeAnn (Id x)
 
-pred :: Text -> [Text] -> Pred
+pred :: Text -> [Text] -> Pred'
 pred clazz = IsIn (Id clazz) . map var
 
 infixr 2 -->

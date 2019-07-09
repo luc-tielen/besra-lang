@@ -13,16 +13,19 @@ import X1.Types.Id
 import X1.Types.Ann
 
 
-data ConDecl = ConDecl Id [Type]
-  deriving (Eq, Show)
+data ConDecl (ph :: Phase)
+  = ConDecl Id [Type ph]
 
-data ADTHead = ADTHead Tycon [Tyvar]
-  deriving (Eq, Show)
+data ADTHead ph = ADTHead (Tycon ph) [Tyvar ph]
 
-type ADTBody = [ConDecl]
+type ADTBody ph = [ConDecl ph]
 
 data ADT (ph :: Phase)
-  = ADT (Ann ph) ADTHead ADTBody
+  = ADT (Ann ph) (ADTHead ph) (ADTBody ph)
 
+deriving instance Eq (Ann ph) => Eq (ConDecl ph)
+deriving instance Show (Ann ph) => Show (ConDecl ph)
+deriving instance Eq (Ann ph) => Eq (ADTHead ph)
+deriving instance Show (Ann ph) => Show (ADTHead ph)
 deriving instance Eq (Ann ph) => Eq (ADT ph)
 deriving instance Show (Ann ph) => Show (ADT ph)

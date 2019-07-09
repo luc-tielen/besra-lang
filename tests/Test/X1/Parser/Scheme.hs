@@ -2,35 +2,41 @@
 module Test.X1.Parser.Scheme ( module Test.X1.Parser.Scheme ) where
 
 import Protolude hiding (Type)
-import Test.Tasty.Hspec
 import Test.Hspec.Megaparsec hiding (shouldFailWith)
+import Test.Tasty.Hspec
+import Test.X1.Parser.Helpers
+import Test.X1.Helpers
 import X1.Parser.Scheme (parser)
 import X1.Types.Id
+import X1.Types.Ann
 import X1.Types.Expr1.Pred
 import X1.Types.Expr1.Scheme
 import X1.Types.Expr1.Type
-import Test.X1.Parser.Helpers
 
 
-parser' :: Text -> ParseResult Scheme
+type Scheme' = Scheme 'Testing
+type Type' = Type 'Testing
+type Pred' = Pred 'Testing
+
+parser' :: Text -> ParseResult (Scheme 'Parsed)
 parser' = mkParser parser
 
-(==>) :: Text -> Scheme -> IO ()
-a ==> b = parser' a `shouldParse` b
+(==>) :: Text -> Scheme' -> IO ()
+a ==> b = (stripAnns <$> parser' a) `shouldParse` b
 
-con :: Text -> Type
-con = TCon . Tycon . Id
+con :: Text -> Type'
+con = TCon . Tycon emptyAnn . Id
 
-var :: Text -> Type
-var = TVar . Tyvar . Id
+var :: Text -> Type'
+var = TVar . Tyvar emptyAnn . Id
 
-app :: Type -> [Type] -> Type
+app :: Type' -> [Type'] -> Type'
 app = TApp
 
-isIn :: Text -> [Type] -> Pred
+isIn :: Text -> [Type'] -> Pred'
 isIn ty = IsIn (Id ty)
 
-(-->) :: Type -> Type -> Type
+(-->) :: Type' -> Type' -> Type'
 t1 --> t2 = app (con "->") [t1, t2]
 
 infixr 2 -->

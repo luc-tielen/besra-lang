@@ -2,36 +2,40 @@
 module Test.X1.Parser.Type ( module Test.X1.Parser.Type ) where
 
 import Protolude hiding ( Type )
-import Test.X1.Parser.Helpers
 import Test.Hspec.Megaparsec hiding (shouldFailWith)
+import Test.X1.Parser.Helpers
+import Test.X1.Helpers
 import Test.Tasty.Hspec
 import X1.Parser.Type (parser)
 import X1.Types.Expr1.Type
 import X1.Types.Id
+import X1.Types.Ann
 
 
-parser' :: Text -> ParseResult Type
+type Type' = Type 'Testing
+
+parser' :: Text -> ParseResult (Type 'Parsed)
 parser' = mkParser parser
 
-(==>) :: Text -> Type -> IO ()
-a ==> b = parser' a `shouldParse` b
+(==>) :: Text -> Type' -> IO ()
+a ==> b = (stripAnns <$> parser' a) `shouldParse` b
 
-con :: Text -> Type
-con = TCon . Tycon . Id
+con :: Text -> Type'
+con = TCon . Tycon emptyAnn . Id
 
-var :: Text -> Type
-var = TVar . Tyvar . Id
+var :: Text -> Type'
+var = TVar . Tyvar emptyAnn . Id
 
-app :: Type -> [Type] -> Type
+app :: Type' -> [Type'] -> Type'
 app = TApp
 
-(-->) :: Type -> Type -> Type
+(-->) :: Type' -> Type' -> Type'
 t1 --> t2 = app (con "->") [t1, t2]
 
-tMaybe :: Type
+tMaybe :: Type'
 tMaybe = con "Maybe"
 
-tEither :: Type
+tEither :: Type'
 tEither = con "Either"
 
 infixr 2 -->

@@ -22,6 +22,7 @@ import Test.Tasty.Hspec
 
 type Module' = Module 'Parsed
 type Expr1' = Expr1 'Parsed
+type Type' = Type 'Parsed
 type Ann' = Ann 'Parsed
 
 file :: FilePath
@@ -35,7 +36,7 @@ missingType sp var expr =
   let bindingDecl = BindingDecl $ Binding sp (Id var) expr
    in MissingTopLevelTypeAnnDeclErr $ MissingTopLevelTypeAnnDecl file bindingDecl
 
-missingBinding :: Text -> Type -> SAError
+missingBinding :: Text -> Type' -> SAError
 missingBinding var ty =
   let toTypeAnnDecl = TypeAnnDecl . TypeAnn (Id var) . Scheme []
       err = MissingTopLevelBindingDeclErr . MissingTopLevelBindingDecl file . toTypeAnnDecl
@@ -47,8 +48,8 @@ num ann = E1Lit ann . LNumber . SInt
 str :: Ann' -> Text -> Expr1'
 str ann = E1Lit ann . LString . String
 
-c :: Text -> Type
-c = TCon . Tycon . Id
+c :: Span -> Text -> Type'
+c ann = TCon . Tycon ann . Id
 
 
 (==>) :: Text -> ValidationResult [SAError] -> IO ()
@@ -74,7 +75,7 @@ spec_missingTopLevelDecls = describe "SA: MissingTopLevelDecls" $ parallel $ do
                                  , missingType (Span 6 15) "y" (str (Span 10 15) "abc")]
 
   it "reports an error for each missing binding" $ do
-    "x : Int" ==> Err [missingBinding "x" (c "Int")]
-    "x : Int\ny : String" ==> Err [ missingBinding "x" (c "Int")
-                                  , missingBinding "y" (c "String")]
+    "x : Int" ==> Err [missingBinding "x" (c (Span 4 7) "Int")]
+    "x : Int\ny : String" ==> Err [ missingBinding "x" (c (Span 4 7) "Int")
+                                  , missingBinding "y" (c (Span 12 18) "String")]
 

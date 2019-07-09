@@ -17,7 +17,7 @@ data Binding (ph :: Phase)
   = Binding (Ann ph) Id (Expr1 ph)
 
 data ExprDecl (ph :: Phase)
-  = ExprTypeAnnDecl TypeAnn
+  = ExprTypeAnnDecl (TypeAnn ph)
   | ExprBindingDecl (Binding ph)
   | ExprFixityDecl (Ann ph) Fixity Int Id
 

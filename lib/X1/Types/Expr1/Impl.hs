@@ -11,7 +11,7 @@ import X1.Types.Span
 
 
 data Impl (ph :: Phase)
-  = Impl (Ann ph) [Pred] Pred [Binding ph]
+  = Impl (Ann ph) [Pred ph] (Pred ph) [Binding ph]
 
 deriving instance Eq (Ann ph) => Eq (Impl ph)
 deriving instance Show (Ann ph) => Show (Impl ph)

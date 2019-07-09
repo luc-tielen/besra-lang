@@ -32,6 +32,9 @@ import NeatInterpolation
 type Module' = Module 'Testing
 type Expr1' = Expr1 'Testing
 type Decl' = Decl 'Testing
+type Type' = Type 'Testing
+type Scheme' = Scheme 'Testing
+type Pred' = Pred 'Testing
 
 parse :: Text -> ParseResult (Module 'Parsed)
 parse = mkParser parser
@@ -43,16 +46,16 @@ a ==> b = (stripAnns <$> parse a) `shouldParse` b
 (~~>) :: Text -> Module 'Parsed -> IO ()
 a ~~> b = parse a `shouldParse` b
 
-con :: Text -> Type
-con = TCon . Tycon . Id
+con :: Text -> Type'
+con = TCon . Tycon emptyAnn . Id
 
-var :: Text -> Type
-var = TVar . Tyvar . Id
+var :: Text -> Type'
+var = TVar . Tyvar emptyAnn . Id
 
-app :: Type -> [Type] -> Type
+app :: Type' -> [Type'] -> Type'
 app = TApp
 
-(-->) :: Type -> Type -> Type
+(-->) :: Type' -> Type' -> Type'
 t1 --> t2 = app (con "->") [t1, t2]
 
 num :: Int -> Expr1'
@@ -67,7 +70,7 @@ char = E1Lit emptyAnn . LChar
 lam :: [Text] -> Expr1' -> Expr1'
 lam vars = E1Lam emptyAnn (PVar . Id <$> vars)
 
-typeAnn :: Id -> Scheme -> Decl'
+typeAnn :: Id -> Scheme' -> Decl'
 typeAnn name scheme = TypeAnnDecl (TypeAnn name scheme)
 
 binding :: Text -> Expr1' -> Decl'
@@ -271,8 +274,8 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
 
   describe "data declarations" $ parallel $ do
     let hd constr vars = ADTHead (con' constr) (var' <$> vars)
-        con' = Tycon . Id
-        var' = Tyvar . Id
+        con' = Tycon emptyAnn . Id
+        var' = Tyvar emptyAnn . Id
         body constr = ConDecl (Id constr)
         adt adtHead adtBody = DataDecl (ADT emptyAnn adtHead adtBody)
 
@@ -439,8 +442,8 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
         binding' sp name = Binding sp (Id name)
         num' ann = E1Lit ann . LNumber . SInt
         lam' ann vars = E1Lam ann (PVar . Id <$> vars)
-        pred :: Text -> [Type] -> Pred
         pred clazz = IsIn (Id clazz)
+        con' ann = TCon . Tycon ann . Id
 
     it "keeps track of location info for constant bindings" $ do
       "a = 3  " ~~> Module [BindingDecl $ binding' (Span 0 5) "a" (num' (Span 4 5) 3)]
@@ -460,10 +463,10 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
     it "keeps track of location info for impl declaration" $ do
       "impl MyClass Int where "
         ~~> Module [ImplDecl (Span 0 22)
-                   $ Impl (Span 0 22) [] (pred "MyClass" [con "Int"]) []]
+                   $ Impl (Span 0 22) [] (pred "MyClass" [con' (Span 13 16) "Int"]) []]
       "impl MyClass Int where\n abc def ghi = 123 "
         ~~> Module [ImplDecl (Span 0 41)
-                   $ Impl (Span 0 41) [] (pred "MyClass" [con "Int"])
+                   $ Impl (Span 0 41) [] (pred "MyClass" [con' (Span 13 16) "Int"])
                       [binding' (Span 24 41) "abc" $
                         lam' (Span 24 41) ["def", "ghi"] $ num' (Span 38 41) 123]
                    ]

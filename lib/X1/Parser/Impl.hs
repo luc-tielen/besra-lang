@@ -19,6 +19,7 @@ import qualified X1.Parser.Tyvar as Tyvar
 
 type Impl' = Impl 'Parsed
 type Binding' = Binding 'Parsed
+type Pred' = Pred 'Parsed
 
 parser :: Parser Impl'
 parser = parser' <?> "impl declaration" where
@@ -42,7 +43,7 @@ parser = parser' <?> "impl declaration" where
   badlyIndentedDecl = indented bindingParser
   badIndentMsg = "properly indented binding declaration in impl"
 
-implParser :: Parser Pred
+implParser :: Parser Pred'
 implParser = IsIn <$> traitId <*> some (implTypeParser <?> "type")
   where
     traitId = Id <$> lexeme' capitalIdentifier <?> "trait identifier"
