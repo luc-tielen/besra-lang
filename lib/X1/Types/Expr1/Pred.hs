@@ -7,10 +7,14 @@ import Protolude hiding ( Type )
 import X1.Types.Expr1.Type
 import X1.Types.Id
 import X1.Types.Ann
+import X1.Types.Span
 
 
 data Pred (ph :: Phase)
-  = IsIn Id [Type ph]
+  = IsIn (Ann ph) Id [Type ph]
 
 deriving instance Eq (Ann ph) => Eq (Pred ph)
 deriving instance Show (Ann ph) => Show (Pred ph)
+
+instance HasSpan (Ann ph) => HasSpan (Pred ph) where
+  span (IsIn ann _ _) = span ann

@@ -57,7 +57,7 @@ binding :: Text -> Expr1' -> ExprDecl'
 binding x = ExprBindingDecl . Binding emptyAnn (Id x)
 
 sig :: Text -> Type' -> ExprDecl'
-sig x ty = ExprTypeAnnDecl $ TypeAnn (Id x) (Scheme [] ty)
+sig x ty = ExprTypeAnnDecl $ TypeAnn emptyAnn (Id x) (Scheme emptyAnn [] ty)
 
 
 spec_exprParseTest :: Spec

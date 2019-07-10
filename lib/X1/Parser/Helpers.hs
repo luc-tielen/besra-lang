@@ -10,7 +10,7 @@ module X1.Parser.Helpers ( Parser, ParseError, ParseErr, ParseResult
                          , notFollowedBy, lookAhead, hidden
                          , sepBy, sepBy1, endBy, endBy1
                          , L.indentLevel, withIndent, indented, sameLine
-                         , withDefault, getOffset, withSpan, (.>)
+                         , withDefault, getOffset, withSpan
                          , satisfy, takeWhileP
                          , try
                          , (<?>)
@@ -185,7 +185,4 @@ withSpan p = do
   result <- p
   end <- getOffset
   pure (Span begin end, result)
-
-(.>) :: Int -> Span -> Span
-(.>) begin endSpan = Span begin begin <> endSpan
 

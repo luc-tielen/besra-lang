@@ -2,6 +2,7 @@
 module Test.X1.SA.ConflictingTypeAnnDecls ( module Test.X1.SA.ConflictingTypeAnnDecls ) where
 
 import Protolude hiding ( Type )
+import qualified Data.Text as T
 import X1.SA.ConflictingTypeAnnDecls
 import X1.SA.Helpers
 import X1.SA.Types
@@ -27,7 +28,10 @@ analyze' = analyze [validate file]
 
 conflict :: Text -> [Type'] -> SAError
 conflict var types =
-  let toTypeAnnDecls = map (TypeAnnDecl . TypeAnn (Id var) . Scheme [])
+  let toTypeAnnDecls = map (TypeAnnDecl . typeAnn (Id var) . scheme)
+      typeAnn name sch = TypeAnn (taSpan name $ span sch) name sch
+      taSpan (Id name) sp = (beginPos sp - T.length name - 3) .> sp
+      scheme t = Scheme (span t) [] t
       err = ConflictingTypeAnnDeclErr . ConflictingTypeAnnDecl file . toTypeAnnDecls
    in err types
 
@@ -74,9 +78,9 @@ spec_conflictingTypeAnnDecls = describe "SA: ConflictingTypeAnnDecls" $ parallel
   it "reports an error when a duplicate is found" $ do
     "x : Int\nx : Int"
       ==> Err [conflict "x" [c (Span 4 7) "Int", c (Span 12 15) "Int"]]
-    "x : Bool -> Float\nx: Bool -> Float"
+    "x : Bool -> Float\nx : Bool -> Float"
       ==> Err [conflict "x" [ arr (Span 9 11) (c (Span 4 8) "Bool") (c (Span 12 17) "Float")
-                            , arr (Span 26 28) (c (Span 21 25) "Bool") (c (Span 29 34) "Float")]]
+                            , arr (Span 27 29) (c (Span 22 26) "Bool") (c (Span 30 35) "Float")]]
 
   it "reports multiple errors for each found conflict" $
     "x : Int -> Int\nx : String\ny : Bool\ny : Int -> String"

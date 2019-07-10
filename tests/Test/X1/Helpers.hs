@@ -70,8 +70,8 @@ instance StripAnns b => StripAnns (a, b) where
 instance StripAnns (Trait ph) where
   type Result (Trait ph) = Trait 'Testing
 
-  stripAnns (Trait ps p tys) =
-    Trait (stripAnns ps) (stripAnns p) (stripAnns tys)
+  stripAnns (Trait _ ps p tys) =
+    Trait emptyAnn (stripAnns ps) (stripAnns p) (stripAnns tys)
 
 instance StripAnns (Impl ph) where
   type Result (Impl ph) = Impl 'Testing
@@ -82,7 +82,8 @@ instance StripAnns (Impl ph) where
 instance StripAnns (Pred ph) where
   type Result (Pred ph) = Pred 'Testing
 
-  stripAnns (IsIn name tys) = IsIn name (stripAnns tys)
+  stripAnns (IsIn _ name tys) =
+    IsIn emptyAnn name (stripAnns tys)
 
 instance StripAnns (Binding ph) where
   type Result (Binding ph) = Binding 'Testing
@@ -120,14 +121,14 @@ instance StripAnns (ExprDecl ph) where
 instance StripAnns (TypeAnn ph) where
   type Result (TypeAnn ph) = TypeAnn 'Testing
 
-  stripAnns (TypeAnn name scheme) =
-    TypeAnn name (stripAnns scheme)
+  stripAnns (TypeAnn _ name scheme) =
+    TypeAnn emptyAnn name (stripAnns scheme)
 
 instance StripAnns (Scheme ph) where
   type Result (Scheme ph) = Scheme 'Testing
 
-  stripAnns (Scheme ps ty) =
-    Scheme (stripAnns ps) (stripAnns ty)
+  stripAnns (Scheme _ ps ty) =
+    Scheme emptyAnn (stripAnns ps) (stripAnns ty)
 
 instance StripAnns (Type ph) where
   type Result (Type ph) = Type 'Testing
@@ -146,63 +147,4 @@ instance StripAnns (Tyvar ph) where
   type Result (Tyvar ph) = Tyvar 'Testing
 
   stripAnns (Tyvar _ var) = Tyvar emptyAnn var
-
-{-
-type Transform =
-  Handlers Identity 'Parsed
-    (Module 'Testing) (Decl 'Testing) (Impl 'Testing)
-    (Binding 'Testing) (ExprDecl 'Testing) (Expr1 'Testing)
-
-type Result a ph =
-  FoldResult a (Module ph) (Decl ph) (Impl ph)
-               (Binding ph) (ExprDecl ph) (Expr1 ph)
-
-stripAnns :: Fold a => a 'Parsed -> Result a 'Testing
-stripAnns ast =
-  let fs :: Transform
-      fs = Handlers
-        { handlersM = fsM
-        , handlersD = fsD
-        , handlersI = fsI
-        , handlersB = fsB
-        , handlersED = fsED
-        , handlersE = fsE
-        }
-      fsM = HandlersM { moduleM = pure . Module }
-      fsD = HandlersD
-        { typeAnnD = pure . TypeAnnDecl
-        , adtD = pure . DataDecl . stripAnnAdt
-        , traitD = pure . TraitDecl
-        , implD = \_ impl -> pure $ ImplDecl emptyAnn impl
-        , bindingD = pure . BindingDecl
-        , fixityD = \_ fx prec name -> pure $ FixityDecl emptyAnn fx prec name
-        }
-      fsI = HandlersI { implI = \_ ps p bs -> pure $ Impl emptyAnn ps p bs }
-      fsB = HandlersB { bindingB = \_ name expr -> pure $ Binding emptyAnn name expr }
-      fsED = HandlersED
-        { typeAnnED = pure . ExprTypeAnnDecl
-        , bindingED = pure . ExprBindingDecl
-        , fixityED = \_ fx prec name -> pure $ ExprFixityDecl emptyAnn fx prec name
-        }
-      fsE = HandlersE
-        { litE = \_ lit -> pure $ E1Lit emptyAnn lit
-        , varE = \_ var -> pure $ E1Var emptyAnn var
-        , conE = \_ con -> pure $ E1Con emptyAnn con
-        , lamE = \_ pats body -> pure $ E1Lam emptyAnn pats body
-        , appE = \_ func args -> pure $ E1App emptyAnn func args
-        , binOpE = \_ op l r -> pure $ E1BinOp emptyAnn op l r
-        , negE = \_ e -> pure $ E1Neg emptyAnn e
-        , ifE = \_ c tr fl -> pure $ E1If emptyAnn c tr fl
-        , caseE = \_ e cs -> pure $ E1Case emptyAnn e cs
-        , letE = \_ decls body -> pure $ E1Let emptyAnn decls body
-        , parenE = \_ e -> pure $ E1Parens emptyAnn e
-        }
-   in runIdentity $ foldAST fs ast
-
-stripAnnAdt :: ADT 'Parsed -> ADT 'Testing
-stripAnnAdt (ADT _ adtHead adtBody) = ADT emptyAnn adtHead adtBody
-
-emptyAnn :: Ann 'Testing
-emptyAnn = ()
--}
 

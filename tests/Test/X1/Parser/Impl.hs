@@ -69,7 +69,7 @@ binding :: Text -> Expr1' -> Binding'
 binding x = Binding emptyAnn (Id x)
 
 pred :: Text -> [Type'] -> Pred'
-pred clazz = IsIn (Id clazz)
+pred clazz = IsIn emptyAnn (Id clazz)
 
 infixr 2 -->
 infixr 1 ==>
@@ -174,23 +174,23 @@ spec_implParseTest = describe "impl parser" $ parallel $ do
         num' ann = E1Lit ann . LNumber . SInt
         lam' ann vars = E1Lam ann (PVar . Id <$> vars)
         con' sp = TCon . Tycon sp . Id
-        pred' clazz = IsIn (Id clazz)
+        pred' sp clazz = IsIn sp (Id clazz)
 
     it "keeps track of location info for constant bindings" $ do
       "impl MyClass Int where\n a = 3  "
-        ~~> Impl (Span 0 29) [] (pred' "MyClass" [con' (Span 13 16) "Int"])
+        ~~> Impl (Span 0 29) [] (pred' (Span 5 16) "MyClass" [con' (Span 13 16) "Int"])
                 [binding' (Span 24 29) "a" $ num' (Span 28 29) 3]
       "impl MyClass Int where\n abc = 123  "
-        ~~> Impl (Span 0 33) [] (pred' "MyClass" [con' (Span 13 16) "Int"])
+        ~~> Impl (Span 0 33) [] (pred' (Span 5 16) "MyClass" [con' (Span 13 16) "Int"])
                 [binding' (Span 24 33) "abc" $ num' (Span 30 33) 123]
 
     it "keeps track of location info for named function bindings" $ do
       "impl MyClass Int where\n a b c = 1 "
-        ~~> Impl (Span 0 33) [] (pred' "MyClass" [con' (Span 13 16) "Int"])
+        ~~> Impl (Span 0 33) [] (pred' (Span 5 16) "MyClass" [con' (Span 13 16) "Int"])
                 [binding' (Span 24 33) "a" $
                   lam' (Span 24 33) ["b", "c"] $ num' (Span 32 33) 1]
       "impl MyClass Int where\n abc def ghi = 123 "
-        ~~> Impl (Span 0 41) [] (pred' "MyClass" [con' (Span 13 16) "Int"])
+        ~~> Impl (Span 0 41) [] (pred' (Span 5 16) "MyClass" [con' (Span 13 16) "Int"])
                 [binding' (Span 24 41) "abc" $
                   lam' (Span 24 41) ["def", "ghi"] $ num' (Span 38 41) 123]
 

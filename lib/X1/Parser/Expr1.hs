@@ -7,6 +7,7 @@ import Data.Maybe ( fromJust )
 import GHC.Unicode (isDigit)
 import X1.Types.Id
 import X1.Types.Ann
+import X1.Types.Span
 import X1.Types.Fixity
 import X1.Types.Expr1.Expr
 import X1.Types.Expr1.TypeAnn
@@ -145,12 +146,12 @@ caseParser = do
 letParser :: Parser Expr1'
 letParser = do
   (startPos, bindings) <- withLineFold $ do
-    beginPos <- getOffset
+    startPos <- getOffset
     keyword "let"
     indentation <- indentLevel
     let declParser' = withIndent indentation declParser <?> "declaration"
     decls <- lexeme declParser' `sepBy1` whitespace'
-    pure (beginPos, decls)
+    pure (startPos, decls)
   (sp, result) <- withLineFold $ (keyword "in" <?> inLabel) *> expr
   pure $ E1Let (startPos .> sp) bindings result
   where
@@ -203,7 +204,9 @@ typeOrBindingDecl = do
   var <- lexeme' declIdentifier
   separator <- lexeme' $ typeSeparator <|> assign
   case separator of
-    ':' -> ExprTypeAnnDecl . TypeAnn var <$> Scheme.parser
+    ':' -> do
+      scheme <-Scheme.parser
+      pure $ ExprTypeAnnDecl $ TypeAnn (startPos .> span scheme) var scheme
     '=' -> do
       (exprSpan, e) <- expr
       pure $ ExprBindingDecl $ Binding (startPos .> exprSpan) var e

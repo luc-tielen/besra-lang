@@ -34,9 +34,9 @@ isTypeAnnDecl (TypeAnnDecl _) = True
 isTypeAnnDecl _ = False
 
 sameVar :: Decl' -> Decl' -> Bool
-sameVar (TypeAnnDecl (TypeAnn (Id a) _)) (TypeAnnDecl (TypeAnn (Id b) _)) = a == b
-sameVar (BindingDecl (Binding _ (Id a) _)) (TypeAnnDecl (TypeAnn (Id b) _)) = a == b
-sameVar (TypeAnnDecl (TypeAnn (Id a) _)) (BindingDecl (Binding _ (Id b) _)) = a == b
+sameVar (TypeAnnDecl (TypeAnn _ (Id a) _)) (TypeAnnDecl (TypeAnn _ (Id b) _)) = a == b
+sameVar (BindingDecl (Binding _ (Id a) _)) (TypeAnnDecl (TypeAnn _ (Id b) _)) = a == b
+sameVar (TypeAnnDecl (TypeAnn _ (Id a) _)) (BindingDecl (Binding _ (Id b) _)) = a == b
 sameVar (BindingDecl (Binding _ (Id a) _)) (BindingDecl (Binding _ (Id b) _)) = a == b
 sameVar _ _ = False
 

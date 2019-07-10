@@ -36,9 +36,10 @@ missingType sp var expr =
   let bindingDecl = BindingDecl $ Binding sp (Id var) expr
    in MissingTopLevelTypeAnnDeclErr $ MissingTopLevelTypeAnnDecl file bindingDecl
 
-missingBinding :: Text -> Type' -> SAError
-missingBinding var ty =
-  let toTypeAnnDecl = TypeAnnDecl . TypeAnn (Id var) . Scheme []
+missingBinding :: Span -> Text -> Type' -> SAError
+missingBinding sp var ty =
+  let toTypeAnnDecl = TypeAnnDecl . TypeAnn sp (Id var) . scheme
+      scheme t = Scheme (span t) [] t
       err = MissingTopLevelBindingDeclErr . MissingTopLevelBindingDecl file . toTypeAnnDecl
    in err ty
 
@@ -75,7 +76,7 @@ spec_missingTopLevelDecls = describe "SA: MissingTopLevelDecls" $ parallel $ do
                                  , missingType (Span 6 15) "y" (str (Span 10 15) "abc")]
 
   it "reports an error for each missing binding" $ do
-    "x : Int" ==> Err [missingBinding "x" (c (Span 4 7) "Int")]
-    "x : Int\ny : String" ==> Err [ missingBinding "x" (c (Span 4 7) "Int")
-                                  , missingBinding "y" (c (Span 12 18) "String")]
+    "x : Int" ==> Err [missingBinding (Span 0 7) "x" (c (Span 4 7) "Int")]
+    "x : Int\ny : String" ==> Err [ missingBinding (Span 0 7) "x" (c (Span 4 7) "Int")
+                                  , missingBinding (Span 8 18) "y" (c (Span 12 18) "String")]
 
