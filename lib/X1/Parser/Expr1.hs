@@ -1,5 +1,5 @@
 
-module X1.Parser.Expr1 ( parser, expr, declParser ) where
+module X1.Parser.Expr1 ( parser, declParser ) where
 
 import Protolude hiding ( try, functionName, Fixity, Prefix )
 import Data.Char ( digitToInt )
@@ -21,16 +21,14 @@ import qualified X1.Parser.Pattern as Pattern
 type Expr1' = Expr1 'Parsed
 type ExprDecl' = ExprDecl 'Parsed
 type Ann' = Ann 'Parsed
-type AnnExpr1' = (Ann', Expr1')
 
--- TODO refactor possible with usage of 'span' once everything is annotated?
 parser :: Parser Expr1'
-parser = map snd expr
+parser = expr
 
-expr :: Parser AnnExpr1'
+expr :: Parser Expr1'
 expr = makeExprParser term exprOperators <?> "expression"
 
-exprOperators :: [[Operator Parser AnnExpr1']]
+exprOperators :: [[Operator Parser Expr1']]
 exprOperators =
   [ [ Prefix (lexeme' negateOp) ]
   , [ InfixL (lexeme' binOp) ]
@@ -38,21 +36,21 @@ exprOperators =
   where
     binOp = do
       op <- operatorParser
-      pure $ \(span1', e1) (span2', e2) ->
-        let sp = span1' <> span2'
-         in (sp, E1BinOp sp op e1 e2)
+      pure $ \e1 e2 ->
+        let sp = span e1 <> span e2
+         in E1BinOp sp op e1 e2
     negateOp = do
       opSpan <- negateOpParser
-      pure $ \(span', e) ->
-        let sp = opSpan <> span'
-         in (sp, E1Neg sp e)
+      pure $ \ e ->
+        let sp = opSpan <> span e
+         in E1Neg sp e
     operatorParser = infixOp <|> infixFunction'
     negateOpParser = fst <$> withSpan (hidden $ char '-')
     infixOp = uncurry E1Var <$> withSpan (Id <$> opIdentifier)
     infixFunction' = infixFunction E1Var E1Con
 
-term :: Parser AnnExpr1'
-term = lexeme (withSpan term') <?> "expression" where
+term :: Parser Expr1'
+term = lexeme term' <?> "expression" where
   term' =  litParser
        <|> withLineFold lineFoldedExprs
        <|> letParser
@@ -73,9 +71,8 @@ applyFuncParser = sameLine $ do
   funcName <- lexeme funcNameParser
   -- NOTE: next line is to prevent wrong order of parentheses in nested applications
   args <- some $ lexeme arg
-  let (spans, args') = unzip args
-      spans' = fromJust $ nonEmpty spans
-  pure $ E1App (startPos .> sconcat spans') funcName args'
+  let sp = span $ fromJust $ nonEmpty args
+  pure $ E1App (startPos .> sp) funcName args
   where
     variable = uncurry E1Var <$> withSpan (Id <$> identifier)
     constructor = uncurry E1Con <$> withSpan (Id <$> capitalIdentifier)
@@ -84,8 +81,7 @@ applyFuncParser = sameLine $ do
                   <|> constructor
                   <|> try prefixOp
                   <|> parens parser
-    arg =  withSpan
-        $  litParser
+    arg =  litParser
        <|> varParser
        <|> conParser
        <|> parens parser
@@ -103,8 +99,8 @@ lamParser :: Parser Expr1'
 lamParser = do
   startPos <- getOffset
   vars <- lexeme' lambdaHead
-  (sp2, body) <- expr
-  pure $ E1Lam (startPos .> sp2) vars body
+  body <- parser
+  pure $ E1Lam (startPos .> span body) vars body
   where
     lambdaHead = sameLine $ do
       void . lexeme $ char '\\'
@@ -120,8 +116,8 @@ ifParser = do
   keyword "then"
   trueClause <- lexeme' parser
   keyword "else"
-  (sp, falseClause) <- expr
-  pure $ E1If (startPos .> sp) cond trueClause falseClause
+  falseClause <- parser
+  pure $ E1If (startPos .> span falseClause) cond trueClause falseClause
 
 caseParser :: Parser Expr1'
 caseParser = do
@@ -133,15 +129,14 @@ caseParser = do
   let clauseParser' = withIndent indentation clauseParser <?> "case clause"
   clauses <- some clauseParser'
   notFollowedBy clauseParser <?> "properly indented case clause"
-  let (spans, clauses') = unzip clauses
-      spans' = fromJust $ nonEmpty spans
-  pure $ E1Case (startPos .> sconcat spans') expr' clauses'
+  let sp = span $ fromJust $ nonEmpty clauses
+  pure $ E1Case (startPos .> sp) expr' clauses
   where
     clauseParser = withLineFold $ do
       pat <- lexeme' Pattern.parser
       void . lexeme' $ chunk "->"
-      (sp, expr') <- expr
-      pure (sp, (pat, expr'))
+      expr' <- parser
+      pure (pat, expr')
 
 letParser :: Parser Expr1'
 letParser = do
@@ -152,8 +147,8 @@ letParser = do
     let declParser' = withIndent indentation declParser <?> "declaration"
     decls <- lexeme declParser' `sepBy1` whitespace'
     pure (startPos, decls)
-  (sp, result) <- withLineFold $ (keyword "in" <?> inLabel) *> expr
-  pure $ E1Let (startPos .> sp) bindings result
+  result <- withLineFold $ (keyword "in" <?> inLabel) *> parser
+  pure $ E1Let (startPos .> span result) bindings result
   where
     inLabel = "properly indented declaration or 'in' keyword"
 
@@ -186,8 +181,9 @@ namedFunctionDecl :: Parser ExprDecl'
 namedFunctionDecl = do
   startPos <- getOffset
   (funcName, vars) <- lexeme' functionHead
-  (sp, expr') <- expr
-  let body = E1Lam (startPos .> sp) vars expr'
+  expr' <- parser
+  let sp = span expr'
+      body = E1Lam (startPos .> sp) vars expr'
   pure $ ExprBindingDecl $ Binding (startPos .> sp) funcName body
   where
     functionName =  Id <$> identifier
@@ -205,11 +201,11 @@ typeOrBindingDecl = do
   separator <- lexeme' $ typeSeparator <|> assign
   case separator of
     ':' -> do
-      scheme <-Scheme.parser
+      scheme <- Scheme.parser
       pure $ ExprTypeAnnDecl $ TypeAnn (startPos .> span scheme) var scheme
     '=' -> do
-      (exprSpan, e) <- expr
-      pure $ ExprBindingDecl $ Binding (startPos .> exprSpan) var e
+      e <- expr
+      pure $ ExprBindingDecl $ Binding (startPos .> span e) var e
     _ -> panic "Parse error when parsing declaration."
   where
     declIdentifier = declVar <|> prefixOperator
