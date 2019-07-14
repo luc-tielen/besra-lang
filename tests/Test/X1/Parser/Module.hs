@@ -55,6 +55,9 @@ var = TVar . Tyvar emptyAnn . Id
 app :: Type' -> [Type'] -> Type'
 app = TApp
 
+parens :: Type' -> Type'
+parens = TParen emptyAnn
+
 (-->) :: Type' -> Type' -> Type'
 t1 --> t2 = app (con "->") [t1, t2]
 
@@ -279,7 +282,7 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
     let hd constr vars = ADTHead (con' constr) (var' <$> vars)
         con' = Tycon emptyAnn . Id
         var' = Tyvar emptyAnn . Id
-        body constr = ConDecl (Id constr)
+        body constr = ConDecl emptyAnn (Id constr)
         adt adtHead adtBody = DataDecl (ADT emptyAnn adtHead adtBody)
 
     it "can parse multiple ADTs in a row" $ do
@@ -290,7 +293,7 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
                                           , adt (hd "Y" []) [body "Y" []]]
       "data X = X Y Z\ndata A = A (b -> c)\ndata D = F"
         ==> Module [ adt (hd "X" []) [body "X" [con "Y", con "Z"]]
-                   , adt (hd "A" []) [body "A" [var "b" --> var "c"]]
+                   , adt (hd "A" []) [body "A" [parens $ var "b" --> var "c"]]
                    , adt (hd "D" []) [body "F" []]
                    ]
 
@@ -320,7 +323,7 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
         typeAnn' x = TypeAnn emptyAnn (Id x)
 
     it "can parse multiple traits in a row" $ do
-      let mapType = (var "a" --> var "b")
+      let mapType = (parens $ var "a" --> var "b")
                   --> app (con "List") [var "a"]
                   --> app (con "List") [var "b"]
       [text|

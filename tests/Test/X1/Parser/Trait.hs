@@ -34,6 +34,9 @@ var = TVar . Tyvar emptyAnn . Id
 app :: Type' -> [Type'] -> Type'
 app = TApp
 
+parens :: Type' -> Type'
+parens = TParen emptyAnn
+
 (==>) :: Text -> Trait' -> IO ()
 a ==> b = (stripAnns <$> parse a) `shouldParse` b
 
@@ -64,7 +67,7 @@ spec_traitParseTest = describe "trait parser" $ parallel $ do
     "trait Eq a where " ==> trait [] (pred "Eq" ["a"]) []
 
   it "can parse trait with no superclasses" $ do
-    let mapType = (var "a" --> var "b")
+    let mapType = (parens $ var "a" --> var "b")
                 --> app (con "List") [var "a"]
                 --> app (con "List") [var "b"]
     "trait Eq a where\n x : Int"

@@ -33,6 +33,9 @@ var = TVar . Tyvar emptyAnn . Id
 app :: Type' -> [Type'] -> Type'
 app = TApp
 
+parens :: Type' -> Type'
+parens = TParen emptyAnn
+
 isIn :: Text -> [Type'] -> Pred'
 isIn ty = IsIn emptyAnn (Id ty)
 
@@ -55,14 +58,14 @@ spec_typeschemeParseTest = describe "parsing typeschemes" $ parallel $ do
       "X" ==> scheme [] (con "X")
       "String" ==> scheme [] (con "String")
       "Int" ==> scheme [] (con "Int")
-      "(Int)" ==> scheme [] (con "Int")
-      "((Int))" ==> scheme [] (con "Int")
+      "(Int)" ==> scheme [] (parens $ con "Int")
+      "((Int))" ==> scheme [] (parens $ parens $ con "Int")
 
     it "can parse typeschemes of type variables" $ do
       "a" ==> scheme [] (var "a")
       "abc" ==> scheme [] (var "abc")
-      "(abc)" ==> scheme [] (var "abc")
-      "((abc))" ==> scheme [] (var "abc")
+      "(abc)" ==> scheme [] (parens $ var "abc")
+      "((abc))" ==> scheme [] (parens . parens $ var "abc")
 
     it "can parse typeschemes of functions" $ do
       "Int -> Int" ==> scheme [] (con "Int" --> con "Int")
@@ -75,7 +78,7 @@ spec_typeschemeParseTest = describe "parsing typeschemes" $ parallel $ do
       "f a -> a" ==> scheme [] (app (var "f") [var "a"] --> var "a")
 
     it "can deal with whitespace in typescheme" $
-      "(     a -> b   )" ==> scheme [] (var "a" --> var "b")
+      "(     a -> b   )" ==> scheme [] (parens $ var "a" --> var "b")
 
   describe "type classes" $ parallel $ do
     it "can parse a single typeclass constraint in a typescheme" $ do
@@ -107,11 +110,12 @@ spec_typeschemeParseTest = describe "parsing typeschemes" $ parallel $ do
       "((Eq a  ),  (Ord a  )  )  => a" ==> scheme [isIn "Eq" [var "a"], isIn "Ord" [var "a"]] (var "a")
 
   it "can parse a mix of everything" $ do
-    "Maybe (a -> b)" ==> scheme [] (app (con "Maybe") [var "a" --> var "b"])
-    "Maybe (Maybe a)" ==> scheme [] (app (con "Maybe") [app (con "Maybe") [var "a"]])
-    "Maybe (Either a String)" ==> scheme [] (app (con "Maybe") [app (con "Either") [var "a", con "String"]])
+    "Maybe (a -> b)" ==> scheme [] (app (con "Maybe") [parens $ var "a" --> var "b"])
+    "Maybe (Maybe a)" ==> scheme [] (app (con "Maybe") [parens $ app (con "Maybe") [var "a"]])
+    "Maybe (Either a String)"
+      ==> scheme [] (app (con "Maybe") [parens $ app (con "Either") [var "a", con "String"]])
     "(Eq a) => (Maybe (a -> b))"
-      ==> scheme [isIn "Eq" [var "a"]] (app (con "Maybe") [var "a" --> var "b"])
+      ==> scheme [isIn "Eq" [var "a"]] (parens $ app (con "Maybe") [parens $ var "a" --> var "b"])
 
   it "fails with readable error message" $ do
     (parser', "") `shouldFailWith` err 0 (ueof <> elabel "typescheme")

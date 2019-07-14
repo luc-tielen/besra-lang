@@ -54,8 +54,8 @@ instance StripAnns (ADTHead ph) where
 instance StripAnns (ConDecl ph) where
   type Result (ConDecl ph) = ConDecl 'Testing
 
-  stripAnns (ConDecl name tys) =
-    ConDecl name (stripAnns tys)
+  stripAnns (ConDecl _ name tys) =
+    ConDecl emptyAnn name (stripAnns tys)
 
 instance StripAnns a => StripAnns [a] where
   type Result [a] = [Result a]
@@ -137,6 +137,7 @@ instance StripAnns (Type ph) where
     TCon tycon -> TCon (stripAnns tycon)
     TVar tycon -> TVar (stripAnns tycon)
     TApp t1 ts -> TApp (stripAnns t1) (stripAnns ts)
+    TParen _ t -> TParen emptyAnn (stripAnns t)
 
 instance StripAnns (Tycon ph) where
   type Result (Tycon ph) = Tycon 'Testing

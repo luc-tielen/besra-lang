@@ -28,10 +28,13 @@ typeTerm = computeType <$> typeParser' <?> "type"
 
 typeParser :: Parser Type'
 typeParser =
-  lexeme $  betweenParens typeExpr
+  lexeme $  parenthesizedType
         <|> concreteType
         <|> typeVar
   where
+    parenthesizedType = do
+      (sp, t) <- withSpan $ betweenParens typeExpr
+      pure $ TParen sp t
     concreteType = TCon <$> Tycon.parser
     typeVar = TVar <$> Tyvar.parser
 

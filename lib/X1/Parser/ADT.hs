@@ -2,7 +2,6 @@
 module X1.Parser.ADT ( parser ) where
 
 import Protolude hiding ( Type )
-import Data.Maybe ( fromJust )
 import X1.Types.Id
 import X1.Types.Ann
 import X1.Types.Span
@@ -19,45 +18,39 @@ type ADTBody' = ADTBody 'Parsed
 type ConDecl' = ConDecl 'Parsed
 type Type' = Type 'Parsed
 
--- TODO: can be simplified once tycon/tyvar have span info?
-
 parser :: Parser (ADT 'Parsed)
 parser = do
   startPos <- getOffset
   keyword "data"
-  (sp1, adtHead) <- adtHeadParser <?> "name of datatype"
-  (sp2, adtBody) <- withDefault (sp1, []) $ assignChar *> adtBodyParser
+  adtHead <- adtHeadParser <?> "name of datatype"
+  adtBody <- withDefault [] $ assignChar *> adtBodyParser
+  let sp1 = span adtHead
+      sp2 = maybe sp1 span $ nonEmpty adtBody
   pure $ ADT (startPos .> sp1 <> sp2) adtHead adtBody
   where assignChar = lexeme $ indented $ char '='
 
-adtHeadParser :: Parser (Span, ADTHead')
+adtHeadParser :: Parser ADTHead'
 adtHeadParser = do
-  (sp1, name) <- lexeme $ withSpan $ indented Tycon.parser
-  vars <- many $ lexeme $ withSpan $ indented Tyvar.parser
-  let (spans, vars') = unzip vars
-      sp = sconcat $ fromJust $ nonEmpty $ sp1:spans
-  pure (sp, ADTHead name vars')
+  name <- lexeme $ indented Tycon.parser
+  vars <- many $ lexeme $ indented Tyvar.parser
+  pure $ ADTHead name vars
 
-adtBodyParser :: Parser (Span, ADTBody')
-adtBodyParser = do
-  conDecls <- conDeclParser `sepBy1` pipeChar
-  let (spans, body) = unzip conDecls
-      sp = sconcat $ fromJust $ nonEmpty spans
-  pure (sp, body)
+adtBodyParser :: Parser ADTBody'
+adtBodyParser = conDeclParser `sepBy1` pipeChar
   where pipeChar = lexeme $ indented $ char '|'
 
-conDeclParser :: Parser (Span, ConDecl')
+conDeclParser :: Parser ConDecl'
 conDeclParser = do
+  startPos <- getOffset
   (sp1, constrName) <- lexeme (withSpan $ Id <$> indented capitalIdentifier) <?> "constructor"
-  types <- many (lexeme (withSpan $ indented adtTypeParser) <?> "type")
-  let (spans, types') = unzip types
-      sp = sconcat $ fromJust $ nonEmpty $ sp1:spans
-  pure (sp, ConDecl constrName types')
+  types <- many (lexeme (indented adtTypeParser) <?> "type")
+  let sp = sconcat $ sp1 :| map span types
+  pure $ ConDecl (startPos .> sp) constrName types
 
 adtTypeParser :: Parser Type'
 adtTypeParser =  con
              <|> var
-             <|> betweenParens Type.parser
+             <|> Type.parser
   where con = TCon <$> Tycon.parser
         var = TVar <$> Tyvar.parser
 
