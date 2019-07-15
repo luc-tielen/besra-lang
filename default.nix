@@ -5,11 +5,11 @@ with pkgs;
 let
   haskellPkgs = haskell.packages.${compiler};
   source = nix-gitignore.gitignoreSource [] ./.;
-  drv = haskellPkgs.callCabal2nix "x1" source {};
+  drv = haskellPkgs.callCabal2nix "besra" source {};
 in
   {
-    x1 = drv;
-    x1-shell = haskellPkgs.shellFor {
+    besra = drv;
+    besra-shell = haskellPkgs.shellFor {
       packages = p: [ drv ];
       buildInputs = with haskellPkgs; [
         cabal-install

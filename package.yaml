@@ -1,6 +1,6 @@
-name:                x1
+name:                besra
 version:             0.0.1
-homepage:            https://github.com/luc-tielen/x1-lang#README.md
+homepage:            https://github.com/luc-tielen/besra-lang#README.md
 license:             MIT
 author:              Luc Tielen
 maintainer:          luc.tielen@gmail.com
@@ -58,14 +58,14 @@ library:
   source-dirs:        lib
 
 executables:
-  x1:
+  besra:
     source-dirs:      src
     main:             Main.hs
     dependencies:
-      - x1
+      - besra
 
 tests:
-  x1-test:
+  besra-test:
     main:             test.hs
     source-dirs:      tests
     dependencies:
@@ -74,5 +74,5 @@ tests:
       - tasty-discover >= 4.2.1 && < 5
       - hspec-megaparsec >= 2.0.0 && < 3
       - neat-interpolation >= 0.3.2.4 && < 1
-      - x1
+      - besra
 
