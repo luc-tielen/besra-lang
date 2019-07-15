@@ -1,9 +1,9 @@
 
-module Test.Besra.Parser.Scheme ( module Test.Besra.Parser.Scheme ) where
+module Test.Besra.Parser.SchemeSpec ( module Test.Besra.Parser.SchemeSpec ) where
 
 import Protolude hiding (Type)
 import Test.Hspec.Megaparsec hiding (shouldFailWith)
-import Test.Tasty.Hspec
+import Test.Hspec
 import Test.Besra.Parser.Helpers
 import Test.Besra.Helpers
 import Besra.Parser.Scheme (parser)
@@ -51,8 +51,8 @@ infixr 1 ==>
 
 
 -- NOTE: currently no forall supported in typescheme syntax
-spec_typeschemeParseTest :: Spec
-spec_typeschemeParseTest = describe "parsing typeschemes" $ parallel $ do
+spec :: Spec
+spec = describe "parsing typeschemes" $ parallel $ do
   describe "without typeclasses" $ parallel $ do
     it "can parse typeschemes of concrete types" $ do
       "X" ==> scheme [] (con "X")

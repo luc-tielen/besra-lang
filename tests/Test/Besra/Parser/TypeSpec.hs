@@ -1,11 +1,11 @@
 
-module Test.Besra.Parser.Type ( module Test.Besra.Parser.Type ) where
+module Test.Besra.Parser.TypeSpec ( module Test.Besra.Parser.TypeSpec ) where
 
 import Protolude hiding ( Type )
 import Test.Hspec.Megaparsec hiding (shouldFailWith)
 import Test.Besra.Parser.Helpers
 import Test.Besra.Helpers
-import Test.Tasty.Hspec
+import Test.Hspec
 import Besra.Parser.Type (parser)
 import Besra.Types.IR1.Type
 import Besra.Types.Id
@@ -45,8 +45,8 @@ infixr 2 -->
 infixr 1 ==>
 
 
-spec_typeParseTest :: Spec
-spec_typeParseTest = describe "parsing types" $ parallel $ do
+spec :: Spec
+spec = describe "parsing types" $ parallel $ do
   it "can parse concrete types" $ do
     "X" ==> con "X"
     "String" ==> con "String"

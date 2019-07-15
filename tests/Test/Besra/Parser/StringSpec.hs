@@ -1,10 +1,10 @@
 
 {-# LANGUAGE QuasiQuotes #-}
 
-module Test.Besra.Parser.String ( module Test.Besra.Parser.String ) where
+module Test.Besra.Parser.StringSpec ( module Test.Besra.Parser.StringSpec ) where
 
 import Protolude
-import Test.Tasty.Hspec
+import Test.Hspec
 import Test.Hspec.Megaparsec hiding (shouldFailWith)
 import Besra.Parser.String (parser)
 import Besra.Types.IR1.String
@@ -19,8 +19,8 @@ parse :: Text -> ParseResult String
 parse = mkParser parser
 
 
-spec_stringParseTest :: Spec
-spec_stringParseTest = describe "string parser" $ parallel $ do
+spec :: Spec
+spec = describe "string parser" $ parallel $ do
   it "can parse strings without escaping" $ do
     [text|""|] ==> ""
     [text|"a"|] ==> "a"

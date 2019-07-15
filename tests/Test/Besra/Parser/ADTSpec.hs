@@ -1,11 +1,10 @@
-{-# LANGUAGE GADTs #-}
 
-module Test.Besra.Parser.ADT ( module Test.Besra.Parser.ADT ) where
+module Test.Besra.Parser.ADTSpec ( module Test.Besra.Parser.ADTSpec ) where
 
 import Protolude hiding ( Type )
 import Test.Hspec.Megaparsec hiding ( shouldFailWith, succeedsLeaving )
 import Test.Besra.Parser.Helpers
-import Test.Tasty.Hspec
+import Test.Hspec
 import Besra.Parser.ADT (parser)
 import Besra.Types.Id
 import Besra.Types.Ann
@@ -59,8 +58,8 @@ parse = mkParser parser
 a ==> b = parse a `shouldParse` b
 
 
-spec_adtParseTest :: Spec
-spec_adtParseTest = describe "ADT parser" $ parallel $ do
+spec :: Spec
+spec = describe "ADT parser" $ parallel $ do
   it "can parse an ADT with empty body" $ do
     "data X " ==> adt (Span 0 6) (hd (Span 5 6) "X" []) []
     "data Abc123" ==> adt (Span 0 11) (hd (Span 5 11) "Abc123" []) []

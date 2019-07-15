@@ -1,10 +1,10 @@
 
 {-# LANGUAGE QuasiQuotes #-}
 
-module Test.Besra.Parser.Module ( module Test.Besra.Parser.Module ) where
+module Test.Besra.Parser.ModuleSpec ( module Test.Besra.Parser.ModuleSpec ) where
 
 import Protolude hiding ( Type, Fixity, pred )
-import Test.Tasty.Hspec
+import Test.Hspec
 import Test.Besra.Parser.Helpers
 import Test.Besra.Helpers
 import Besra.Types.Id
@@ -86,8 +86,8 @@ infixr 2 -->
 infixr 1 ==>
 
 
-spec_moduleParseTest :: Spec
-spec_moduleParseTest = describe "module parser" $ parallel $ do
+spec :: Spec
+spec = describe "module parser" $ parallel $ do
   it "can parse empty module" $
     "" ==> Module []
 

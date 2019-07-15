@@ -1,8 +1,8 @@
 
-module Test.Besra.Parser.Pattern ( module Test.Besra.Parser.Pattern ) where
+module Test.Besra.Parser.PatternSpec ( module Test.Besra.Parser.PatternSpec ) where
 
 import Protolude hiding ( Type )
-import Test.Tasty.Hspec
+import Test.Hspec
 import Test.Besra.Parser.Helpers
 import Besra.Parser.Pattern ( parser )
 import Besra.Types.Id
@@ -29,8 +29,8 @@ var = Id
 a ==> b = parse a `shouldParse` b
 
 
-spec_patternParseTest :: Spec
-spec_patternParseTest = describe "pattern parser" $ parallel $ do
+spec :: Spec
+spec = describe "pattern parser" $ parallel $ do
   it "can parse wildcard patterns" $
     "_" ==> PWildcard
 

@@ -1,7 +1,7 @@
 
 {-# LANGUAGE QuasiQuotes #-}
 
-module Test.Besra.Pass.BalanceOperators ( module Test.Besra.Pass.BalanceOperators ) where
+module Test.Besra.Pass.BalanceOperatorsSpec ( module Test.Besra.Pass.BalanceOperatorsSpec ) where
 
 import Protolude hiding ( pass, Type, Fixity )
 import qualified Data.Text as T
@@ -18,7 +18,7 @@ import Besra.Types.Id
 import Besra.Types.Fixity
 import Besra.Types.Ann
 import Besra.Parser
-import Test.Tasty.Hspec
+import Test.Hspec
 import NeatInterpolation
 import Test.Besra.Helpers
 
@@ -110,8 +110,8 @@ toFixityDeclStr fixityType fixity op' =
   T.intercalate " " [fixityTypeToStr fixityType, T.pack $ show fixity, op']
 
 
-spec_balanceOperators :: Spec
-spec_balanceOperators = describe "balance operators pass" $ parallel $ do
+spec :: Spec
+spec = describe "balance operators pass" $ parallel $ do
   describe "algorithm" $ parallel $ do
     let leftAssoc = op "*" (op "+" (num 1) (num 2)) (num 3)
         rightAssoc = op "+" (num 1) (op "*" (num 2) (num 3))

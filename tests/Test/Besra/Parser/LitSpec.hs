@@ -1,8 +1,8 @@
 
-module Test.Besra.Parser.Lit ( module Test.Besra.Parser.Lit ) where
+module Test.Besra.Parser.LitSpec ( module Test.Besra.Parser.LitSpec ) where
 
 import Protolude
-import Test.Tasty.Hspec
+import Test.Hspec
 import Test.Hspec.Megaparsec hiding (shouldFailWith)
 import Besra.Parser.Lit (parser)
 import Test.Besra.Parser.Helpers
@@ -15,8 +15,8 @@ parse :: Text -> ParseResult Lit
 parse = mkParser parser
 
 
-spec_litParseTest :: Spec
-spec_litParseTest = describe "literals parser" $ parallel $ do
+spec :: Spec
+spec = describe "literals parser" $ parallel $ do
   describe "happy path" $ parallel $ do
     it "can parse string literals" $ do
       let a ==> b = parse a `shouldParse` LString (String b)
