@@ -5,8 +5,8 @@ import Protolude
 import X1.Types.Id
 import X1.Types.Ann
 import X1.Types.Span
-import X1.Types.Expr1.TypeAnn
-import X1.Types.Expr1.Trait
+import X1.Types.IR1.TypeAnn
+import X1.Types.IR1.Trait
 import X1.Parser.Helpers
 import qualified X1.Parser.Pred as Pred
 import qualified X1.Parser.Scheme as Scheme

@@ -1,10 +1,10 @@
 
 
-module X1.Types.Expr1.Pattern ( Pattern(..) ) where
+module X1.Types.IR1.Pattern ( Pattern(..) ) where
 
 import Protolude
 import X1.Types.Id
-import X1.Types.Expr1.Lit
+import X1.Types.IR1.Lit
 
 
 data Pattern = PWildcard

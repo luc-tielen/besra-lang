@@ -1,11 +1,11 @@
 
 {-# LANGUAGE UndecidableInstances #-}
 
-module X1.Types.Expr1.Trait ( Trait(..) ) where
+module X1.Types.IR1.Trait ( Trait(..) ) where
 
 import Protolude hiding ( Type )
-import X1.Types.Expr1.Pred
-import X1.Types.Expr1.TypeAnn
+import X1.Types.IR1.Pred
+import X1.Types.IR1.TypeAnn
 import X1.Types.Ann
 import X1.Types.Span
 

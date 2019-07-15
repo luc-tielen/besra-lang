@@ -7,7 +7,7 @@ import Protolude
 import Test.Tasty.Hspec
 import Test.Hspec.Megaparsec hiding (shouldFailWith)
 import X1.Parser.String (parser)
-import X1.Types.Expr1.String
+import X1.Types.IR1.String
 import NeatInterpolation
 import Test.X1.Parser.Helpers
 

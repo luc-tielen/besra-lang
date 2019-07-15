@@ -7,7 +7,7 @@ import Protolude
 import X1.Parser.Helpers ( Parser, ParseErr, ParseError
                          , ParseResult, ParseState(..), ParseMode(..) )
 import qualified X1.Parser.Module as Module
-import X1.Types.Expr1.Module
+import X1.Types.IR1.Module
 import X1.Types.Ann
 import qualified Text.Megaparsec as P
 import qualified Data.Text as T

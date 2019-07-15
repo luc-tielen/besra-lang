@@ -9,9 +9,9 @@ import Test.X1.Helpers
 import X1.Parser.Scheme (parser)
 import X1.Types.Id
 import X1.Types.Ann
-import X1.Types.Expr1.Pred
-import X1.Types.Expr1.Scheme
-import X1.Types.Expr1.Type
+import X1.Types.IR1.Pred
+import X1.Types.IR1.Scheme
+import X1.Types.IR1.Type
 
 
 type Scheme' = Scheme 'Testing

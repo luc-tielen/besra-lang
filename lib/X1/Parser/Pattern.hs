@@ -3,7 +3,7 @@ module X1.Parser.Pattern ( parser ) where
 
 import Protolude
 import X1.Parser.Helpers
-import X1.Types.Expr1.Pattern
+import X1.Types.IR1.Pattern
 import X1.Types.Id
 import qualified X1.Parser.Lit as Lit
 

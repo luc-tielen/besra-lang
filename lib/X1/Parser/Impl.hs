@@ -6,14 +6,14 @@ import Data.Maybe ( fromJust )
 import X1.Types.Id
 import X1.Types.Ann
 import X1.Types.Span
-import X1.Types.Expr1.Expr
-import X1.Types.Expr1.Type
-import X1.Types.Expr1.Pred
-import X1.Types.Expr1.Impl
+import X1.Types.IR1.Expr
+import X1.Types.IR1.Type
+import X1.Types.IR1.Pred
+import X1.Types.IR1.Impl
 import X1.Parser.Helpers
 import qualified X1.Parser.Scheme as Scheme
 import qualified X1.Parser.Pattern as Pattern
-import qualified X1.Parser.Expr1 as Expr1
+import qualified X1.Parser.Expr as Expr
 import qualified X1.Parser.Tycon as Tycon
 import qualified X1.Parser.Tyvar as Tyvar
 
@@ -71,9 +71,9 @@ namedFunctionDecl :: Parser Binding'
 namedFunctionDecl = do
   startPos <- getOffset
   (funcName, vars) <- lexeme' functionHead
-  expr <- Expr1.parser
+  expr <- Expr.parser
   let sp = startPos .> span expr
-      body = E1Lam sp vars expr
+      body = ELam sp vars expr
   pure $ Binding sp funcName body
   where
     functionHead = sameLine $ do
@@ -87,7 +87,7 @@ simpleBinding = do
   startPos <- getOffset
   var <- lexeme' declIdentifier
   void $ lexeme' assign
-  expr <- Expr1.parser
+  expr <- Expr.parser
   pure $ Binding (startPos .> span expr) var expr
 
 declIdentifier :: Parser Id

@@ -6,14 +6,14 @@ module Test.X1.Pass.BalanceOperators ( module Test.X1.Pass.BalanceOperators ) wh
 import Protolude hiding ( pass, Type, Fixity )
 import qualified Data.Text as T
 import X1.Pass.BalanceOperators
-import X1.Types.Expr1.Module
-import X1.Types.Expr1.Impl
-import X1.Types.Expr1.Expr
-import X1.Types.Expr1.Pred
-import X1.Types.Expr1.Lit
-import X1.Types.Expr1.Number
-import X1.Types.Expr1.Type
-import X1.Types.Expr1.Pattern
+import X1.Types.IR1.Module
+import X1.Types.IR1.Impl
+import X1.Types.IR1.Expr
+import X1.Types.IR1.Pred
+import X1.Types.IR1.Lit
+import X1.Types.IR1.Number
+import X1.Types.IR1.Type
+import X1.Types.IR1.Pattern
 import X1.Types.Id
 import X1.Types.Fixity
 import X1.Types.Ann
@@ -26,7 +26,7 @@ import Test.X1.Helpers
 type Module' = Module 'Testing
 type Decl' = Decl 'Testing
 type Binding' = Binding 'Testing
-type Expr1' = Expr1 'Testing
+type Expr' = Expr 'Testing
 type Type' = Type 'Testing
 type BalanceError' = BalanceError 'Parsed
 
@@ -56,7 +56,7 @@ instance Testable Decl' where
 instance Testable Binding' where
   a ==> b = a ==> BindingDecl b
 
-instance Testable Expr1' where
+instance Testable Expr' where
   a ==> b = a ==> binding "a" b
 
 instance Testable (BalanceError 'Testing) where
@@ -70,29 +70,29 @@ instance Testable (BalanceError 'Testing) where
 c :: Text -> Type'
 c = TCon . Tycon emptyAnn . Id
 
-binding :: Text -> Expr1' -> Binding'
+binding :: Text -> Expr' -> Binding'
 binding x = Binding emptyAnn (Id x)
 
-num :: Int -> Expr1'
-num = E1Lit emptyAnn . LNumber . SInt
+num :: Int -> Expr'
+num = ELit emptyAnn . LNumber . SInt
 
-app :: Expr1' -> [Expr1'] -> Expr1'
-app = E1App emptyAnn
+app :: Expr' -> [Expr'] -> Expr'
+app = EApp emptyAnn
 
-lam :: [Text] -> Expr1' -> Expr1'
-lam vars = E1Lam emptyAnn (PVar . Id <$> vars)
+lam :: [Text] -> Expr' -> Expr'
+lam vars = ELam emptyAnn (PVar . Id <$> vars)
 
-var :: Text -> Expr1'
-var = E1Var emptyAnn . Id
+var :: Text -> Expr'
+var = EVar emptyAnn . Id
 
-con :: Text -> Expr1'
-con = E1Con emptyAnn . Id
+con :: Text -> Expr'
+con = ECon emptyAnn . Id
 
-parens :: Expr1' -> Expr1'
-parens = E1Parens emptyAnn
+parens :: Expr' -> Expr'
+parens = EParens emptyAnn
 
-op :: Text -> Expr1' -> Expr1' -> Expr1'
-op operator = E1BinOp emptyAnn (var operator)
+op :: Text -> Expr' -> Expr' -> Expr'
+op operator = EBinOp emptyAnn (var operator)
 
 infixDecls :: Text -> Text -> [Decl']
 infixDecls a b =
@@ -201,7 +201,7 @@ spec_balanceOperators = describe "balance operators pass" $ parallel $ do
       mkScript' bindingStr L 5 L 6 ==> expected L 5 L 6 expr
 
     it "can deal with unary negation" $ do
-      let neg = E1Neg emptyAnn
+      let neg = ENeg emptyAnn
           expr1 = op "+" (num 1) (parens $ neg $ num 2)
           expr2 = op "+" (num 1) (neg $ num 2)
           expr3 =  op "+" (neg $ num 1) (num 2)
@@ -211,7 +211,7 @@ spec_balanceOperators = describe "balance operators pass" $ parallel $ do
       mkScript' "a = -1 + 2" L 6 L 6 ==> expected L 6 L 6 expr3
 
     it "fails on exprs with unary negation preceded by higher precedence op" $ do
-      let decl = BindingDecl $ binding "a" (op "+" (num 1) (E1Neg emptyAnn $ num 2))
+      let decl = BindingDecl $ binding "a" (op "+" (num 1) (ENeg emptyAnn $ num 2))
       mkScript' "a = 1 + -2" L 6 L 6
         ==> InvalidPrefixPrecedence (FI L 6 (Id "+")) decl
 
@@ -273,20 +273,20 @@ spec_balanceOperators = describe "balance operators pass" $ parallel $ do
         infixl 4 +
         infixl 5 *
         a = if 1 + 2 * 3 then 1 else 1
-        |] ==> E1If emptyAnn (op "+" (num 1) (op "*" (num 2) (num 3)))
+        |] ==> EIf emptyAnn (op "+" (num 1) (op "*" (num 2) (num 3)))
                               (num 1) (num 1)
       [text|
         infixl 4 +
         infixl 5 *
         a = if 1 then 1 + 2 * 3 else 1
-        |] ==> E1If emptyAnn (num 1)
+        |] ==> EIf emptyAnn (num 1)
                               (op "+" (num 1) (op "*" (num 2) (num 3)))
                               (num 1)
       [text|
         infixl 4 +
         infixl 5 *
         a = if 1 then 1 else 1 + 2 * 3
-        |] ==> E1If emptyAnn (num 1) (num 1)
+        |] ==> EIf emptyAnn (num 1) (num 1)
                               (op "+" (num 1) (op "*" (num 2) (num 3)))
 
     it "rebalances operators in case" $ do
@@ -295,14 +295,14 @@ spec_balanceOperators = describe "balance operators pass" $ parallel $ do
         infixl 5 *
         a = case 1 + 2 * 3 of
               x -> x
-        |] ==> E1Case emptyAnn (op "+" (num 1) (op "*" (num 2) (num 3)))
+        |] ==> ECase emptyAnn (op "+" (num 1) (op "*" (num 2) (num 3)))
                                 [ (PVar (Id "x"), var "x")]
       [text|
         infixl 4 +
         infixl 5 *
         a = case 1 of
               x -> 1 + 2 * 3
-        |] ==> E1Case emptyAnn (num 1)
+        |] ==> ECase emptyAnn (num 1)
                 [ (PVar (Id "x"), op "+" (num 1) (op "*" (num 2) (num 3)))]
 
     it "rebalances operators in parenthesized expression" $
@@ -322,7 +322,7 @@ spec_balanceOperators = describe "balance operators pass" $ parallel $ do
         a = let b = 1 + 2 * 3
                 c = 4 + 5 * 6
              in b + c * c
-        |] ==> E1Let emptyAnn [ bindingDecl "b" $ complex (num 1) (num 2) (num 3)
+        |] ==> ELet emptyAnn [ bindingDecl "b" $ complex (num 1) (num 2) (num 3)
                               , bindingDecl "c" $ complex (num 4) (num 5) (num 6)
                               ]
                               (complex (var "b") (var "c") (var "c"))
@@ -332,7 +332,7 @@ spec_balanceOperators = describe "balance operators pass" $ parallel $ do
     --  pending
 
     it "rebalances infix functions" $ do
-      let op' operator = E1BinOp emptyAnn (con operator)
+      let op' operator = EBinOp emptyAnn (con operator)
       [text|
         infixl 4 `plus`
         infixl 5 `Mul`

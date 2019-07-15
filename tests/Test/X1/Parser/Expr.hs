@@ -1,59 +1,59 @@
 
-module Test.X1.Parser.Expr1 ( module Test.X1.Parser.Expr1 ) where
+module Test.X1.Parser.Expr ( module Test.X1.Parser.Expr ) where
 
 import Protolude hiding ( Type )
 import Test.Tasty.Hspec
 import Test.X1.Parser.Helpers
-import X1.Parser.Expr1 (parser)
+import X1.Parser.Expr (parser)
 import X1.Types.Id
 import X1.Types.Ann
 import X1.Types.Span
 import X1.Types.Fixity
-import X1.Types.Expr1.Expr
-import X1.Types.Expr1.Lit
-import X1.Types.Expr1.Type
-import X1.Types.Expr1.String
-import X1.Types.Expr1.Scheme
-import X1.Types.Expr1.Number
-import X1.Types.Expr1.Pattern
-import X1.Types.Expr1.TypeAnn
+import X1.Types.IR1.Expr
+import X1.Types.IR1.Lit
+import X1.Types.IR1.Type
+import X1.Types.IR1.String
+import X1.Types.IR1.Scheme
+import X1.Types.IR1.Number
+import X1.Types.IR1.Pattern
+import X1.Types.IR1.TypeAnn
 import Test.Hspec.Megaparsec hiding (shouldFailWith, succeedsLeaving)
 import Test.X1.Helpers
 
-type Expr1' = Expr1 'Testing
+type Expr' = Expr 'Testing
 type ExprDecl' = ExprDecl 'Testing
 type Type' = Type 'Testing
 type Ann' = Ann 'Parsed
 
 
 -- Same as -->, but strips annotations too
-(==>) :: Text -> Expr1' -> IO ()
+(==>) :: Text -> Expr' -> IO ()
 a ==> b = (stripAnns <$> parse a) `shouldParse` b
 infixr 0 ==>
 
-(-->) :: Text -> Expr1 'Parsed -> IO ()
+(-->) :: Text -> Expr 'Parsed -> IO ()
 a --> b = parse a `shouldParse` b
 infixr 0 -->
 
-parse :: Text -> ParseResult (Expr1 'Parsed)
+parse :: Text -> ParseResult (Expr 'Parsed)
 parse = mkParser parser
 
 c :: Text -> Type'
 c = TCon . Tycon emptyAnn . Id
 
-let' :: [ExprDecl'] -> Expr1' -> Expr1'
-let' = E1Let emptyAnn
+let' :: [ExprDecl'] -> Expr' -> Expr'
+let' = ELet emptyAnn
 
-op :: Expr1' -> Expr1' -> Expr1' -> Expr1'
-op = E1BinOp emptyAnn
+op :: Expr' -> Expr' -> Expr' -> Expr'
+op = EBinOp emptyAnn
 
-parens :: Expr1' -> Expr1'
-parens = E1Parens emptyAnn
+parens :: Expr' -> Expr'
+parens = EParens emptyAnn
 
-var :: Text -> Expr1'
-var = E1Var emptyAnn . Id
+var :: Text -> Expr'
+var = EVar emptyAnn . Id
 
-binding :: Text -> Expr1' -> ExprDecl'
+binding :: Text -> Expr' -> ExprDecl'
 binding x = ExprBindingDecl . Binding emptyAnn (Id x)
 
 sig :: Text -> Type' -> ExprDecl'
@@ -63,9 +63,9 @@ sig x ty = ExprTypeAnnDecl $ TypeAnn emptyAnn (Id x) (Scheme emptyAnn [] ty)
 spec_exprParseTest :: Spec
 spec_exprParseTest = describe "expression parser" $ parallel $ do
   describe "literals" $ parallel $ do
-    let str = E1Lit emptyAnn . LString . String
-        char = E1Lit emptyAnn . LChar
-        num = E1Lit emptyAnn . LNumber
+    let str = ELit emptyAnn . LString . String
+        char = ELit emptyAnn . LChar
+        num = ELit emptyAnn . LNumber
 
     it "can parse literals" $ do
       "\"\"" ==> str ""
@@ -102,10 +102,10 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
 
   describe "if expressions" $ parallel $ do
     -- NOTE: does not take typesystem into account, only parsing.
-    let if' = E1If emptyAnn
-        num = E1Lit emptyAnn . LNumber . SInt
-        str = E1Lit emptyAnn . LString . String
-        char = E1Lit emptyAnn . LChar
+    let if' = EIf emptyAnn
+        num = ELit emptyAnn . LNumber . SInt
+        str = ELit emptyAnn . LString . String
+        char = ELit emptyAnn . LChar
 
     it "can parse single-line if expressions" $ do
       "if 123 then 456 else 789" ==> if' (num 123) (num 456) (num 789)
@@ -148,8 +148,8 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       (parse, "if 1 then if 2\nthen 3 else 4 else 5") `shouldFailWith` errFancy 15 (badIndent 11 1)
 
   describe "let expressions" $ parallel $ do
-    let num = E1Lit emptyAnn . LNumber . SInt
-        lam vars = E1Lam emptyAnn (PVar . Id <$> vars)
+    let num = ELit emptyAnn . LNumber . SInt
+        lam vars = ELam emptyAnn (PVar . Id <$> vars)
 
     it "can parse multi-line let expressions" $ do
       "let x = 1 in x" ==> let' [binding "x" (num 1)] (var "x")  -- special case, for now
@@ -207,9 +207,9 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
         (utoks "y " <> elabel "properly indented declaration or 'in' keyword")
 
   describe "lambdas" $ parallel $ do
-    let lam vars = E1Lam emptyAnn (PVar . Id <$> vars)
+    let lam vars = ELam emptyAnn (PVar . Id <$> vars)
         num' = LNumber . SInt
-        num = E1Lit emptyAnn . num'
+        num = ELit emptyAnn . num'
         str' =  LString . String
 
     it "can parse lambda with 1 argument" $ do
@@ -223,8 +223,8 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       "\\ a b c -> 1" ==> lam ["a", "b", "c"] (num 1)
 
     it "can parse lambdas containing patterns" $ do
-      "\\1 \"abc\" -> 123" ==> E1Lam emptyAnn [PLit (num' 1), PLit (str' "abc")] (num 123)
-      "\\a@(X y) -> 123" ==> E1Lam emptyAnn [PAs (Id "a") $ PCon (Id "X") [PVar (Id "y")]] (num 123)
+      "\\1 \"abc\" -> 123" ==> ELam emptyAnn [PLit (num' 1), PLit (str' "abc")] (num 123)
+      "\\a@(X y) -> 123" ==> ELam emptyAnn [PAs (Id "a") $ PCon (Id "X") [PVar (Id "y")]] (num 123)
 
     it "can parse lambda over multiple lines" $ do
       "\\a b -> \n a" ==> lam ["a", "b"] (var "a")
@@ -246,9 +246,9 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       (parse, "\\a ->\na") `shouldFailWith` errFancy 6 (badIndent 1 1)
 
   describe "function application" $ parallel $ do
-    let app = E1App emptyAnn
-        num = E1Lit emptyAnn . LNumber . SInt
-        con = E1Con emptyAnn . Id
+    let app = EApp emptyAnn
+        num = ELit emptyAnn . LNumber . SInt
+        con = ECon emptyAnn . Id
 
     it "can parse application with 1 argument" $ do
       "f 1" ==> app (var "f") [num 1]
@@ -274,19 +274,19 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
 
   describe "parentheses" $ parallel $ do
     let num = num' emptyAnn
-        num' ann = E1Lit ann . LNumber . SInt
+        num' ann = ELit ann . LNumber . SInt
 
     it "can parse expressions inside parentheses" $ do
       "(1)" ==> parens $ num 1
       "((123))" ==> parens . parens $ num 123
 
   describe "case expressions" $ parallel $ do
-    let case' = E1Case emptyAnn
+    let case' = ECase emptyAnn
         pvar = PVar . Id
         pcon x = PCon (Id x)
         num' = LNumber . SInt
-        num = E1Lit emptyAnn . num'
-        str = E1Lit emptyAnn . LString . String
+        num = ELit emptyAnn . num'
+        str = ELit emptyAnn . LString . String
 
     it "can parse a case expression with 1 branch" $ do
       "case 1 of\n x -> x" ==> case' (num 1) [(pvar "x", var "x")]
@@ -317,10 +317,10 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
         (utok '2' <> elabel "properly indented case clause")
 
   describe "operators" $ parallel $ do
-    let num = E1Lit emptyAnn . LNumber . SInt
+    let num = ELit emptyAnn . LNumber . SInt
         fixity ty prio op' = ExprFixityDecl $ FixityInfo emptyAnn ty prio (Id op')
-        app = E1App emptyAnn
-        con = E1Con emptyAnn . Id
+        app = EApp emptyAnn
+        con = ECon emptyAnn . Id
 
     it "can parse a type declaration for an operator in a let" $ do
       "let (+) : Int\nin\n 1" ==> let' [sig "+" (c "Int")] (num 1)
@@ -352,14 +352,14 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
         ==> op (var "&&") (op (var "||") (con "True") (con "False")) (con "True")
 
     it "can parse prefix negation operator" $ do
-      let neg = E1Neg emptyAnn
+      let neg = ENeg emptyAnn
       "-1 + 2" ==> op (var "+") (neg $ num 1) (num 2)
       "- 1 + 2" ==> op (var "+") (neg $ num 1) (num 2)
       "1 + -2" ==> op (var "+") (num 1) (neg $ num 2)
       "1 + - 2" ==> op (var "+") (num 1) (neg $ num 2)
       "-1 + -2" ==> op (var "+") (neg $ num 1) (neg $ num 2)
       "- 1 + - 2" ==> op (var "+") (neg $ num 1) (neg $ num 2)
-      "-0b0" ==> neg (E1Lit emptyAnn $ LNumber $ SBin "0b0")
+      "-0b0" ==> neg (ELit emptyAnn $ LNumber $ SBin "0b0")
 
     it "can parse expressions with mix of parentheses and operators" $ do
       let op' x = op (var x)
@@ -409,32 +409,32 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
     "a'b" ==> var "a'b"
 
   it "can parse constructors" $ do
-    let con = E1Con emptyAnn . Id
-        app = E1App emptyAnn
+    let con = ECon emptyAnn . Id
+        app = EApp emptyAnn
     "True" ==> con "True"
     "X y" ==> app (con "X") [var "y"]
     "Abc123 y" ==> app (con "Abc123") [var "y"]
     "Abc123 y z" ==> app (con "Abc123") [var "y", var "z"]
 
   describe "location information" $ parallel $ do
-    let str' ann = E1Lit ann . LString . String
-        char' ann = E1Lit ann . LChar
-        num' ann = E1Lit ann . LNumber
-        var' ann = E1Var ann . Id
-        con' ann = E1Con ann . Id
-        lam' ann vars = E1Lam ann (PVar . Id <$> vars)
-        app' = E1App
-        op' = E1BinOp
-        neg' = E1Neg
-        if' = E1If
-        case' = E1Case
+    let str' ann = ELit ann . LString . String
+        char' ann = ELit ann . LChar
+        num' ann = ELit ann . LNumber
+        var' ann = EVar ann . Id
+        con' ann = ECon ann . Id
+        lam' ann vars = ELam ann (PVar . Id <$> vars)
+        app' = EApp
+        op' = EBinOp
+        neg' = ENeg
+        if' = EIf
+        case' = ECase
         pvar = PVar . Id
 
     it "adds location information to the expression" $ do
-      "(1  )" --> E1Parens (Span 0 5) $ num' (Span 1 2) (SInt 1)
-      "(  1  )" --> E1Parens (Span 0 7) $ num' (Span 3 4) (SInt 1)
-      "(  (1)  )" --> E1Parens (Span 0 9) $ E1Parens (Span 3 6) $ num' (Span 4 5) (SInt 1)
-      "(  (1)  ) " --> E1Parens (Span 0 9) $ E1Parens (Span 3 6) $ num' (Span 4 5) (SInt 1)
+      "(1  )" --> EParens (Span 0 5) $ num' (Span 1 2) (SInt 1)
+      "(  1  )" --> EParens (Span 0 7) $ num' (Span 3 4) (SInt 1)
+      "(  (1)  )" --> EParens (Span 0 9) $ EParens (Span 3 6) $ num' (Span 4 5) (SInt 1)
+      "(  (1)  ) " --> EParens (Span 0 9) $ EParens (Span 3 6) $ num' (Span 4 5) (SInt 1)
 
     it "adds location information to the expression" $ do
       "123 " --> num' (Span 0 3) (SInt 123)
@@ -512,11 +512,11 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
     it "adds location information to let expressions" $ do
       let binding' sp x = ExprBindingDecl . Binding sp (Id x)
       "let x = 1 in x "
-        --> E1Let (Span 0 14)
+        --> ELet (Span 0 14)
              [binding' (Span 4 9) "x" $ num' (Span 8 9) (SInt 1)]
              (var' (Span 13 14) "x")
       "let x = 1\n    y = 2\nin x "
-        --> E1Let (Span 0 24)
+        --> ELet (Span 0 24)
              [ binding' (Span 4 9) "x" $ num' (Span 8 9) (SInt 1)
              , binding' (Span 14 19) "y" $ num' (Span 18 19) (SInt 2)
              ]

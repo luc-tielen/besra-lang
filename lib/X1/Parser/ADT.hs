@@ -5,8 +5,8 @@ import Protolude hiding ( Type )
 import X1.Types.Id
 import X1.Types.Ann
 import X1.Types.Span
-import X1.Types.Expr1.ADT
-import X1.Types.Expr1.Type
+import X1.Types.IR1.ADT
+import X1.Types.IR1.Type
 import qualified X1.Parser.Type as Type
 import qualified X1.Parser.Tycon as Tycon
 import qualified X1.Parser.Tyvar as Tyvar

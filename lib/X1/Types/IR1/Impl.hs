@@ -1,11 +1,11 @@
 
 {-# LANGUAGE UndecidableInstances #-}
 
-module X1.Types.Expr1.Impl ( Impl(..) ) where
+module X1.Types.IR1.Impl ( Impl(..) ) where
 
 import Protolude
-import X1.Types.Expr1.Pred
-import X1.Types.Expr1.Expr ( Binding )
+import X1.Types.IR1.Pred
+import X1.Types.IR1.Expr ( Binding )
 import X1.Types.Ann
 import X1.Types.Span
 

@@ -8,11 +8,11 @@ import Test.X1.Parser.Helpers
 import Test.X1.Helpers
 import X1.Types.Id
 import X1.Types.Ann
-import X1.Types.Expr1.Pred
-import X1.Types.Expr1.Type
-import X1.Types.Expr1.Trait
-import X1.Types.Expr1.Scheme
-import X1.Types.Expr1.TypeAnn
+import X1.Types.IR1.Pred
+import X1.Types.IR1.Type
+import X1.Types.IR1.Trait
+import X1.Types.IR1.Scheme
+import X1.Types.IR1.TypeAnn
 import X1.Parser.Trait (parser)
 
 

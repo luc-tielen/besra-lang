@@ -5,7 +5,7 @@ import Protolude
 import Test.Tasty.Hspec
 import Test.Hspec.Megaparsec hiding (shouldFailWith, succeedsLeaving)
 import X1.Parser.Number (parser)
-import X1.Types.Expr1.Number
+import X1.Types.IR1.Number
 import Test.X1.Parser.Helpers
 
 

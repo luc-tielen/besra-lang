@@ -4,8 +4,8 @@ import Protolude hiding ( Type )
 import Data.Maybe ( fromJust )
 import X1.Parser.Helpers
 import qualified X1.Parser.Tyvar as Tyvar
-import X1.Types.Expr1.Pred
-import X1.Types.Expr1.Type
+import X1.Types.IR1.Pred
+import X1.Types.IR1.Type
 import X1.Types.Id
 import X1.Types.Ann
 import X1.Types.Span

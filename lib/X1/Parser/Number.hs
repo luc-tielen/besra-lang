@@ -2,7 +2,7 @@
 module X1.Parser.Number ( parser ) where
 
 import Protolude
-import X1.Types.Expr1.Number
+import X1.Types.IR1.Number
 import X1.Parser.Helpers
 import qualified Data.Vector as V
 import qualified Data.Text as T

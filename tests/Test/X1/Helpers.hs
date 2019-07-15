@@ -2,15 +2,15 @@
 module Test.X1.Helpers ( module Test.X1.Helpers ) where
 
 import Protolude hiding ( Type )
-import X1.Types.Expr1.Module
-import X1.Types.Expr1.Trait
-import X1.Types.Expr1.Impl
-import X1.Types.Expr1.TypeAnn
-import X1.Types.Expr1.Expr
-import X1.Types.Expr1.ADT
-import X1.Types.Expr1.Scheme
-import X1.Types.Expr1.Pred
-import X1.Types.Expr1.Type
+import X1.Types.IR1.Module
+import X1.Types.IR1.Trait
+import X1.Types.IR1.Impl
+import X1.Types.IR1.TypeAnn
+import X1.Types.IR1.Expr
+import X1.Types.IR1.ADT
+import X1.Types.IR1.Scheme
+import X1.Types.IR1.Pred
+import X1.Types.IR1.Type
 import X1.Types.Ann
 
 
@@ -97,21 +97,21 @@ instance StripAnns (Binding ph) where
   stripAnns (Binding _ name expr) =
     Binding emptyAnn name (stripAnns expr)
 
-instance StripAnns (Expr1 ph) where
-  type Result (Expr1 ph) = Expr1 'Testing
+instance StripAnns (Expr ph) where
+  type Result (Expr ph) = Expr 'Testing
 
   stripAnns = \case
-    E1Lit _ lit -> E1Lit emptyAnn lit
-    E1Var _ var -> E1Var emptyAnn var
-    E1Con _ con -> E1Con emptyAnn con
-    E1Lam _ pats body -> E1Lam emptyAnn pats (stripAnns body)
-    E1App _ f args -> E1App emptyAnn (stripAnns f) (stripAnns args)
-    E1BinOp _ op l r -> E1BinOp emptyAnn (stripAnns op) (stripAnns l) (stripAnns r)
-    E1Neg _ e -> E1Neg emptyAnn (stripAnns e)
-    E1If _ c tr fl -> E1If emptyAnn (stripAnns c) (stripAnns tr) (stripAnns fl)
-    E1Case _ e clauses -> E1Case emptyAnn (stripAnns e) (stripAnns clauses)
-    E1Let _ decls body -> E1Let emptyAnn (stripAnns decls) (stripAnns body)
-    E1Parens _ e -> E1Parens emptyAnn (stripAnns e)
+    ELit _ lit -> ELit emptyAnn lit
+    EVar _ var -> EVar emptyAnn var
+    ECon _ con -> ECon emptyAnn con
+    ELam _ pats body -> ELam emptyAnn pats (stripAnns body)
+    EApp _ f args -> EApp emptyAnn (stripAnns f) (stripAnns args)
+    EBinOp _ op l r -> EBinOp emptyAnn (stripAnns op) (stripAnns l) (stripAnns r)
+    ENeg _ e -> ENeg emptyAnn (stripAnns e)
+    EIf _ c tr fl -> EIf emptyAnn (stripAnns c) (stripAnns tr) (stripAnns fl)
+    ECase _ e clauses -> ECase emptyAnn (stripAnns e) (stripAnns clauses)
+    ELet _ decls body -> ELet emptyAnn (stripAnns decls) (stripAnns body)
+    EParens _ e -> EParens emptyAnn (stripAnns e)
 
 instance StripAnns (ExprDecl ph) where
   type Result (ExprDecl ph) = ExprDecl 'Testing

@@ -5,7 +5,7 @@ import Protolude
 import Control.Monad.Except
 import Data.Text.IO as TIO
 import X1.Parser ( ParseError, parseFile )
-import X1.Types.Expr1.Module
+import X1.Types.IR1.Module
 import X1.SA
 import X1.Types.Ann
 import qualified X1.Pass.BalanceOperators as BalanceOperators

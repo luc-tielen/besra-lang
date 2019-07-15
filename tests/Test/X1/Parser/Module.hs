@@ -11,26 +11,26 @@ import X1.Types.Id
 import X1.Types.Ann
 import X1.Types.Span
 import X1.Types.Fixity
-import X1.Types.Expr1.Module
-import X1.Types.Expr1.Expr
-import X1.Types.Expr1.ADT
-import X1.Types.Expr1.Lit
-import X1.Types.Expr1.Pred
-import X1.Types.Expr1.Type
-import X1.Types.Expr1.Number
-import X1.Types.Expr1.String
-import X1.Types.Expr1.Scheme
-import X1.Types.Expr1.Pattern
-import X1.Types.Expr1.TypeAnn
-import X1.Types.Expr1.Trait
-import X1.Types.Expr1.Impl
+import X1.Types.IR1.Module
+import X1.Types.IR1.Expr
+import X1.Types.IR1.ADT
+import X1.Types.IR1.Lit
+import X1.Types.IR1.Pred
+import X1.Types.IR1.Type
+import X1.Types.IR1.Number
+import X1.Types.IR1.String
+import X1.Types.IR1.Scheme
+import X1.Types.IR1.Pattern
+import X1.Types.IR1.TypeAnn
+import X1.Types.IR1.Trait
+import X1.Types.IR1.Impl
 import X1.Parser.Module (parser)
 import Test.Hspec.Megaparsec hiding (shouldFailWith)
 import NeatInterpolation
 
 
 type Module' = Module 'Testing
-type Expr1' = Expr1 'Testing
+type Expr' = Expr 'Testing
 type Decl' = Decl 'Testing
 type Type' = Type 'Testing
 type Scheme' = Scheme 'Testing
@@ -61,22 +61,22 @@ parens = TParen emptyAnn
 (-->) :: Type' -> Type' -> Type'
 t1 --> t2 = app (con "->") [t1, t2]
 
-num :: Int -> Expr1'
-num = E1Lit emptyAnn . LNumber . SInt
+num :: Int -> Expr'
+num = ELit emptyAnn . LNumber . SInt
 
-str :: Text -> Expr1'
-str = E1Lit emptyAnn . LString . String
+str :: Text -> Expr'
+str = ELit emptyAnn . LString . String
 
-char :: Char -> Expr1'
-char = E1Lit emptyAnn . LChar
+char :: Char -> Expr'
+char = ELit emptyAnn . LChar
 
-lam :: [Text] -> Expr1' -> Expr1'
-lam vars = E1Lam emptyAnn (PVar . Id <$> vars)
+lam :: [Text] -> Expr' -> Expr'
+lam vars = ELam emptyAnn (PVar . Id <$> vars)
 
 typeAnn :: Id -> Scheme' -> Decl'
 typeAnn name sch = TypeAnnDecl (TypeAnn emptyAnn name sch)
 
-binding :: Text -> Expr1' -> Decl'
+binding :: Text -> Expr' -> Decl'
 binding x = BindingDecl . Binding emptyAnn (Id x)
 
 scheme :: [Pred'] -> Type' -> Scheme'
@@ -161,10 +161,10 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
 
     it "can parse a named function containing patterns" $ do
       "f 1 \"abc\" = 123"
-        ==> Module [binding "f" (E1Lam emptyAnn [ PLit (LNumber (SInt 1))
+        ==> Module [binding "f" (ELam emptyAnn [ PLit (LNumber (SInt 1))
                                                 , PLit (LString (String "abc"))] (num 123))]
       "f a@(X y) = 123"
-        ==> Module [binding "f" (E1Lam emptyAnn [ PAs (Id "a")
+        ==> Module [binding "f" (ELam emptyAnn [ PAs (Id "a")
                                                   (PCon (Id "X") [PVar (Id "y")])] (num 123))]
 
     it "can parse multiple named functions" $
@@ -179,9 +179,9 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
     (parse, "1") `shouldFailWith` err 0 (utok '1' <> elabel "declaration" <> eeof)
 
   describe "operators" $ parallel $ do
-    let v = E1Var emptyAnn . Id
+    let v = EVar emptyAnn . Id
         plusBinding = v "primitivePlus"
-        complexBinding = lam ["a", "b"] $ E1App emptyAnn plusBinding [v "a", v "b"]
+        complexBinding = lam ["a", "b"] $ EApp emptyAnn plusBinding [v "a", v "b"]
 
     it "can parse a top level type declaration for an operator" $ do
       "(+) : Int -> Int -> Int"
@@ -300,7 +300,7 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
     it "can parse ADT followed by binding declaration" $
       "data X\na = X"
         ==> Module [ adt (hd "X" []) []
-                   , BindingDecl $ Binding emptyAnn (Id "a") $ E1Con emptyAnn (Id "X")
+                   , BindingDecl $ Binding emptyAnn (Id "a") $ ECon emptyAnn (Id "X")
                    ]
 
     it "fails with readable error message" $ do
@@ -444,10 +444,10 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
         (utok 'y' <> elabel "properly indented binding declaration in impl")
 
   describe "location information" $ parallel $ do
-    let binding' :: Span -> Text -> Expr1 'Parsed -> Binding 'Parsed
+    let binding' :: Span -> Text -> Expr 'Parsed -> Binding 'Parsed
         binding' sp name = Binding sp (Id name)
-        num' ann = E1Lit ann . LNumber . SInt
-        lam' ann vars = E1Lam ann (PVar . Id <$> vars)
+        num' ann = ELit ann . LNumber . SInt
+        lam' ann vars = ELam ann (PVar . Id <$> vars)
         pred sp clazz = IsIn sp (Id clazz)
         con' sp = TCon . Tycon sp . Id
         var' sp = TVar . Tyvar sp . Id

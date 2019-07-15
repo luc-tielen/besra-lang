@@ -1,5 +1,5 @@
 
-module X1.Types.Expr1.String ( String(..) ) where
+module X1.Types.IR1.String ( String(..) ) where
 
 import Protolude
 

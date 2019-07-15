@@ -2,9 +2,9 @@
 module X1.Parser.Module ( parser ) where
 
 import Protolude
-import X1.Types.Expr1.Module
-import X1.Types.Expr1.Expr
-import qualified X1.Parser.Expr1 as Expr1
+import X1.Types.IR1.Module
+import X1.Types.IR1.Expr
+import qualified X1.Parser.Expr as Expr
 import qualified X1.Parser.ADT as ADT
 import qualified X1.Parser.Trait as Trait
 import qualified X1.Parser.Impl as Impl
@@ -32,7 +32,7 @@ decl = decl' <?> "declaration"
 
 typeOrBindingDecl :: Parser Decl'
 typeOrBindingDecl = do
-  result <- Expr1.declParser
+  result <- Expr.declParser
   case result of
     ExprTypeAnnDecl typeAnn -> pure $ TypeAnnDecl typeAnn
     ExprBindingDecl binding -> pure $ BindingDecl binding

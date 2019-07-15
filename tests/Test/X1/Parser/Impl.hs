@@ -8,20 +8,20 @@ import Test.X1.Helpers
 import X1.Types.Id
 import X1.Types.Ann
 import X1.Types.Span
-import X1.Types.Expr1.Lit
-import X1.Types.Expr1.Number
-import X1.Types.Expr1.String
-import X1.Types.Expr1.Pattern
-import X1.Types.Expr1.Pred
-import X1.Types.Expr1.Type
-import X1.Types.Expr1.Impl
-import X1.Types.Expr1.Expr
+import X1.Types.IR1.Lit
+import X1.Types.IR1.Number
+import X1.Types.IR1.String
+import X1.Types.IR1.Pattern
+import X1.Types.IR1.Pred
+import X1.Types.IR1.Type
+import X1.Types.IR1.Impl
+import X1.Types.IR1.Expr
 import X1.Parser.Impl (parser)
 import Test.Hspec.Megaparsec hiding (shouldFailWith, succeedsLeaving)
 
 
 type Impl' = Impl 'Testing
-type Expr1' = Expr1 'Testing
+type Expr' = Expr 'Testing
 type Binding' = Binding 'Testing
 type Type' = Type 'Testing
 type Pred' = Pred 'Testing
@@ -29,11 +29,11 @@ type Pred' = Pred 'Testing
 parse :: Text -> ParseResult (Impl 'Parsed)
 parse = mkParser parser
 
-num :: Int -> Expr1'
-num = E1Lit emptyAnn . LNumber . SInt
+num :: Int -> Expr'
+num = ELit emptyAnn . LNumber . SInt
 
-str :: Text -> Expr1'
-str = E1Lit emptyAnn . LString . String
+str :: Text -> Expr'
+str = ELit emptyAnn . LString . String
 
 con :: Text -> Type'
 con = TCon . Tycon emptyAnn . Id
@@ -56,16 +56,16 @@ a ~~> b = parse a `shouldParse` b
 (-->) :: Type' -> Type' -> Type'
 t1 --> t2 = app (con "->") [t1, t2]
 
-lam :: [Text] -> Expr1' -> Expr1'
-lam vars = E1Lam emptyAnn (PVar . Id <$> vars)
+lam :: [Text] -> Expr' -> Expr'
+lam vars = ELam emptyAnn (PVar . Id <$> vars)
 
-evar :: Text -> Expr1'
-evar = E1Var emptyAnn . Id
+evar :: Text -> Expr'
+evar = EVar emptyAnn . Id
 
-eapp :: Text -> [Text] -> Expr1'
-eapp x = E1App emptyAnn (evar x) . map evar
+eapp :: Text -> [Text] -> Expr'
+eapp x = EApp emptyAnn (evar x) . map evar
 
-binding :: Text -> Expr1' -> Binding'
+binding :: Text -> Expr' -> Binding'
 binding x = Binding emptyAnn (Id x)
 
 pred :: Text -> [Type'] -> Pred'
@@ -171,8 +171,8 @@ spec_implParseTest = describe "impl parser" $ parallel $ do
 
   describe "annotations" $ parallel $ do
     let binding' ann x = Binding ann (Id x)
-        num' ann = E1Lit ann . LNumber . SInt
-        lam' ann vars = E1Lam ann (PVar . Id <$> vars)
+        num' ann = ELit ann . LNumber . SInt
+        lam' ann vars = ELam ann (PVar . Id <$> vars)
         con' sp = TCon . Tycon sp . Id
         pred' sp clazz = IsIn sp (Id clazz)
 

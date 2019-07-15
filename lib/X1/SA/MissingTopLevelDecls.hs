@@ -6,9 +6,9 @@ import X1.SA.Helpers
 import X1.SA.Types
 import X1.Types.Id
 import X1.Types.Ann
-import X1.Types.Expr1.Module
-import X1.Types.Expr1.Expr ( Binding(..) )
-import X1.Types.Expr1.TypeAnn
+import X1.Types.IR1.Module
+import X1.Types.IR1.Expr ( Binding(..) )
+import X1.Types.IR1.TypeAnn
 import qualified Data.List as List
 
 

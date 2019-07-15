@@ -7,7 +7,7 @@ module X1.SA ( runSA
              ) where
 
 import Protolude
-import X1.Types.Expr1.Module
+import X1.Types.IR1.Module
 import X1.SA.Helpers
 import X1.SA.Types
 import X1.Types.Ann

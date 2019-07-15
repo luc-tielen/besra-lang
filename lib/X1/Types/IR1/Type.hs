@@ -1,11 +1,11 @@
 
 {-# LANGUAGE UndecidableInstances #-}
 
-module X1.Types.Expr1.Type ( Type(..), Tycon(..), Tyvar(..) ) where
+module X1.Types.IR1.Type ( Type(..), Tycon(..), Tyvar(..) ) where
 
 import Protolude hiding ( Type )
-import X1.Types.Expr1.Tycon
-import X1.Types.Expr1.Tyvar
+import X1.Types.IR1.Tycon
+import X1.Types.IR1.Tyvar
 import X1.Types.Ann
 import X1.Types.Span
 

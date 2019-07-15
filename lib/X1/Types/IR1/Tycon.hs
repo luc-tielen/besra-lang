@@ -1,7 +1,7 @@
 
 {-# LANGUAGE UndecidableInstances #-}
 
-module X1.Types.Expr1.Tycon ( Tycon(..) ) where
+module X1.Types.IR1.Tycon ( Tycon(..) ) where
 
 import Protolude
 import X1.Types.Id

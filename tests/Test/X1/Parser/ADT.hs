@@ -10,8 +10,8 @@ import X1.Parser.ADT (parser)
 import X1.Types.Id
 import X1.Types.Ann
 import X1.Types.Span
-import X1.Types.Expr1.ADT
-import X1.Types.Expr1.Type
+import X1.Types.IR1.ADT
+import X1.Types.IR1.Type
 
 
 type ADT' = ADT 'Parsed

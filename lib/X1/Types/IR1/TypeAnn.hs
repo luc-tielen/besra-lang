@@ -1,10 +1,10 @@
 
 {-# LANGUAGE UndecidableInstances #-}
 
-module X1.Types.Expr1.TypeAnn ( TypeAnn(..) ) where
+module X1.Types.IR1.TypeAnn ( TypeAnn(..) ) where
 
 import Protolude hiding ( Type )
-import X1.Types.Expr1.Scheme
+import X1.Types.IR1.Scheme
 import X1.Types.Id
 import X1.Types.Ann
 import X1.Types.Span

@@ -8,17 +8,17 @@ import X1.SA.Types
 import X1.Types.Id
 import X1.Types.Ann
 import X1.Types.Span
-import X1.Types.Expr1.Module
-import X1.Types.Expr1.Expr
-import X1.Types.Expr1.String
-import X1.Types.Expr1.Number
-import X1.Types.Expr1.Lit
+import X1.Types.IR1.Module
+import X1.Types.IR1.Expr
+import X1.Types.IR1.String
+import X1.Types.IR1.Number
+import X1.Types.IR1.Lit
 import X1.Parser
 import Test.Tasty.Hspec
 
 
 type Module' = Module 'Parsed
-type Expr1' = Expr1 'Parsed
+type Expr' = Expr 'Parsed
 type Ann' = Ann 'Parsed
 
 file :: FilePath
@@ -27,18 +27,18 @@ file = "Test.x1"
 analyze' :: Validation [SAError] Module'
 analyze' = analyze [validate file]
 
-conflict :: [Span] -> Text -> [Expr1'] -> SAError
+conflict :: [Span] -> Text -> [Expr'] -> SAError
 conflict spans var exprs =
   let toBindingDecls = zipWith combine spans
       combine sp = BindingDecl . Binding sp (Id var)
       err = ConflictingBindingDeclErr . ConflictingBindingDecl file . toBindingDecls
    in err exprs
 
-num :: Ann' -> Int -> Expr1'
-num ann = E1Lit ann . LNumber . SInt
+num :: Ann' -> Int -> Expr'
+num ann = ELit ann . LNumber . SInt
 
-str :: Ann' -> Text -> Expr1'
-str ann = E1Lit ann . LString . String
+str :: Ann' -> Text -> Expr'
+str ann = ELit ann . LString . String
 
 
 (==>) :: Text -> ValidationResult [SAError] -> IO ()

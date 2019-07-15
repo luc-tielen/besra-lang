@@ -1,15 +1,15 @@
 
 {-# LANGUAGE UndecidableInstances #-}
 
-module X1.Types.Expr1.Module ( Decl(..), Module(..) ) where
+module X1.Types.IR1.Module ( Decl(..), Module(..) ) where
 
 import Protolude hiding ( Fixity(..) )
 import X1.Types.Ann
-import X1.Types.Expr1.Expr
-import X1.Types.Expr1.ADT
-import X1.Types.Expr1.Trait
-import X1.Types.Expr1.Impl
-import X1.Types.Expr1.TypeAnn
+import X1.Types.IR1.Expr
+import X1.Types.IR1.ADT
+import X1.Types.IR1.Trait
+import X1.Types.IR1.Impl
+import X1.Types.IR1.TypeAnn
 
 
 data Decl (ph :: Phase)

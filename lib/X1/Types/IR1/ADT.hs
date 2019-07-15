@@ -1,14 +1,14 @@
 
 {-# LANGUAGE UndecidableInstances #-}
 
-module X1.Types.Expr1.ADT ( ConDecl(..)
+module X1.Types.IR1.ADT ( ConDecl(..)
                           , ADTHead(..)
                           , ADTBody
                           , ADT(..)
                           ) where
 
 import Protolude hiding ( Type )
-import X1.Types.Expr1.Type
+import X1.Types.IR1.Type
 import X1.Types.Id
 import X1.Types.Ann
 import X1.Types.Span

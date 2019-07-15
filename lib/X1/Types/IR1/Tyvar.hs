@@ -1,7 +1,7 @@
 
 {-# LANGUAGE UndecidableInstances #-}
 
-module X1.Types.Expr1.Tyvar ( Tyvar(..) ) where
+module X1.Types.IR1.Tyvar ( Tyvar(..) ) where
 
 import Protolude
 import X1.Types.Id

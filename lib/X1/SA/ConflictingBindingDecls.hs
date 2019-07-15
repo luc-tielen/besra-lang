@@ -4,8 +4,8 @@ module X1.SA.ConflictingBindingDecls ( validate ) where
 import Protolude
 import X1.SA.Helpers
 import X1.SA.Types
-import X1.Types.Expr1.Module
-import X1.Types.Expr1.Expr
+import X1.Types.IR1.Module
+import X1.Types.IR1.Expr
 import X1.Types.Id
 import X1.Types.Ann
 

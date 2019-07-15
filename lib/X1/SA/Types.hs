@@ -10,7 +10,7 @@ module X1.SA.Types ( ConflictingTypeAnnDecl(..)
                    ) where
 
 import Protolude
-import X1.Types.Expr1.Module
+import X1.Types.IR1.Module
 import X1.Types.Ann
 
 type Decl' = Decl 'Parsed

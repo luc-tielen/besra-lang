@@ -1,5 +1,5 @@
 
-module X1.Types.Expr1.Number ( Number(..) ) where
+module X1.Types.IR1.Number ( Number(..) ) where
 
 import Protolude
 

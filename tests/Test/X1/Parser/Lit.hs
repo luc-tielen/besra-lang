@@ -6,9 +6,9 @@ import Test.Tasty.Hspec
 import Test.Hspec.Megaparsec hiding (shouldFailWith)
 import X1.Parser.Lit (parser)
 import Test.X1.Parser.Helpers
-import X1.Types.Expr1.Lit
-import X1.Types.Expr1.String
-import X1.Types.Expr1.Number
+import X1.Types.IR1.Lit
+import X1.Types.IR1.String
+import X1.Types.IR1.Number
 
 
 parse :: Text -> ParseResult Lit
