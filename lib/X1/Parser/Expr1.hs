@@ -164,7 +164,8 @@ fixityDecl = do
   fixityType <- lexeme' fixityTypeParser
   precedence <- withDefault 9 $ digitToInt <$> lexeme' decimal
   (sp, operator) <- lexeme (withSpan $ Id <$> opIdentifier <|> infixFunction')
-  pure $ ExprFixityDecl (startPos .> sp) fixityType precedence operator
+  let fixity = FixityInfo (startPos .> sp) fixityType precedence operator
+  pure $ ExprFixityDecl fixity
   where
     fixityTypeParser =  keyword "infixl" $> L
                     <|> keyword "infixr" $> R

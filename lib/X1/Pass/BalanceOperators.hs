@@ -1,7 +1,7 @@
 
 {-# LANGUAGE UndecidableInstances #-}
 
-module X1.Pass.BalanceOperators ( BalanceError(..), FixityInfo(..), pass ) where
+module X1.Pass.BalanceOperators ( BalanceError(..), FixitySpec(..), pass ) where
 
 {-
 Algorithm based on: https://github.com/haskell/haskell-report/blob/master/report/fixity.verb
@@ -31,20 +31,20 @@ type Ann' = Ann 'Parsed
 type BalanceError' = BalanceError 'Parsed
 
 data BalanceError ph
-  = BadPrecedence FixityInfo FixityInfo (Decl ph)
-  | InvalidPrefixPrecedence FixityInfo (Decl ph)
+  = BadPrecedence FixitySpec FixitySpec (Decl ph)
+  | InvalidPrefixPrecedence FixitySpec (Decl ph)
 
 deriving instance Eq (Decl a) => Eq (BalanceError a)
 deriving instance Show (Decl a) => Show (BalanceError a)
 
-data FixityInfo = FI Fixity Int Id
+data FixitySpec = FI Fixity Int Id
   deriving (Eq, Show)
 
 data Token = TExpr Expr1'
-           | TOp (Id -> Expr1' -> Expr1' -> Expr1') FixityInfo
+           | TOp (Id -> Expr1' -> Expr1' -> Expr1') FixitySpec
            | TNeg Ann'
 
-data Env = Env { envFixities :: [FixityInfo]
+data Env = Env { envFixities :: [FixitySpec]
                , envDecl :: Decl'
                }
 
@@ -53,16 +53,16 @@ type RebalanceM m = ReaderT Env (ExceptT BalanceError' m)
 
 pass :: Monad m => Module' -> ExceptT BalanceError' m Module'
 pass (Module decls) =
-  let fixities = map toFixityInfo $ filter isFixityDecl decls
+  let fixities = map toFixitySpec $ filter isFixityDecl decls
       isFixityDecl FixityDecl {} = True
       isFixityDecl _ = False
-      toFixityInfo (FixityDecl _ fixity prec op) = FI fixity prec op
-      toFixityInfo _ = panic "Error while computing operator precedences."
+      toFixitySpec (FixityDecl (FixityInfo _ fixity prec op)) = FI fixity prec op
+      toFixitySpec _ = panic "Error while computing operator precedences."
       parMap' = parMap rpar
    in Module <$> sequenceA (parMap' (runRebalance fixities) decls)
 
 
-runRebalance :: Monad m => [FixityInfo] -> Decl' -> ExceptT BalanceError' m Decl'
+runRebalance :: Monad m => [FixitySpec] -> Decl' -> ExceptT BalanceError' m Decl'
 runRebalance fsSpecs decl = runReaderT (rebalance decl) env
   where env = Env fsSpecs decl
 
@@ -114,7 +114,7 @@ instance Balance Expr1' where
         E1Let ann <$> rebalance decls <*> rebalance body
       rebalanceInner e = pure e
 
-lookupFixity :: [FixityInfo] -> Id -> FixityInfo
+lookupFixity :: [FixitySpec] -> Id -> FixitySpec
 lookupFixity fsSpecs op =
   let result = List.find (\(FI _ _ op') -> op == op') fsSpecs
       defaultFixity = FI L 9 op
@@ -141,7 +141,7 @@ opToTokens f op e1 e2 = do
   e2Tokens <- toTokens e2
   pure $ e1Tokens <> [TOp f fs] <> e2Tokens
 
-rebalanceTokens :: Monad m => FixityInfo -> [Token] -> RebalanceM m (Expr1', [Token])
+rebalanceTokens :: Monad m => FixitySpec -> [Token] -> RebalanceM m (Expr1', [Token])
 rebalanceTokens op1 (TExpr e1 : rest) = rebalanceTokens' op1 e1 rest
 rebalanceTokens op1 (TNeg ann : rest) = do
   when (prec1 >= 6) $ throwError . InvalidPrefixPrecedence op1 =<< asks envDecl
@@ -152,7 +152,7 @@ rebalanceTokens op1 (TNeg ann : rest) = do
     FI _ prec1 _  = op1
 rebalanceTokens _ _ = panic "Error while rebalancing tokens!"
 
-rebalanceTokens' :: Monad m => FixityInfo -> Expr1' -> [Token] -> RebalanceM m (Expr1', [Token])
+rebalanceTokens' :: Monad m => FixitySpec -> Expr1' -> [Token] -> RebalanceM m (Expr1', [Token])
 rebalanceTokens' _ e1 [] = pure (e1, [])
 rebalanceTokens' op1 e1 (TOp f op2 : rest)
   -- case (1): check for illegal expressions

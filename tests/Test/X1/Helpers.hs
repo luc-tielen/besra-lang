@@ -37,7 +37,13 @@ instance StripAnns (Decl ph) where
     TraitDecl trait -> TraitDecl (stripAnns trait)
     ImplDecl impl -> ImplDecl (stripAnns impl)
     BindingDecl binding -> BindingDecl (stripAnns binding)
-    FixityDecl _ fixity prio op -> FixityDecl emptyAnn fixity prio op
+    FixityDecl fixity -> FixityDecl (stripAnns fixity)
+
+instance StripAnns (FixityInfo ph) where
+  type Result (FixityInfo ph) = FixityInfo 'Testing
+
+  stripAnns (FixityInfo _ fixity prio name) =
+    FixityInfo emptyAnn fixity prio name
 
 instance StripAnns (ADT ph) where
   type Result (ADT ph) = ADT 'Testing
@@ -115,8 +121,8 @@ instance StripAnns (ExprDecl ph) where
       ExprTypeAnnDecl (stripAnns typeAnn)
     ExprBindingDecl binding ->
       ExprBindingDecl (stripAnns binding)
-    ExprFixityDecl _ fixity prio op ->
-      ExprFixityDecl emptyAnn fixity prio op
+    ExprFixityDecl fixity ->
+      ExprFixityDecl (stripAnns fixity)
 
 instance StripAnns (TypeAnn ph) where
   type Result (TypeAnn ph) = TypeAnn 'Testing

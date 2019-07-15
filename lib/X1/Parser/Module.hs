@@ -36,7 +36,7 @@ typeOrBindingDecl = do
   case result of
     ExprTypeAnnDecl typeAnn -> pure $ TypeAnnDecl typeAnn
     ExprBindingDecl binding -> pure $ BindingDecl binding
-    ExprFixityDecl ann fixity precedence op -> pure $ FixityDecl ann fixity precedence op
+    ExprFixityDecl fixity -> pure $ FixityDecl fixity
 
 dataDecl :: Parser Decl'
 dataDecl = DataDecl <$> ADT.parser

@@ -1,7 +1,12 @@
 
 {-# LANGUAGE UndecidableInstances #-}
 
-module X1.Types.Expr1.Expr ( Expr1(..), ExprDecl(..), Binding(..) ) where
+module X1.Types.Expr1.Expr
+  ( Expr1(..)
+  , ExprDecl(..)
+  , Binding(..)
+  , FixityInfo(..)
+  ) where
 
 import Protolude hiding ( Fixity )
 import X1.Types.Id
@@ -19,7 +24,10 @@ data Binding (ph :: Phase)
 data ExprDecl (ph :: Phase)
   = ExprTypeAnnDecl (TypeAnn ph)
   | ExprBindingDecl (Binding ph)
-  | ExprFixityDecl (Ann ph) Fixity Int Id
+  | ExprFixityDecl (FixityInfo ph)
+
+data FixityInfo (ph :: Phase)
+  = FixityInfo (Ann ph) Fixity Int Id
 
 data Expr1 (ph :: Phase)
   = E1Lit (Ann ph) Lit
@@ -34,6 +42,8 @@ data Expr1 (ph :: Phase)
   | E1Let (Ann ph) [ExprDecl ph] (Expr1 ph)            -- bindings end result
   | E1Parens (Ann ph) (Expr1 ph)
 
+deriving instance Eq (Ann ph) => Eq (FixityInfo ph)
+deriving instance Show (Ann ph) => Show (FixityInfo ph)
 deriving instance Eq (Ann ph) => Eq (ExprDecl ph)
 deriving instance Show (Ann ph) => Show (ExprDecl ph)
 deriving instance Eq (Ann ph) => Eq (Binding ph)
