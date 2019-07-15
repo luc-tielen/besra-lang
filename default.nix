@@ -1,9 +1,15 @@
-{ compiler ? "ghc864", pkgs ? import ./packages.nix {} }:
+{ compiler ? "ghc864", pkgs ? import ./nix/packages.nix {} }:
 
 with pkgs;
 
 let
-  haskellPkgs = haskell.packages.${compiler};
+  hspec-megaparsec = import ./nix/hspec-megaparsec.nix;
+  haskellPackages = haskell.packages.${compiler};
+  haskellPkgs = haskellPackages.override {
+    overrides = self: super: {
+      hspec-megaparsec = self.callCabal2nix "hspec-megaparsec" hspec-megaparsec {};
+    };
+  };
   source = nix-gitignore.gitignoreSource [] ./.;
   drv = haskellPkgs.callCabal2nix "besra" source {};
 in

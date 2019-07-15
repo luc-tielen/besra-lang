@@ -1,8 +1,8 @@
-module Test.Besra.SA ( module Test.Besra.SA ) where
+module Test.Besra.SASpec ( module Test.Besra.SASpec ) where
 
 import           Besra.SA
 import           Protolude
-import           Test.Tasty.Hspec
+import           Test.Hspec
 
 
 data Expr = Number Int
@@ -38,8 +38,8 @@ noNegativesCheck _ = Ok
 (==>) = shouldBe
 
 
-spec_semanticAnalysis :: Spec
-spec_semanticAnalysis = describe "Semantic analysis" $ parallel $ do
+spec :: Spec
+spec = describe "Semantic analysis" $ parallel $ do
   it "does nothing when no checks provided" $ do
     analyze ([] :: [Validation']) (Number 1 `Add` Number 2) ==> Ok
     analyze ([] :: [Validation']) (Number 1 `Add` Str "abc") ==> Ok

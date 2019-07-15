@@ -1,5 +1,7 @@
 
-module Test.Besra.SA.ConflictingBindingDecls ( module Test.Besra.SA.ConflictingBindingDecls ) where
+module Test.Besra.SA.ConflictingBindingDeclsSpec
+  ( module Test.Besra.SA.ConflictingBindingDeclsSpec
+  ) where
 
 import Protolude hiding ( Type )
 import Besra.SA.ConflictingBindingDecls
@@ -14,7 +16,7 @@ import Besra.Types.IR1.String
 import Besra.Types.IR1.Number
 import Besra.Types.IR1.Lit
 import Besra.Parser
-import Test.Tasty.Hspec
+import Test.Hspec
 
 
 type Module' = Module 'Parsed
@@ -49,8 +51,8 @@ txt ==> b =
      Right a -> analyze' a `shouldBe` b
 
 
-spec_conflictingBindingDecls :: Spec
-spec_conflictingBindingDecls = describe "SA: ConflictingBindingDecls" $ parallel $ do
+spec :: Spec
+spec = describe "SA: ConflictingBindingDecls" $ parallel $ do
   it "reports no errors for empty module" $
     "" ==> Ok
 

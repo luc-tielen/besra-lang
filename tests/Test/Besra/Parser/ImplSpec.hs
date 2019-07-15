@@ -1,8 +1,8 @@
 
-module Test.Besra.Parser.Impl ( module Test.Besra.Parser.Impl ) where
+module Test.Besra.Parser.ImplSpec ( module Test.Besra.Parser.ImplSpec ) where
 
 import Protolude hiding ( Type, pred )
-import Test.Tasty.Hspec
+import Test.Hspec
 import Test.Besra.Parser.Helpers
 import Test.Besra.Helpers
 import Besra.Types.Id
@@ -75,8 +75,8 @@ infixr 2 -->
 infixr 1 ==>
 
 
-spec_implParseTest :: Spec
-spec_implParseTest = describe "impl parser" $ parallel $ do
+spec :: Spec
+spec = describe "impl parser" $ parallel $ do
   it "can parse impl without body" $ do
     "impl Eq Int where" ==> impl [] (pred "Eq" [con "Int"]) []
     "impl Show String where " ==> impl [] (pred "Show" [con "String"]) []

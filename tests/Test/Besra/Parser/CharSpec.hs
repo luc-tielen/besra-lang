@@ -1,11 +1,11 @@
 
-module Test.Besra.Parser.Char ( module Test.Besra.Parser.Char ) where
+module Test.Besra.Parser.CharSpec ( module Test.Besra.Parser.CharSpec ) where
 
 import Protolude
 import Besra.Parser.Char (parser)
 import Test.Hspec.Megaparsec hiding (shouldFailWith)
 import Test.Besra.Parser.Helpers
-import Test.Tasty.Hspec
+import Test.Hspec
 
 
 (==>) :: Text -> Char -> IO ()
@@ -15,8 +15,8 @@ parse :: Text -> ParseResult Char
 parse = mkParser parser
 
 
-spec_charParseTest :: Spec
-spec_charParseTest = describe "char parser" $ parallel $ do
+spec :: Spec
+spec = describe "char parser" $ parallel $ do
   it "can parse chars without escaping" $ do
     "'a'" ==> 'a'
     "'b'" ==> 'b'

@@ -1,8 +1,8 @@
 
-module Test.Besra.Parser.Expr ( module Test.Besra.Parser.Expr ) where
+module Test.Besra.Parser.ExprSpec ( module Test.Besra.Parser.ExprSpec ) where
 
 import Protolude hiding ( Type )
-import Test.Tasty.Hspec
+import Test.Hspec
 import Test.Besra.Parser.Helpers
 import Besra.Parser.Expr (parser)
 import Besra.Types.Id
@@ -60,8 +60,8 @@ sig :: Text -> Type' -> ExprDecl'
 sig x ty = ExprTypeAnnDecl $ TypeAnn emptyAnn (Id x) (Scheme emptyAnn [] ty)
 
 
-spec_exprParseTest :: Spec
-spec_exprParseTest = describe "expression parser" $ parallel $ do
+spec :: Spec
+spec = describe "expression parser" $ parallel $ do
   describe "literals" $ parallel $ do
     let str = ELit emptyAnn . LString . String
         char = ELit emptyAnn . LChar

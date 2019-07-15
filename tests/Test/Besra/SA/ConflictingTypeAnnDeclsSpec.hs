@@ -1,5 +1,7 @@
 
-module Test.Besra.SA.ConflictingTypeAnnDecls ( module Test.Besra.SA.ConflictingTypeAnnDecls ) where
+module Test.Besra.SA.ConflictingTypeAnnDeclsSpec
+  ( module Test.Besra.SA.ConflictingTypeAnnDeclsSpec
+  ) where
 
 import Protolude hiding ( Type )
 import qualified Data.Text as T
@@ -14,7 +16,7 @@ import Besra.Types.IR1.Type
 import Besra.Types.IR1.Scheme
 import Besra.Types.IR1.TypeAnn
 import Besra.Parser
-import Test.Tasty.Hspec
+import Test.Hspec
 
 
 type Module' = Module 'Parsed
@@ -55,8 +57,8 @@ txt ==> b =
      Right a -> analyze' a `shouldBe` b
 
 
-spec_conflictingTypeAnnDecls :: Spec
-spec_conflictingTypeAnnDecls = describe "SA: ConflictingTypeAnnDecls" $ parallel $ do
+spec :: Spec
+spec = describe "SA: ConflictingTypeAnnDecls" $ parallel $ do
   it "reports no errors for empty module" $
     "" ==> Ok
 

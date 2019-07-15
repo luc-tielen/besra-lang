@@ -1,9 +1,9 @@
 
-module Test.Besra.Parser.Trait ( module Test.Besra.Parser.Trait ) where
+module Test.Besra.Parser.TraitSpec ( module Test.Besra.Parser.TraitSpec ) where
 
 import Protolude hiding ( Type, pred )
 import Test.Hspec.Megaparsec hiding (shouldFailWith, succeedsLeaving)
-import Test.Tasty.Hspec
+import Test.Hspec
 import Test.Besra.Parser.Helpers
 import Test.Besra.Helpers
 import Besra.Types.Id
@@ -60,8 +60,8 @@ infixr 2 -->
 infixr 1 ==>
 
 
-spec_traitParseTest :: Spec
-spec_traitParseTest = describe "trait parser" $ parallel $ do
+spec :: Spec
+spec = describe "trait parser" $ parallel $ do
   it "can parse trait without body" $ do
     "trait Eq a where" ==> trait [] (pred "Eq" ["a"]) []
     "trait Eq a where " ==> trait [] (pred "Eq" ["a"]) []
