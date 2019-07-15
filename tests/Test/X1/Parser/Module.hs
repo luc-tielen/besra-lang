@@ -6,7 +6,10 @@ module Test.X1.Parser.Module ( module Test.X1.Parser.Module ) where
 import Protolude hiding ( Type, Fixity, pred )
 import Test.Tasty.Hspec
 import Test.X1.Parser.Helpers
+import Test.X1.Helpers
 import X1.Types.Id
+import X1.Types.Ann
+import X1.Types.Span
 import X1.Types.Fixity
 import X1.Types.Expr1.Module
 import X1.Types.Expr1.Expr
@@ -26,43 +29,58 @@ import Test.Hspec.Megaparsec hiding (shouldFailWith)
 import NeatInterpolation
 
 
+type Module' = Module 'Testing
+type Expr1' = Expr1 'Testing
+type Decl' = Decl 'Testing
+type Type' = Type 'Testing
+type Scheme' = Scheme 'Testing
+type Pred' = Pred 'Testing
 
-parse :: Text -> ParseResult Module
+parse :: Text -> ParseResult (Module 'Parsed)
 parse = mkParser parser
 
-con :: Text -> Type
-con = TCon . Tycon . Id
+(==>) :: Text -> Module' -> IO ()
+a ==> b = (stripAnns <$> parse a) `shouldParse` b
 
-var :: Text -> Type
-var = TVar . Tyvar . Id
 
-app :: Type -> [Type] -> Type
+(~~>) :: Text -> Module 'Parsed -> IO ()
+a ~~> b = parse a `shouldParse` b
+
+con :: Text -> Type'
+con = TCon . Tycon emptyAnn . Id
+
+var :: Text -> Type'
+var = TVar . Tyvar emptyAnn . Id
+
+app :: Type' -> [Type'] -> Type'
 app = TApp
 
-(==>) :: Text -> Module -> IO ()
-a ==> b = parse a `shouldParse` b
+parens :: Type' -> Type'
+parens = TParen emptyAnn
 
-(-->) :: Type -> Type -> Type
+(-->) :: Type' -> Type' -> Type'
 t1 --> t2 = app (con "->") [t1, t2]
 
-num :: Int -> Expr1
-num = E1Lit . LNumber . SInt
+num :: Int -> Expr1'
+num = E1Lit emptyAnn . LNumber . SInt
 
-str :: Text -> Expr1
-str = E1Lit . LString . String
+str :: Text -> Expr1'
+str = E1Lit emptyAnn . LString . String
 
-char :: Char -> Expr1
-char = E1Lit . LChar
+char :: Char -> Expr1'
+char = E1Lit emptyAnn . LChar
 
-lam :: [Text] -> Expr1 -> Expr1
-lam vars = E1Lam (PVar . Id <$> vars)
+lam :: [Text] -> Expr1' -> Expr1'
+lam vars = E1Lam emptyAnn (PVar . Id <$> vars)
 
-typeAnn :: Id -> Scheme -> Decl
-typeAnn name scheme = TypeAnnDecl (TypeAnn name scheme)
+typeAnn :: Id -> Scheme' -> Decl'
+typeAnn name sch = TypeAnnDecl (TypeAnn emptyAnn name sch)
 
-binding :: Text -> Expr1 -> Decl
-binding x = BindingDecl . Binding (Id x)
+binding :: Text -> Expr1' -> Decl'
+binding x = BindingDecl . Binding emptyAnn (Id x)
 
+scheme :: [Pred'] -> Type' -> Scheme'
+scheme = Scheme emptyAnn
 
 infixr 2 -->
 infixr 1 ==>
@@ -75,47 +93,48 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
 
   it "ignores whitespace at the beginning of a file" $
     "    \n\n   \n  \nx : Int"
-      ==> Module [typeAnn (Id "x") (Scheme [] $ con "Int")]
+      ==> Module [typeAnn (Id "x") (scheme [] $ con "Int")]
 
   it "ignores whitespace at the end of a file" $
     "x : Int    \n\n   \n  \n"
-      ==> Module [typeAnn (Id "x") (Scheme [] $ con "Int")]
+      ==> Module [typeAnn (Id "x") (scheme [] $ con "Int")]
 
   it "can parse multiple type level declarations" $ do
-    "x : Int\nx = 5" ==> Module [ typeAnn (Id "x") (Scheme [] $ con "Int")
+    "x : Int\nx = 5" ==> Module [ typeAnn (Id "x") (scheme [] $ con "Int")
                                 , binding "x" (num 5) ]
     "x = 5\nx : Int" ==> Module [ binding "x" (num 5)
-                                , typeAnn (Id "x") (Scheme [] $ con "Int") ]
+                                , typeAnn (Id "x") (scheme [] $ con "Int") ]
 
   describe "type declarations" $ parallel $ do
     it "can parse top level type declaration" $ do
-      "x : Int" ==> Module [typeAnn (Id "x") (Scheme [] $ con "Int")]
-      "x : a" ==> Module [typeAnn (Id "x") (Scheme [] $ var "a")]
-      "x : Int -> Int" ==> Module [typeAnn (Id "x") (Scheme [] $ con "Int" --> con "Int")]
+      "x : Int" ==> Module [typeAnn (Id "x") (scheme [] $ con "Int")]
+      "x : a" ==> Module [typeAnn (Id "x") (scheme [] $ var "a")]
+      "x : Int -> Int" ==> Module [typeAnn (Id "x") (scheme [] $ con "Int" --> con "Int")]
 
     it "can parse multiple type level declarations" $ do
-      "x : Int \ny : String" ==> Module [ typeAnn (Id "x") (Scheme [] $ con "Int")
-                                        , typeAnn (Id "y") (Scheme [] $ con "String")]
-      "x : Int\ny : String" ==> Module [ typeAnn (Id "x") (Scheme [] $ con "Int")
-                                       , typeAnn (Id "y") (Scheme [] $ con "String")]
+      "x : Int \ny : String" ==> Module [ typeAnn (Id "x") (scheme [] $ con "Int")
+                                        , typeAnn (Id "y") (scheme [] $ con "String")]
+      "x : Int\ny : String" ==> Module [ typeAnn (Id "x") (scheme [] $ con "Int")
+                                       , typeAnn (Id "y") (scheme [] $ con "String")]
 
     it "can parse multi-line declarations" $ do
-      "x\n :\n Int" ==> Module [typeAnn (Id "x") (Scheme [] $ con "Int")]
-      "x\n :\n Int -> Int" ==> Module [typeAnn (Id "x") (Scheme [] $ con "Int" --> con "Int")]
-      "x\n :\n Eq a => a -> a" ==> Module [typeAnn (Id "x")
-                                    (Scheme [IsIn (Id "Eq") [var "a"]] $ var "a" --> var "a")]
+      "x\n :\n Int" ==> Module [typeAnn (Id "x") (scheme [] $ con "Int")]
+      "x\n :\n Int -> Int" ==> Module [typeAnn (Id "x") (scheme [] $ con "Int" --> con "Int")]
+      "x\n :\n Eq a => a -> a"
+        ==> Module [typeAnn (Id "x")
+              (scheme [IsIn emptyAnn (Id "Eq") [var "a"]] $ var "a" --> var "a")]
 
     it "can handle linefolds in type signatures correctly" $ do
-      "x : Int -> Int\ny : String" ==> Module [ typeAnn (Id "x") (Scheme [] $ con "Int" --> con "Int")
-                                      , typeAnn (Id "y") (Scheme [] $ con "String")]
-      "x : Int \n  -> Int\ny : String" ==> Module [ typeAnn (Id "x") (Scheme [] $ con "Int" --> con "Int")
-                                      , typeAnn (Id "y") (Scheme [] $ con "String")]
-      "x : Int ->\n Int\ny : String" ==> Module [ typeAnn (Id "x") (Scheme [] $ con "Int" --> con "Int")
-                                      , typeAnn (Id "y") (Scheme [] $ con "String")]
-      "x\n : Int \n ->\n Int\ny : String" ==> Module [ typeAnn (Id "x") (Scheme [] $ con "Int" --> con "Int")
-                                      , typeAnn (Id "y") (Scheme [] $ con "String")]
-      "x :\n Int \n ->\n Int\ny : String" ==> Module [ typeAnn (Id "x") (Scheme [] $ con "Int" --> con "Int")
-                                      , typeAnn (Id "y") (Scheme [] $ con "String")]
+      "x : Int -> Int\ny : String" ==> Module [ typeAnn (Id "x") (scheme [] $ con "Int" --> con "Int")
+                                      , typeAnn (Id "y") (scheme [] $ con "String")]
+      "x : Int \n  -> Int\ny : String" ==> Module [ typeAnn (Id "x") (scheme [] $ con "Int" --> con "Int")
+                                      , typeAnn (Id "y") (scheme [] $ con "String")]
+      "x : Int ->\n Int\ny : String" ==> Module [ typeAnn (Id "x") (scheme [] $ con "Int" --> con "Int")
+                                      , typeAnn (Id "y") (scheme [] $ con "String")]
+      "x\n : Int \n ->\n Int\ny : String" ==> Module [ typeAnn (Id "x") (scheme [] $ con "Int" --> con "Int")
+                                      , typeAnn (Id "y") (scheme [] $ con "String")]
+      "x :\n Int \n ->\n Int\ny : String" ==> Module [ typeAnn (Id "x") (scheme [] $ con "Int" --> con "Int")
+                                      , typeAnn (Id "y") (scheme [] $ con "String")]
 
   describe "binding declarations" $ parallel $ do
     it "can parse top level constants" $ do
@@ -141,18 +160,18 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
       "f x y =\n \"abc123\"" ==> Module [binding "f" $ lam ["x", "y"] (str "abc123")]
 
     it "can parse a named function containing patterns" $ do
-      "f 1 \"abc\" = 123" ==> Module [binding "f" (E1Lam [ PLit (LNumber (SInt 1))
-                                                                  , PLit (LString (String "abc"))]
-                                                                  (num 123))]
-      "f a@(X y) = 123" ==> Module [binding "f" (E1Lam [ PAs (Id "a")
-                                                                  (PCon (Id "X") [PVar (Id "y")])]
-                                                                  (num 123))]
+      "f 1 \"abc\" = 123"
+        ==> Module [binding "f" (E1Lam emptyAnn [ PLit (LNumber (SInt 1))
+                                                , PLit (LString (String "abc"))] (num 123))]
+      "f a@(X y) = 123"
+        ==> Module [binding "f" (E1Lam emptyAnn [ PAs (Id "a")
+                                                  (PCon (Id "X") [PVar (Id "y")])] (num 123))]
 
     it "can parse multiple named functions" $
       "f x = 5\ng x y = \"abc123\""
         ==> Module [ binding "f" $ lam ["x"] (num 5)
-                   , binding "g" $ lam ["x", "y"] (str "abc123")
-                   ]
+                , binding "g" $ lam ["x", "y"] (str "abc123")
+                ]
 
   it "fails with readable error message" $ do
     let labels = mconcat $ elabel <$> ["pattern", "rest of assignment", "rest of type declaration"]
@@ -160,16 +179,16 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
     (parse, "1") `shouldFailWith` err 0 (utok '1' <> elabel "declaration" <> eeof)
 
   describe "operators" $ parallel $ do
-    let v = E1Var . Id
+    let v = E1Var emptyAnn . Id
         plusBinding = v "primitivePlus"
-        complexBinding = lam ["a", "b"] $ E1App plusBinding [v "a", v "b"]
+        complexBinding = lam ["a", "b"] $ E1App emptyAnn plusBinding [v "a", v "b"]
 
     it "can parse a top level type declaration for an operator" $ do
       "(+) : Int -> Int -> Int"
-        ==> Module [typeAnn (Id "+") (Scheme [] $ con "Int" --> con "Int" --> con "Int")]
+        ==> Module [typeAnn (Id "+") (scheme [] $ con "Int" --> con "Int" --> con "Int")]
       "(==) : Eq a => a -> a -> a"
         ==> Module [typeAnn (Id "==")
-                    (Scheme [IsIn (Id "Eq") [var "a"]] $
+                    (scheme [IsIn emptyAnn (Id "Eq") [var "a"]] $
                       var "a" --> var "a" --> var "a")]
 
     it "can parse a top level prefix binding declaration for an operator" $ do
@@ -189,7 +208,7 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
       (parse, "(+) :") `shouldFailWith` err 5 (ueof <> elabel "typescheme")
 
     describe "fixity declarations" $ parallel $ do
-      let expected op fixity prio = Module [FixityDecl fixity prio (Id op)]
+      let expected op fixity prio = Module [FixityDecl $ FixityInfo emptyAnn fixity prio (Id op)]
 
       it "can parse top level fixity declarations" $ do
         let expected' = expected "+"
@@ -211,9 +230,9 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
 
       it "can parse multiple fixity declarations" $
         "infixl 5 +\ninfixr 7 `plus`\ninfixl 6 *"
-          ==> Module [ FixityDecl L 5 (Id "+")
-                     , FixityDecl R 7 (Id "plus")
-                     , FixityDecl L 6 (Id "*")]
+          ==> Module [ FixityDecl $ FixityInfo emptyAnn L 5 (Id "+")
+                     , FixityDecl $ FixityInfo emptyAnn R 7 (Id "plus")
+                     , FixityDecl $ FixityInfo emptyAnn L 6 (Id "*")]
 
       it "can parse multiline fixity declaration" $ do
         "infixl\n 7\n  ***" ==> expected "***" L 7
@@ -261,10 +280,10 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
 
   describe "data declarations" $ parallel $ do
     let hd constr vars = ADTHead (con' constr) (var' <$> vars)
-        con' = Tycon . Id
-        var' = Tyvar . Id
-        body constr = ConDecl (Id constr)
-        adt adtHead adtBody = DataDecl (ADT adtHead adtBody)
+        con' = Tycon emptyAnn . Id
+        var' = Tyvar emptyAnn . Id
+        body constr = ConDecl emptyAnn (Id constr)
+        adt adtHead adtBody = DataDecl (ADT emptyAnn adtHead adtBody)
 
     it "can parse multiple ADTs in a row" $ do
       "data X\ndata Y" ==> Module [adt (hd "X" []) [], adt (hd "Y" []) []]
@@ -274,13 +293,15 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
                                           , adt (hd "Y" []) [body "Y" []]]
       "data X = X Y Z\ndata A = A (b -> c)\ndata D = F"
         ==> Module [ adt (hd "X" []) [body "X" [con "Y", con "Z"]]
-                   , adt (hd "A" []) [body "A" [var "b" --> var "c"]]
+                   , adt (hd "A" []) [body "A" [parens $ var "b" --> var "c"]]
                    , adt (hd "D" []) [body "F" []]
                    ]
 
     it "can parse ADT followed by binding declaration" $
       "data X\na = X"
-        ==> Module [adt (hd "X" []) [], BindingDecl $ Binding (Id "a") $ E1Con (Id "X")]
+        ==> Module [ adt (hd "X" []) []
+                   , BindingDecl $ Binding emptyAnn (Id "a") $ E1Con emptyAnn (Id "X")
+                   ]
 
     it "fails with readable error message" $ do
       (parse, "dat") `shouldFailWith` err 3
@@ -297,12 +318,12 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
         <> elabel "rest of identifier" <> elabel "rest of type declaration")
 
   describe "trait declarations" $ parallel $ do
-    let trait p typeAnns = TraitDecl $ Trait [] p typeAnns
-        pred clazz = IsIn (Id clazz) . map var
-        typeAnn' x = TypeAnn (Id x)
+    let trait p typeAnns = TraitDecl $ Trait emptyAnn [] p typeAnns
+        pred clazz = IsIn emptyAnn (Id clazz) . map var
+        typeAnn' x = TypeAnn emptyAnn (Id x)
 
     it "can parse multiple traits in a row" $ do
-      let mapType = (var "a" --> var "b")
+      let mapType = parens (var "a" --> var "b")
                   --> app (con "List") [var "a"]
                   --> app (con "List") [var "b"]
       [text|
@@ -311,42 +332,42 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
         trait Eq a where
           x : Int
           y : (a -> b) -> List a -> List b
-        |] ==> Module [ trait (pred "Eq" ["a"]) [typeAnn' "x" $ Scheme [] (con "Int")]
+        |] ==> Module [ trait (pred "Eq" ["a"]) [typeAnn' "x" $ scheme [] (con "Int")]
                       , trait (pred "Eq" ["a"])
-                              [ typeAnn' "x" $ Scheme [] (con "Int")
-                              , typeAnn' "y" $ Scheme [] mapType
-                              ]
+                           [ typeAnn' "x" $ scheme [] (con "Int")
+                           , typeAnn' "y" $ scheme [] mapType
+                           ]
                    ]
       [text|
         trait Eq a where
         trait Eq a where
         |] ==> Module [ trait (pred "Eq" ["a"]) []
                       , trait (pred "Eq" ["a"]) []
-                   ]
+                      ]
 
     it "can parse trait followed by other declaration" $ do
       [text|
         trait Eq a where
           x : Int
         a = 3
-        |] ==> Module [ trait (pred "Eq" ["a"]) [typeAnn' "x" $ Scheme [] (con "Int")]
-                      , BindingDecl $ Binding (Id "a") $ num 3]
+        |] ==> Module [ trait (pred "Eq" ["a"]) [typeAnn' "x" $ scheme [] (con "Int")]
+                      , BindingDecl $ Binding emptyAnn (Id "a") $ num 3]
       [text|
         trait Eq a where
           x : Int
         a : Int
-        |] ==> Module [ trait (pred "Eq" ["a"]) [typeAnn' "x" $ Scheme [] (con "Int")]
-                      , typeAnn (Id "a") $ Scheme [] (con "Int")]
+        |] ==> Module [ trait (pred "Eq" ["a"]) [typeAnn' "x" $ scheme [] (con "Int")]
+                      , typeAnn (Id "a") $ scheme [] (con "Int")]
       [text|
         trait Eq a where
         a = 3
         |] ==> Module [ trait (pred "Eq" ["a"]) []
-                      , BindingDecl $ Binding (Id "a") $ num 3]
+                      , BindingDecl $ Binding emptyAnn (Id "a") $ num 3]
       [text|
         trait Eq a where
         a : Int
         |] ==> Module [ trait (pred "Eq" ["a"]) []
-                      , typeAnn (Id "a") $ Scheme [] (con "Int")]
+                      , typeAnn (Id "a") $ scheme [] (con "Int")]
 
 
     it "fails with readable error message" $ do
@@ -366,9 +387,9 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
         (utok ':' <> elabel "properly indented type declaration in trait")
 
   describe "impl declarations" $ parallel $ do
-    let impl p bindings = ImplDecl $ Impl [] p bindings
-        pred clazz = IsIn (Id clazz)
-        binding' x = Binding (Id x)
+    let impl p bindings = ImplDecl $ Impl emptyAnn [] p bindings
+        pred clazz = IsIn emptyAnn (Id clazz)
+        binding' x = Binding emptyAnn (Id x)
 
     it "can parse multiple impls in a row" $ do
       [text|
@@ -421,4 +442,64 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
           <> elabel "type" <> elabel "type variable")
       (parse, "impl Eq X where\n x = 3\n  y = 4") `shouldFailWith` err 25
         (utok 'y' <> elabel "properly indented binding declaration in impl")
+
+  describe "location information" $ parallel $ do
+    let binding' :: Span -> Text -> Expr1 'Parsed -> Binding 'Parsed
+        binding' sp name = Binding sp (Id name)
+        num' ann = E1Lit ann . LNumber . SInt
+        lam' ann vars = E1Lam ann (PVar . Id <$> vars)
+        pred sp clazz = IsIn sp (Id clazz)
+        con' sp = TCon . Tycon sp . Id
+        var' sp = TVar . Tyvar sp . Id
+        app' = TApp
+        arr' sp t1 t2 = app' (con' sp "->") [t1, t2]
+        typeAnn' sp x = TypeAnn sp (Id x)
+        trait' sp ps p ts = TraitDecl $ Trait sp ps p ts
+
+    it "keeps track of location info for constant bindings" $ do
+      "a = 3  " ~~> Module [BindingDecl $ binding' (Span 0 5) "a" (num' (Span 4 5) 3)]
+      "abc = 123  " ~~> Module [BindingDecl $ binding' (Span 0 9) "abc" (num' (Span 6 9) 123)]
+
+    it "keeps track of location info for named function bindings" $ do
+      "a b c = 1 " ~~> Module [BindingDecl $ binding' (Span 0 9) "a"
+                                          $ lam' (Span 0 9) ["b", "c"] $ num' (Span 8 9) 1]
+      "abc def ghi = 1234 " ~~> Module [BindingDecl $ binding' (Span 0 18) "abc"
+                                        $ lam' (Span 0 18) ["def", "ghi"] $ num' (Span 14 18) 1234]
+
+    it "keeps track of location info for fixity declarations" $ do
+      "infixl 6 +++ " ~~> Module [FixityDecl $ FixityInfo (Span 0 12) L 6 (Id "+++")]
+      "infix 4 ** " ~~> Module [FixityDecl $ FixityInfo (Span 0 10) M 4 (Id "**")]
+      "infixr 5 >> " ~~> Module [FixityDecl $ FixityInfo (Span 0 11) R 5 (Id ">>")]
+
+    it "keeps track of location info for impl declaration" $ do
+      "impl MyClass Int where "
+        ~~> Module [ImplDecl
+                   $ Impl (Span 0 22) [] (pred (Span 5 16) "MyClass" [con' (Span 13 16) "Int"]) []]
+      "impl MyClass Int where\n abc def ghi = 123 "
+        ~~> Module [ImplDecl
+                   $ Impl (Span 0 41) [] (pred (Span 5 16) "MyClass" [con' (Span 13 16) "Int"])
+                      [binding' (Span 24 41) "abc" $
+                        lam' (Span 24 41) ["def", "ghi"] $ num' (Span 38 41) 123]
+                   ]
+
+    it "keeps track of location info for trait declaration" $ do
+      let tInt sp = con' sp "Int"
+          varA sp = var' sp "a"
+          myClass = pred (Span 60 69) "MyClass" [var' (Span 68 69) "a"]
+          p1 = TParen (Span 73 81) (arr' (Span 76 78) (varA (Span 74 75)) (var' (Span 79 80) "a"))
+          complexType = arr' (Span 82 84) p1 (varA (Span 85 86))
+      [text|
+        trait Eq a where
+          x : Int
+        trait Eq a where
+          x : Int
+          y : MyClass a => (a -> a) -> a
+        |] ~~> Module
+          [ trait' (Span 0 26) [] (pred (Span 6 10) "Eq" [varA (Span 9 10)])
+            [typeAnn' (Span 19 26) "x" (Scheme (Span 23 26) [] $ tInt (Span 23 26))]
+          , trait' (Span 27 86) [] (pred (Span 33 37) "Eq" [varA (Span 36 37)])
+            [ typeAnn' (Span 46 53) "x" (Scheme (Span 50 53) [] (tInt (Span 50 53)))
+            , typeAnn' (Span 56 86) "y"  (Scheme (Span 60 86) [myClass] complexType)
+            ]
+          ]
 

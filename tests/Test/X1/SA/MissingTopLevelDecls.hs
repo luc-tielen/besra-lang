@@ -6,6 +6,8 @@ import X1.SA.MissingTopLevelDecls
 import X1.SA.Helpers
 import X1.SA.Types
 import X1.Types.Id
+import X1.Types.Ann
+import X1.Types.Span
 import X1.Types.Expr1.Module
 import X1.Types.Expr1.Expr
 import X1.Types.Expr1.Lit
@@ -18,31 +20,38 @@ import X1.Parser
 import Test.Tasty.Hspec
 
 
+type Module' = Module 'Parsed
+type Expr1' = Expr1 'Parsed
+type Type' = Type 'Parsed
+type Ann' = Ann 'Parsed
+
 file :: FilePath
 file = "Test.x1"
 
-analyze' :: Validation [SAError] Module
+analyze' :: Validation [SAError] Module'
 analyze' = analyze [validate file]
 
-missingType :: Text -> Expr1 -> SAError
-missingType var expr =
-  let bindingDecl = BindingDecl $ Binding (Id var) expr
+missingType :: Span -> Text -> Expr1' -> SAError
+missingType sp var expr =
+  let bindingDecl = BindingDecl $ Binding sp (Id var) expr
    in MissingTopLevelTypeAnnDeclErr $ MissingTopLevelTypeAnnDecl file bindingDecl
 
-missingBinding :: Text -> Type -> SAError
-missingBinding var ty =
-  let toTypeAnnDecl = TypeAnnDecl . TypeAnn (Id var) . Scheme []
+missingBinding :: Span -> Text -> Type' -> SAError
+missingBinding sp var ty =
+  let toTypeAnnDecl = TypeAnnDecl . TypeAnn sp (Id var) . scheme
+      scheme t = Scheme (span t) [] t
       err = MissingTopLevelBindingDeclErr . MissingTopLevelBindingDecl file . toTypeAnnDecl
    in err ty
 
-num :: Int -> Expr1
-num = E1Lit . LNumber . SInt
+num :: Ann' -> Int -> Expr1'
+num ann = E1Lit ann . LNumber . SInt
 
-str :: Text -> Expr1
-str = E1Lit . LString . String
+str :: Ann' -> Text -> Expr1'
+str ann = E1Lit ann . LString . String
 
-c :: Text -> Type
-c = TCon . Tycon . Id
+c :: Span -> Text -> Type'
+c ann = TCon . Tycon ann . Id
+
 
 (==>) :: Text -> ValidationResult [SAError] -> IO ()
 txt ==> b =
@@ -62,11 +71,12 @@ spec_missingTopLevelDecls = describe "SA: MissingTopLevelDecls" $ parallel $ do
     "x : Int\nx = 5\ny : String\ny = \"abc\"" ==> Ok
 
   it "reports an error for each missing type signature" $ do
-    "x = 5" ==> Err [missingType "x" (num 5)]
-    "x = 5\ny = \"abc\"" ==> Err [missingType "x" (num 5), missingType "y" (str "abc")]
+    "x = 5" ==> Err [missingType (Span 0 5) "x" (num (Span 4 5) 5)]
+    "x = 5\ny = \"abc\"" ==> Err [ missingType (Span 0 5) "x" (num (Span 4 5) 5)
+                                 , missingType (Span 6 15) "y" (str (Span 10 15) "abc")]
 
   it "reports an error for each missing binding" $ do
-    "x : Int" ==> Err [missingBinding "x" (c "Int")]
-    "x : Int\ny : String" ==> Err [ missingBinding "x" (c "Int")
-                                  , missingBinding "y" (c "String")]
+    "x : Int" ==> Err [missingBinding (Span 0 7) "x" (c (Span 4 7) "Int")]
+    "x : Int\ny : String" ==> Err [ missingBinding (Span 0 7) "x" (c (Span 4 7) "Int")
+                                  , missingBinding (Span 8 18) "y" (c (Span 12 18) "String")]
 

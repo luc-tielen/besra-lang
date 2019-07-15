@@ -6,6 +6,8 @@ import Test.Tasty.Hspec
 import Test.X1.Parser.Helpers
 import X1.Parser.Expr1 (parser)
 import X1.Types.Id
+import X1.Types.Ann
+import X1.Types.Span
 import X1.Types.Fixity
 import X1.Types.Expr1.Expr
 import X1.Types.Expr1.Lit
@@ -16,54 +18,69 @@ import X1.Types.Expr1.Number
 import X1.Types.Expr1.Pattern
 import X1.Types.Expr1.TypeAnn
 import Test.Hspec.Megaparsec hiding (shouldFailWith, succeedsLeaving)
+import Test.X1.Helpers
+
+type Expr1' = Expr1 'Testing
+type ExprDecl' = ExprDecl 'Testing
+type Type' = Type 'Testing
+type Ann' = Ann 'Parsed
 
 
-c :: Text -> Type
-c = TCon . Tycon . Id
+-- Same as -->, but strips annotations too
+(==>) :: Text -> Expr1' -> IO ()
+a ==> b = (stripAnns <$> parse a) `shouldParse` b
+infixr 0 ==>
 
-let' :: [ExprDecl] -> Expr1 -> Expr1
-let' = E1Let
+(-->) :: Text -> Expr1 'Parsed -> IO ()
+a --> b = parse a `shouldParse` b
+infixr 0 -->
 
-op :: Expr1 -> Expr1 -> Expr1 -> Expr1
-op = E1BinOp
-
-parens :: Expr1 -> Expr1
-parens = E1Parens
-
-binding :: Text -> Expr1 -> ExprDecl
-binding x = ExprBindingDecl . Binding (Id x)
-
-sig :: Text -> Type -> ExprDecl
-sig x ty = ExprTypeAnnDecl $ TypeAnn (Id x) (Scheme [] ty)
-
-parse :: Text -> ParseResult Expr1
+parse :: Text -> ParseResult (Expr1 'Parsed)
 parse = mkParser parser
+
+c :: Text -> Type'
+c = TCon . Tycon emptyAnn . Id
+
+let' :: [ExprDecl'] -> Expr1' -> Expr1'
+let' = E1Let emptyAnn
+
+op :: Expr1' -> Expr1' -> Expr1' -> Expr1'
+op = E1BinOp emptyAnn
+
+parens :: Expr1' -> Expr1'
+parens = E1Parens emptyAnn
+
+var :: Text -> Expr1'
+var = E1Var emptyAnn . Id
+
+binding :: Text -> Expr1' -> ExprDecl'
+binding x = ExprBindingDecl . Binding emptyAnn (Id x)
+
+sig :: Text -> Type' -> ExprDecl'
+sig x ty = ExprTypeAnnDecl $ TypeAnn emptyAnn (Id x) (Scheme emptyAnn [] ty)
 
 
 spec_exprParseTest :: Spec
 spec_exprParseTest = describe "expression parser" $ parallel $ do
   describe "literals" $ parallel $ do
-    let num = E1Lit . LNumber
-        str = E1Lit . LString . String
-        char = E1Lit . LChar
+    let str = E1Lit emptyAnn . LString . String
+        char = E1Lit emptyAnn . LChar
+        num = E1Lit emptyAnn . LNumber
 
     it "can parse literals" $ do
-      let a ==> b = parse a `shouldParse` str b
-      "\"\"" ==> ""
-      "\"0\"" ==> "0"
-      "\"ab123\"" ==> "ab123"
-      "\"a b\"" ==> "a b"
+      "\"\"" ==> str ""
+      "\"0\"" ==> str "0"
+      "\"ab123\"" ==> str "ab123"
+      "\"a b\"" ==> str "a b"
 
     it "can parse number literals" $ do
-      let a ==> b = parse a `shouldParse` num b
-      "123" ==> SInt 123
-      "0b1011" ==> SBin "0b1011"
-      "0xC0FF33" ==> SHex "0xC0FF33"
+      "123" ==> num (SInt 123)
+      "0b1011" ==> num (SBin "0b1011")
+      "0xC0FF33" ==> num (SHex "0xC0FF33")
 
     it "can parse char literals" $ do
-      let a ==> b = parse a `shouldParse` char b
-      "'0'" ==> '0'
-      "'a'" ==> 'a'
+      "'0'" ==> char '0'
+      "'a'" ==> char 'a'
 
     it "fails with readable error message for strings" $
       (parse, "\"abc") `shouldFailWith` err 4 (ueof <> etok '"')
@@ -80,17 +97,15 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       (parse, "0b") `shouldFailWith` err 2 (ueof <> elabel "binary digit")
 
   it "can parse variables" $ do
-    let a ==> b = parse a `shouldParse` E1Var (Id b)
-    "abc123" ==> "abc123"
-    "a'" ==> "a'"
+    "abc123" ==> var "abc123"
+    "a'" ==> var "a'"
 
   describe "if expressions" $ parallel $ do
     -- NOTE: does not take typesystem into account, only parsing.
-    let if' = E1If
-        num = E1Lit . LNumber . SInt
-        str = E1Lit . LString . String
-        char = E1Lit . LChar
-        a ==> b = parse a `shouldParse` b
+    let if' = E1If emptyAnn
+        num = E1Lit emptyAnn . LNumber . SInt
+        str = E1Lit emptyAnn . LString . String
+        char = E1Lit emptyAnn . LChar
 
     it "can parse single-line if expressions" $ do
       "if 123 then 456 else 789" ==> if' (num 123) (num 456) (num 789)
@@ -106,7 +121,7 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       "if 1 then 2 else if 3 then 4 else 5" ==> if' (num 1) (num 2) (if' (num 3) (num 4) (num 5))
 
     it "can parse nested expression inside if" $ do
-      let op' x = E1BinOp (E1Var $ Id x)
+      let op' x = op (var x)
           complex = op' "*" (op' "+" (num 1) (num 2)) (num 3)
       "if 1 + 2 * 3 then 1 else 1" ==> if' complex (num 1) (num 1)
       "if 1 then 1 + 2 * 3 else 1" ==> if' (num 1) complex (num 1)
@@ -133,10 +148,8 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       (parse, "if 1 then if 2\nthen 3 else 4 else 5") `shouldFailWith` errFancy 15 (badIndent 11 1)
 
   describe "let expressions" $ parallel $ do
-    let var = E1Var . Id
-        num = E1Lit . LNumber . SInt
-        lam vars = E1Lam (PVar . Id <$> vars)
-        a ==> b = parse a `shouldParse` b
+    let num = E1Lit emptyAnn . LNumber . SInt
+        lam vars = E1Lam emptyAnn (PVar . Id <$> vars)
 
     it "can parse multi-line let expressions" $ do
       "let x = 1 in x" ==> let' [binding "x" (num 1)] (var "x")  -- special case, for now
@@ -194,12 +207,10 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
         (utoks "y " <> elabel "properly indented declaration or 'in' keyword")
 
   describe "lambdas" $ parallel $ do
-    let a ==> b = parse a `shouldParse` b
-        lam vars = E1Lam (PVar . Id <$> vars)
+    let lam vars = E1Lam emptyAnn (PVar . Id <$> vars)
         num' = LNumber . SInt
-        num = E1Lit . num'
+        num = E1Lit emptyAnn . num'
         str' =  LString . String
-        var = E1Var . Id
 
     it "can parse lambda with 1 argument" $ do
       "\\x -> 1" ==> lam ["x"] (num 1)
@@ -212,8 +223,8 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       "\\ a b c -> 1" ==> lam ["a", "b", "c"] (num 1)
 
     it "can parse lambdas containing patterns" $ do
-      "\\1 \"abc\" -> 123" ==> E1Lam [PLit (num' 1), PLit (str' "abc")] (num 123)
-      "\\a@(X y) -> 123" ==> E1Lam [PAs (Id "a") $ PCon (Id "X") [PVar (Id "y")]] (num 123)
+      "\\1 \"abc\" -> 123" ==> E1Lam emptyAnn [PLit (num' 1), PLit (str' "abc")] (num 123)
+      "\\a@(X y) -> 123" ==> E1Lam emptyAnn [PAs (Id "a") $ PCon (Id "X") [PVar (Id "y")]] (num 123)
 
     it "can parse lambda over multiple lines" $ do
       "\\a b -> \n a" ==> lam ["a", "b"] (var "a")
@@ -235,11 +246,9 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       (parse, "\\a ->\na") `shouldFailWith` errFancy 6 (badIndent 1 1)
 
   describe "function application" $ parallel $ do
-    let a ==> b = parse a `shouldParse` b
-        app = E1App
-        num = E1Lit . LNumber . SInt
-        var = E1Var . Id
-        con = E1Con . Id
+    let app = E1App emptyAnn
+        num = E1Lit emptyAnn . LNumber . SInt
+        con = E1Con emptyAnn . Id
 
     it "can parse application with 1 argument" $ do
       "f 1" ==> app (var "f") [num 1]
@@ -263,15 +272,21 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       "(((1)))" ==> (parens . parens . parens $ num 1)
       "(f) a b" ==> app (parens $ var "f") [var "a", var "b"]
 
+  describe "parentheses" $ parallel $ do
+    let num = num' emptyAnn
+        num' ann = E1Lit ann . LNumber . SInt
+
+    it "can parse expressions inside parentheses" $ do
+      "(1)" ==> parens $ num 1
+      "((123))" ==> parens . parens $ num 123
+
   describe "case expressions" $ parallel $ do
-    let a ==> b = parse a `shouldParse` b
-        case' = E1Case
+    let case' = E1Case emptyAnn
         pvar = PVar . Id
         pcon x = PCon (Id x)
-        var = E1Var . Id
         num' = LNumber . SInt
-        num = E1Lit . num'
-        str = E1Lit . LString . String
+        num = E1Lit emptyAnn . num'
+        str = E1Lit emptyAnn . LString . String
 
     it "can parse a case expression with 1 branch" $ do
       "case 1 of\n x -> x" ==> case' (num 1) [(pvar "x", var "x")]
@@ -302,12 +317,10 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
         (utok '2' <> elabel "properly indented case clause")
 
   describe "operators" $ parallel $ do
-    let num = E1Lit . LNumber . SInt
-        fixity ty prio op' = ExprFixityDecl ty prio (Id op')
-        app = E1App
-        var = E1Var . Id
-        con = E1Con . Id
-        a ==> b = parse a `shouldParse` b
+    let num = E1Lit emptyAnn . LNumber . SInt
+        fixity ty prio op' = ExprFixityDecl $ FixityInfo emptyAnn ty prio (Id op')
+        app = E1App emptyAnn
+        con = E1Con emptyAnn . Id
 
     it "can parse a type declaration for an operator in a let" $ do
       "let (+) : Int\nin\n 1" ==> let' [sig "+" (c "Int")] (num 1)
@@ -339,17 +352,17 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
         ==> op (var "&&") (op (var "||") (con "True") (con "False")) (con "True")
 
     it "can parse prefix negation operator" $ do
-      let neg = E1Neg
+      let neg = E1Neg emptyAnn
       "-1 + 2" ==> op (var "+") (neg $ num 1) (num 2)
       "- 1 + 2" ==> op (var "+") (neg $ num 1) (num 2)
       "1 + -2" ==> op (var "+") (num 1) (neg $ num 2)
       "1 + - 2" ==> op (var "+") (num 1) (neg $ num 2)
       "-1 + -2" ==> op (var "+") (neg $ num 1) (neg $ num 2)
       "- 1 + - 2" ==> op (var "+") (neg $ num 1) (neg $ num 2)
-      "-0b0" ==> neg (E1Lit $ LNumber $ SBin "0b0")
+      "-0b0" ==> neg (E1Lit emptyAnn $ LNumber $ SBin "0b0")
 
     it "can parse expressions with mix of parentheses and operators" $ do
-      let op' x = E1BinOp (E1Var $ Id x)
+      let op' x = op (var x)
           complex x y z = op' "*" (op' "+" (num x) (num y)) (num z)
       "1 + (2 + 3)" ==> op' "+" (num 1) (parens $ op' "+" (num 2) (num 3))
       "(1 + 2 * 3) <> (4 + 5 * 6)"
@@ -390,19 +403,122 @@ spec_exprParseTest = describe "expression parser" $ parallel $ do
       (parse, "1 + + 2") `shouldFailWith` err 4 (utoks "+ 2" <> elabel "expression")
 
   it "can parse variables" $ do
-    let a ==> b = parse a `shouldParse` E1Var (Id b)
-    "a" ==> "a"
-    "abc123" ==> "abc123"
-    "a'" ==> "a'"
-    "a'b" ==> "a'b"
+    "a" ==> var "a"
+    "abc123" ==> var "abc123"
+    "a'" ==> var "a'"
+    "a'b" ==> var "a'b"
 
   it "can parse constructors" $ do
-    let a ==> b = parse a `shouldParse` b
-        con = E1Con . Id
-        var = E1Var . Id
-        app = E1App
+    let con = E1Con emptyAnn . Id
+        app = E1App emptyAnn
     "True" ==> con "True"
     "X y" ==> app (con "X") [var "y"]
     "Abc123 y" ==> app (con "Abc123") [var "y"]
     "Abc123 y z" ==> app (con "Abc123") [var "y", var "z"]
+
+  describe "location information" $ parallel $ do
+    let str' ann = E1Lit ann . LString . String
+        char' ann = E1Lit ann . LChar
+        num' ann = E1Lit ann . LNumber
+        var' ann = E1Var ann . Id
+        con' ann = E1Con ann . Id
+        lam' ann vars = E1Lam ann (PVar . Id <$> vars)
+        app' = E1App
+        op' = E1BinOp
+        neg' = E1Neg
+        if' = E1If
+        case' = E1Case
+        pvar = PVar . Id
+
+    it "adds location information to the expression" $ do
+      "(1  )" --> E1Parens (Span 0 5) $ num' (Span 1 2) (SInt 1)
+      "(  1  )" --> E1Parens (Span 0 7) $ num' (Span 3 4) (SInt 1)
+      "(  (1)  )" --> E1Parens (Span 0 9) $ E1Parens (Span 3 6) $ num' (Span 4 5) (SInt 1)
+      "(  (1)  ) " --> E1Parens (Span 0 9) $ E1Parens (Span 3 6) $ num' (Span 4 5) (SInt 1)
+
+    it "adds location information to the expression" $ do
+      "123 " --> num' (Span 0 3) (SInt 123)
+      "0b1011 " --> num' (Span 0 6) (SBin "0b1011")
+      "0xC0FF33 " --> num' (Span 0 8) (SHex "0xC0FF33")
+      "'a' " --> char' (Span 0 3) 'a'
+      "\"ab123\" " --> str' (Span 0 7) "ab123"
+
+    it "adds location information to vars" $ do
+      "a " --> var' (Span 0 1) "a"
+      "abc123 " --> var' (Span 0 6) "abc123"
+
+    it "adds location information to constructors" $ do
+      "A " --> con' (Span 0 1) "A"
+      "Abc123 " --> con' (Span 0 6) "Abc123"
+
+    it "adds location information to infix operators" $ do
+      "1 + 2 " --> op' (Span 0 5) (var' (Span 2 3) "+")
+                                  (num' (Span 0 1) (SInt 1))
+                                  (num' (Span 4 5) (SInt 2))
+      "1 ++ 2 " --> op' (Span 0 6) (var' (Span 2 4) "++")
+                                   (num' (Span 0 1) (SInt 1))
+                                   (num' (Span 5 6) (SInt 2))
+
+    it "adds location information to infix functions" $ do
+      "1 `f` 2 " --> op' (Span 0 7) (var' (Span 2 5) "f")
+                                    (num' (Span 0 1) (SInt 1))
+                                    (num' (Span 6 7) (SInt 2))
+      "1 `myFunction` 2 " --> op' (Span 0 16) (var' (Span 2 14) "myFunction")
+                                              (num' (Span 0 1) (SInt 1))
+                                              (num' (Span 15 16) (SInt 2))
+
+    it "adds location information to function and vars in function application" $ do
+      "f 1" --> app' (Span 0 3) (var' (Span 0 1) "f") [num' (Span 2 3) $ SInt 1]
+      "myFunction 1"
+        --> app' (Span 0 12) (var' (Span 0 10) "myFunction") [num' (Span 11 12) $ SInt 1]
+
+    it "adds location information to prefix operators" $ do
+      "(+) 1" --> app' (Span 0 5) (var' (Span 0 3) "+") [num' (Span 4 5) $ SInt 1]
+      "(++) 1" --> app' (Span 0 6) (var' (Span 0 4) "++") [num' (Span 5 6) $ SInt 1]
+
+    it "adds location information for binary operators" $ do
+      "a + b " --> op' (Span 0 5) (var' (Span 2 3) "+")
+                                  (var' (Span 0 1) "a")
+                                  (var' (Span 4 5) "b")
+      "a `myFunction` b " --> op' (Span 0 16) (var' (Span 2 14) "myFunction")
+                                              (var' (Span 0 1) "a")
+                                              (var' (Span 15 16) "b")
+
+    it "adds location information for unary negation operator" $ do
+      "-a " --> neg' (Span 0 2) (var' (Span 1 2) "a")
+      "-abc " --> neg' (Span 0 4) (var' (Span 1 4) "abc")
+      "- abc " --> neg' (Span 0 5) (var' (Span 2 5) "abc")
+
+    it "adds location information for lambda expressions" $ do
+      "\\a b -> 1 " --> lam' (Span 0 9) ["a", "b"] $ num' (Span 8 9) (SInt 1)
+      "\\abc def -> 123 " --> lam' (Span 0 15) ["abc", "def"] $ num' (Span 12 15) (SInt 123)
+
+    it "adds location information to if expressions" $
+      "if 123 then 456 else 789 "
+        --> if' (Span 0 24) (num' (Span 3 6) $ SInt 123)
+                            (num' (Span 12 15) $ SInt 456)
+                            (num' (Span 21 24) $ SInt 789)
+
+    it "adds location information to case expression" $ do
+      "case 1 of\n x -> x "
+        --> case' (Span 0 17) (num' (Span 5 6) (SInt 1))
+              [(pvar "x", var' (Span 16 17) "x")]
+      "case 1 of\n 1 -> 2\n x -> x "
+        --> case' (Span 0 25) (num' (Span 5 6) (SInt 1))
+              [ (PLit (LNumber $ SInt 1), num' (Span 16 17) (SInt 2))
+              , (pvar "x", var' (Span 24 25) "x")
+              ]
+
+    it "adds location information to let expressions" $ do
+      let binding' sp x = ExprBindingDecl . Binding sp (Id x)
+      "let x = 1 in x "
+        --> E1Let (Span 0 14)
+             [binding' (Span 4 9) "x" $ num' (Span 8 9) (SInt 1)]
+             (var' (Span 13 14) "x")
+      "let x = 1\n    y = 2\nin x "
+        --> E1Let (Span 0 24)
+             [ binding' (Span 4 9) "x" $ num' (Span 8 9) (SInt 1)
+             , binding' (Span 14 19) "y" $ num' (Span 18 19) (SInt 2)
+             ]
+             (var' (Span 23 24) "x")
 

@@ -2,7 +2,10 @@
 module X1.Parser.Impl ( parser ) where
 
 import Protolude hiding ( Type, try, functionName )
+import Data.Maybe ( fromJust )
 import X1.Types.Id
+import X1.Types.Ann
+import X1.Types.Span
 import X1.Types.Expr1.Expr
 import X1.Types.Expr1.Type
 import X1.Types.Expr1.Pred
@@ -15,26 +18,39 @@ import qualified X1.Parser.Tycon as Tycon
 import qualified X1.Parser.Tyvar as Tyvar
 
 
-parser :: Parser Impl
+type Impl' = Impl 'Parsed
+type Binding' = Binding 'Parsed
+type Pred' = Pred 'Parsed
+
+parser :: Parser Impl'
 parser = parser' <?> "impl declaration" where
   parser' = withLineFold $ do
+    startPos <- getOffset
     keyword "impl"
     predicates <- Scheme.predicatesPrefix
     typeInfo <- lexeme' implParser
+    posBeforeWhere <- getOffset
     kwResult <- keyword' "where"
+    let sp1 = Span startPos (posBeforeWhere + 5)
     case kwResult of
-      NoTrailingWS -> pure $ Impl predicates typeInfo []
+      NoTrailingWS -> pure $ Impl sp1 predicates typeInfo []
       TrailingWS -> do
         indent <- indentLevel
         let bindingParser' = withIndent indent (withLineFold bindingParser)
         bindings <- many bindingParser'
         notFollowedBy badlyIndentedDecl <?> badIndentMsg
-        pure $ Impl predicates typeInfo bindings
+        let spans = sp1 :| map span bindings
+        pure $ Impl (span spans) predicates typeInfo bindings
   badlyIndentedDecl = indented bindingParser
   badIndentMsg = "properly indented binding declaration in impl"
 
-implParser :: Parser Pred
-implParser = IsIn <$> traitId <*> some (implTypeParser <?> "type")
+implParser :: Parser Pred'
+implParser = do
+  startPos <- getOffset
+  name <- traitId
+  ts <- some (implTypeParser <?> "type")
+  let sp = span $ fromJust $ nonEmpty ts
+  pure $ IsIn (startPos .> sp) name ts
   where
     traitId = Id <$> lexeme' capitalIdentifier <?> "trait identifier"
     implTypeParser = lexeme' (betweenParens implTypeParser) <|> implType
@@ -48,14 +64,17 @@ implParser = IsIn <$> traitId <*> some (implTypeParser <?> "type")
 
 
 -- TODO remove duplication with expr1 parser once type decls are supported in instances
-bindingParser :: Parser Binding
+bindingParser :: Parser Binding'
 bindingParser = try namedFunctionDecl <|> simpleBinding
 
-namedFunctionDecl :: Parser Binding
+namedFunctionDecl :: Parser Binding'
 namedFunctionDecl = do
+  startPos <- getOffset
   (funcName, vars) <- lexeme' functionHead
-  body <- E1Lam vars <$> Expr1.parser
-  pure $ Binding funcName body
+  expr <- Expr1.parser
+  let sp = startPos .> span expr
+      body = E1Lam sp vars expr
+  pure $ Binding sp funcName body
   where
     functionHead = sameLine $ do
       funcName <- lexeme declIdentifier
@@ -63,11 +82,13 @@ namedFunctionDecl = do
       void $ lexeme assign
       pure (funcName, vars)
 
-simpleBinding :: Parser Binding
+simpleBinding :: Parser Binding'
 simpleBinding = do
+  startPos <- getOffset
   var <- lexeme' declIdentifier
   void $ lexeme' assign
-  Binding var <$> Expr1.parser
+  expr <- Expr1.parser
+  pure $ Binding (startPos .> span expr) var expr
 
 declIdentifier :: Parser Id
 declIdentifier = Id <$> identifier <|> prefixOperator

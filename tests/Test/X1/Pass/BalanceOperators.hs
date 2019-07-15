@@ -16,74 +16,89 @@ import X1.Types.Expr1.Type
 import X1.Types.Expr1.Pattern
 import X1.Types.Id
 import X1.Types.Fixity
+import X1.Types.Ann
 import X1.Parser
 import Test.Tasty.Hspec
 import NeatInterpolation
+import Test.X1.Helpers
 
 
-runPass :: Text -> IO (Either BalanceError Module)
+type Module' = Module 'Testing
+type Decl' = Decl 'Testing
+type Binding' = Binding 'Testing
+type Expr1' = Expr1 'Testing
+type Type' = Type 'Testing
+type BalanceError' = BalanceError 'Parsed
+
+runPass :: Text -> IO (Either BalanceError' Module')
 runPass input =
   let
     parseResult = parseFile "balance_operators.test" input
-   in
-    runExceptT $ case parseResult of
+    passResult = case parseResult of
       Left err -> panic $ printError err
       Right result -> pass result
+  in
+    runExceptT $ stripAnns <$> passResult
 
 class Testable a where
   (==>) :: Text -> a -> IO ()
 
 infixr 0 ==>
 
-instance Testable Module where
+instance Testable Module' where
   a ==> b = do
     result <- runPass a
     result `shouldBe` Right b
 
-instance Testable Decl where
+instance Testable Decl' where
   a ==> b = a ==> Module $ infixDecls "+" "*" ++ [b]
 
-instance Testable Binding where
+instance Testable Binding' where
   a ==> b = a ==> BindingDecl b
 
-instance Testable Expr1 where
+instance Testable Expr1' where
   a ==> b = a ==> binding "a" b
 
-instance Testable BalanceError where
+instance Testable (BalanceError 'Testing) where
   a ==> b = do
     result <- runPass a
-    result `shouldBe` Left b
+    first stripAnn result `shouldBe` Left b
+      where stripAnn (BadPrecedence fi1 fi2 d) = BadPrecedence fi1 fi2 (stripAnns d)
+            stripAnn (InvalidPrefixPrecedence fi d) = InvalidPrefixPrecedence fi (stripAnns d)
 
 
-c :: Text -> Type
-c = TCon . Tycon . Id
+c :: Text -> Type'
+c = TCon . Tycon emptyAnn . Id
 
-binding :: Text -> Expr1 -> Binding
-binding x = Binding (Id x)
+binding :: Text -> Expr1' -> Binding'
+binding x = Binding emptyAnn (Id x)
 
-num :: Int -> Expr1
-num = E1Lit . LNumber . SInt
+num :: Int -> Expr1'
+num = E1Lit emptyAnn . LNumber . SInt
 
-app :: Expr1 -> [Expr1] -> Expr1
-app = E1App
+app :: Expr1' -> [Expr1'] -> Expr1'
+app = E1App emptyAnn
 
-lam :: [Text] -> Expr1 -> Expr1
-lam vars = E1Lam (PVar . Id <$> vars)
+lam :: [Text] -> Expr1' -> Expr1'
+lam vars = E1Lam emptyAnn (PVar . Id <$> vars)
 
-var :: Text -> Expr1
-var = E1Var . Id
+var :: Text -> Expr1'
+var = E1Var emptyAnn . Id
 
-con :: Text -> Expr1
-con = E1Con . Id
+con :: Text -> Expr1'
+con = E1Con emptyAnn . Id
 
-parens :: Expr1 -> Expr1
-parens = E1Parens
+parens :: Expr1' -> Expr1'
+parens = E1Parens emptyAnn
 
-op :: Text -> Expr1 -> Expr1 -> Expr1
-op operator = E1BinOp (var operator)
+op :: Text -> Expr1' -> Expr1' -> Expr1'
+op operator = E1BinOp emptyAnn (var operator)
 
-infixDecls :: Text -> Text -> [Decl]
-infixDecls a b = [ FixityDecl L 4 (Id a), FixityDecl L 5 (Id b) ]
+infixDecls :: Text -> Text -> [Decl']
+infixDecls a b =
+  [ FixityDecl $ FixityInfo emptyAnn L 4 (Id a)
+  , FixityDecl $ FixityInfo emptyAnn L 5 (Id b)
+  ]
 
 fixityTypeToStr :: Fixity -> Text
 fixityTypeToStr L = "infixl"
@@ -110,8 +125,8 @@ spec_balanceOperators = describe "balance operators pass" $ parallel $ do
                 |]
         mkScript = mkScript' "a = 1 + 2 * 3"
         expected fixTypePlus fixityPlus fixTypeMul fixityMul expr =
-          Module [ FixityDecl fixTypePlus fixityPlus (Id "+")
-                 , FixityDecl fixTypeMul fixityMul (Id "*")
+          Module [ FixityDecl $ FixityInfo emptyAnn fixTypePlus fixityPlus (Id "+")
+                 , FixityDecl $ FixityInfo emptyAnn fixTypeMul fixityMul (Id "*")
                  , BindingDecl $ binding "a" expr
                  ]
 
@@ -186,7 +201,7 @@ spec_balanceOperators = describe "balance operators pass" $ parallel $ do
       mkScript' bindingStr L 5 L 6 ==> expected L 5 L 6 expr
 
     it "can deal with unary negation" $ do
-      let neg = E1Neg
+      let neg = E1Neg emptyAnn
           expr1 = op "+" (num 1) (parens $ neg $ num 2)
           expr2 = op "+" (num 1) (neg $ num 2)
           expr3 =  op "+" (neg $ num 1) (num 2)
@@ -196,7 +211,7 @@ spec_balanceOperators = describe "balance operators pass" $ parallel $ do
       mkScript' "a = -1 + 2" L 6 L 6 ==> expected L 6 L 6 expr3
 
     it "fails on exprs with unary negation preceded by higher precedence op" $ do
-      let decl = BindingDecl $ binding "a" (op "+" (num 1) (E1Neg $ num 2))
+      let decl = BindingDecl $ binding "a" (op "+" (num 1) (E1Neg emptyAnn $ num 2))
       mkScript' "a = 1 + -2" L 6 L 6
         ==> InvalidPrefixPrecedence (FI L 6 (Id "+")) decl
 
@@ -219,7 +234,7 @@ spec_balanceOperators = describe "balance operators pass" $ parallel $ do
       [text|
         infixl 4 +
         a = 1 + 2 * 3
-        |] ==> Module [ FixityDecl L 4 (Id "+")
+        |] ==> Module [ FixityDecl $ FixityInfo emptyAnn L 4 (Id "+")
                       , BindingDecl $ binding "a" $ op "+" (num 1) (op "*" (num 2) (num 3))]
 
     it "rebalances operators in lambdas" $
@@ -258,21 +273,21 @@ spec_balanceOperators = describe "balance operators pass" $ parallel $ do
         infixl 4 +
         infixl 5 *
         a = if 1 + 2 * 3 then 1 else 1
-        |] ==> E1If (op "+" (num 1) (op "*" (num 2) (num 3)))
-                    (num 1) (num 1)
+        |] ==> E1If emptyAnn (op "+" (num 1) (op "*" (num 2) (num 3)))
+                              (num 1) (num 1)
       [text|
         infixl 4 +
         infixl 5 *
         a = if 1 then 1 + 2 * 3 else 1
-        |] ==> E1If (num 1)
-                    (op "+" (num 1) (op "*" (num 2) (num 3)))
-                    (num 1)
+        |] ==> E1If emptyAnn (num 1)
+                              (op "+" (num 1) (op "*" (num 2) (num 3)))
+                              (num 1)
       [text|
         infixl 4 +
         infixl 5 *
         a = if 1 then 1 else 1 + 2 * 3
-        |] ==> E1If (num 1) (num 1)
-                    (op "+" (num 1) (op "*" (num 2) (num 3)))
+        |] ==> E1If emptyAnn (num 1) (num 1)
+                              (op "+" (num 1) (op "*" (num 2) (num 3)))
 
     it "rebalances operators in case" $ do
       [text|
@@ -280,15 +295,15 @@ spec_balanceOperators = describe "balance operators pass" $ parallel $ do
         infixl 5 *
         a = case 1 + 2 * 3 of
               x -> x
-        |] ==> E1Case (op "+" (num 1) (op "*" (num 2) (num 3))) [ (PVar (Id "x")
-                                                                , var "x")]
+        |] ==> E1Case emptyAnn (op "+" (num 1) (op "*" (num 2) (num 3)))
+                                [ (PVar (Id "x"), var "x")]
       [text|
         infixl 4 +
         infixl 5 *
         a = case 1 of
               x -> 1 + 2 * 3
-        |] ==> E1Case (num 1) [ (PVar (Id "x")
-                              , op "+" (num 1) (op "*" (num 2) (num 3)))]
+        |] ==> E1Case emptyAnn (num 1)
+                [ (PVar (Id "x"), op "+" (num 1) (op "*" (num 2) (num 3)))]
 
     it "rebalances operators in parenthesized expression" $
       [text|
@@ -307,13 +322,17 @@ spec_balanceOperators = describe "balance operators pass" $ parallel $ do
         a = let b = 1 + 2 * 3
                 c = 4 + 5 * 6
              in b + c * c
-        |] ==> E1Let [ bindingDecl "b" $ complex (num 1) (num 2) (num 3)
-                     , bindingDecl "c" $ complex (num 4) (num 5) (num 6)
-                     ]
-                     (complex (var "b") (var "c") (var "c"))
+        |] ==> E1Let emptyAnn [ bindingDecl "b" $ complex (num 1) (num 2) (num 3)
+                              , bindingDecl "c" $ complex (num 4) (num 5) (num 6)
+                              ]
+                              (complex (var "b") (var "c") (var "c"))
+
+    -- TODO 2 lvls deep, 2 separate bindings to check they don't collide
+    --it "takes fixity decls inside let into account" $
+    --  pending
 
     it "rebalances infix functions" $ do
-      let op' operator = E1BinOp (con operator)
+      let op' operator = E1BinOp emptyAnn (con operator)
       [text|
         infixl 4 `plus`
         infixl 5 `Mul`
@@ -328,7 +347,8 @@ spec_balanceOperators = describe "balance operators pass" $ parallel $ do
         infixl 5 *
         impl X A where
           a = 1 + 2 * 3
-        |] ==> ImplDecl $ Impl [] (IsIn (Id "X") [c "A"])
+        |] ==> ImplDecl
+                $ Impl emptyAnn [] (IsIn emptyAnn (Id "X") [c "A"])
                           [binding "a" $ op "+" (num 1) (op "*" (num 2) (num 3))]
 
     it "rebalances operators in binding declaration" $

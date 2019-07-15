@@ -2,35 +2,48 @@
 module Test.X1.Parser.Scheme ( module Test.X1.Parser.Scheme ) where
 
 import Protolude hiding (Type)
-import Test.Tasty.Hspec
 import Test.Hspec.Megaparsec hiding (shouldFailWith)
+import Test.Tasty.Hspec
+import Test.X1.Parser.Helpers
+import Test.X1.Helpers
 import X1.Parser.Scheme (parser)
 import X1.Types.Id
+import X1.Types.Ann
 import X1.Types.Expr1.Pred
 import X1.Types.Expr1.Scheme
 import X1.Types.Expr1.Type
-import Test.X1.Parser.Helpers
 
 
-parser' :: Text -> ParseResult Scheme
+type Scheme' = Scheme 'Testing
+type Type' = Type 'Testing
+type Pred' = Pred 'Testing
+
+parser' :: Text -> ParseResult (Scheme 'Parsed)
 parser' = mkParser parser
 
-(==>) :: Text -> Scheme -> IO ()
-a ==> b = parser' a `shouldParse` b
+(==>) :: Text -> Scheme' -> IO ()
+a ==> b = (stripAnns <$> parser' a) `shouldParse` b
 
-con :: Text -> Type
-con = TCon . Tycon . Id
+con :: Text -> Type'
+con = TCon . Tycon emptyAnn . Id
 
-var :: Text -> Type
-var = TVar . Tyvar . Id
+var :: Text -> Type'
+var = TVar . Tyvar emptyAnn . Id
 
-app :: Type -> [Type] -> Type
+app :: Type' -> [Type'] -> Type'
 app = TApp
 
-isIn :: Text -> [Type] -> Pred
-isIn ty = IsIn (Id ty)
+parens :: Type' -> Type'
+parens = TParen emptyAnn
 
-(-->) :: Type -> Type -> Type
+isIn :: Text -> [Type'] -> Pred'
+isIn ty = IsIn emptyAnn (Id ty)
+
+scheme :: [Pred'] -> Type' -> Scheme'
+scheme = Scheme emptyAnn
+
+
+(-->) :: Type' -> Type' -> Type'
 t1 --> t2 = app (con "->") [t1, t2]
 
 infixr 2 -->
@@ -42,66 +55,67 @@ spec_typeschemeParseTest :: Spec
 spec_typeschemeParseTest = describe "parsing typeschemes" $ parallel $ do
   describe "without typeclasses" $ parallel $ do
     it "can parse typeschemes of concrete types" $ do
-      "X" ==> Scheme [] (con "X")
-      "String" ==> Scheme [] (con "String")
-      "Int" ==> Scheme [] (con "Int")
-      "(Int)" ==> Scheme [] (con "Int")
-      "((Int))" ==> Scheme [] (con "Int")
+      "X" ==> scheme [] (con "X")
+      "String" ==> scheme [] (con "String")
+      "Int" ==> scheme [] (con "Int")
+      "(Int)" ==> scheme [] (parens $ con "Int")
+      "((Int))" ==> scheme [] (parens $ parens $ con "Int")
 
     it "can parse typeschemes of type variables" $ do
-      "a" ==> Scheme [] (var "a")
-      "abc" ==> Scheme [] (var "abc")
-      "(abc)" ==> Scheme [] (var "abc")
-      "((abc))" ==> Scheme [] (var "abc")
+      "a" ==> scheme [] (var "a")
+      "abc" ==> scheme [] (var "abc")
+      "(abc)" ==> scheme [] (parens $ var "abc")
+      "((abc))" ==> scheme [] (parens . parens $ var "abc")
 
     it "can parse typeschemes of functions" $ do
-      "Int -> Int" ==> Scheme [] (con "Int" --> con "Int")
-      "Int -> String" ==> Scheme [] (con "Int" --> con "String")
-      "a -> b" ==> Scheme [] (var "a" --> var "b")
-      "Int -> Int -> String" ==> Scheme [] (con "Int" --> (con "Int" --> con "String"))
+      "Int -> Int" ==> scheme [] (con "Int" --> con "Int")
+      "Int -> String" ==> scheme [] (con "Int" --> con "String")
+      "a -> b" ==> scheme [] (var "a" --> var "b")
+      "Int -> Int -> String" ==> scheme [] (con "Int" --> (con "Int" --> con "String"))
 
     it "can parse typeschemes containing higher kinded types" $ do
-      "Maybe a" ==> Scheme [] (app (con "Maybe") [var "a"])
-      "f a -> a" ==> Scheme [] (app (var "f") [var "a"] --> var "a")
+      "Maybe a" ==> scheme [] (app (con "Maybe") [var "a"])
+      "f a -> a" ==> scheme [] (app (var "f") [var "a"] --> var "a")
 
     it "can deal with whitespace in typescheme" $
-      "(     a -> b   )" ==> Scheme [] (var "a" --> var "b")
+      "(     a -> b   )" ==> scheme [] (parens $ var "a" --> var "b")
 
   describe "type classes" $ parallel $ do
     it "can parse a single typeclass constraint in a typescheme" $ do
-      "Eq a => a" ==> Scheme [isIn "Eq" [var "a"]] (var "a")
-      "Eq a =>a" ==> Scheme [isIn "Eq" [var "a"]] (var "a")
-      "Eq a=> a" ==> Scheme [isIn "Eq" [var "a"]] (var "a")
-      "Ord a => a" ==> Scheme [isIn "Ord" [var "a"]] (var "a")
-      "Convert a b => a" ==> Scheme [isIn "Convert" [var "a", var "b"]] (var "a")
-      "Eq a => a -> a" ==> Scheme [isIn "Eq" [var "a"]] (var "a" --> var "a")
-      "(Eq a) => a" ==> Scheme [isIn "Eq" [var "a"]] (var "a")
-      "((Eq a)) => a" ==> Scheme [isIn "Eq" [var "a"]] (var "a")
+      "Eq a => a" ==> scheme [isIn "Eq" [var "a"]] (var "a")
+      "Eq a =>a" ==> scheme [isIn "Eq" [var "a"]] (var "a")
+      "Eq a=> a" ==> scheme [isIn "Eq" [var "a"]] (var "a")
+      "Ord a => a" ==> scheme [isIn "Ord" [var "a"]] (var "a")
+      "Convert a b => a" ==> scheme [isIn "Convert" [var "a", var "b"]] (var "a")
+      "Eq a => a -> a" ==> scheme [isIn "Eq" [var "a"]] (var "a" --> var "a")
+      "(Eq a) => a" ==> scheme [isIn "Eq" [var "a"]] (var "a")
+      "((Eq a)) => a" ==> scheme [isIn "Eq" [var "a"]] (var "a")
 
     it "can parse multiple typeclass constraint in a typescheme" $ do
-      "(Eq a, Ord a) => a" ==> Scheme [isIn "Eq" [var "a"], isIn "Ord" [var "a"]] (var "a")
-      "(Eq a,Ord a) => a" ==> Scheme [isIn "Eq" [var "a"], isIn "Ord" [var "a"]] (var "a")
-      "(Eq a ,Ord a) => a" ==> Scheme [isIn "Eq" [var "a"], isIn "Ord" [var "a"]] (var "a")
+      "(Eq a, Ord a) => a" ==> scheme [isIn "Eq" [var "a"], isIn "Ord" [var "a"]] (var "a")
+      "(Eq a,Ord a) => a" ==> scheme [isIn "Eq" [var "a"], isIn "Ord" [var "a"]] (var "a")
+      "(Eq a ,Ord a) => a" ==> scheme [isIn "Eq" [var "a"], isIn "Ord" [var "a"]] (var "a")
       "(Eq a, Convert a b) => a"
-        ==> Scheme [isIn "Eq" [var "a"], isIn "Convert" [var "a", var "b"]] (var "a")
+        ==> scheme [isIn "Eq" [var "a"], isIn "Convert" [var "a", var "b"]] (var "a")
       "(Eq a, Ord a) => a -> a"
-        ==> Scheme [isIn "Eq" [var "a"], isIn "Ord" [var "a"]] (var "a" --> var "a")
-      "(((Eq a)) ,Ord a) => a" ==> Scheme [isIn "Eq" [var "a"], isIn "Ord" [var "a"]] (var "a")
+        ==> scheme [isIn "Eq" [var "a"], isIn "Ord" [var "a"]] (var "a" --> var "a")
+      "(((Eq a)) ,Ord a) => a" ==> scheme [isIn "Eq" [var "a"], isIn "Ord" [var "a"]] (var "a")
 
     it "can deal with whitespace before constraints" $ do
-      "(    Eq a) =>   a" ==> Scheme [isIn "Eq" [var "a"]] (var "a")
-      "(  ( Eq a) ,  ( Ord a)) => a" ==> Scheme [isIn "Eq" [var "a"], isIn "Ord" [var "a"]] (var "a")
+      "(    Eq a) =>   a" ==> scheme [isIn "Eq" [var "a"]] (var "a")
+      "(  ( Eq a) ,  ( Ord a)) => a" ==> scheme [isIn "Eq" [var "a"], isIn "Ord" [var "a"]] (var "a")
 
     it "can deal with whitespace after constraints" $ do
-      "(Eq a  ) =>  a" ==> Scheme [isIn "Eq" [var "a"]] (var "a")
-      "((Eq a  ),  (Ord a  )  )  => a" ==> Scheme [isIn "Eq" [var "a"], isIn "Ord" [var "a"]] (var "a")
+      "(Eq a  ) =>  a" ==> scheme [isIn "Eq" [var "a"]] (var "a")
+      "((Eq a  ),  (Ord a  )  )  => a" ==> scheme [isIn "Eq" [var "a"], isIn "Ord" [var "a"]] (var "a")
 
   it "can parse a mix of everything" $ do
-    "Maybe (a -> b)" ==> Scheme [] (app (con "Maybe") [var "a" --> var "b"])
-    "Maybe (Maybe a)" ==> Scheme [] (app (con "Maybe") [app (con "Maybe") [var "a"]])
-    "Maybe (Either a String)" ==> Scheme [] (app (con "Maybe") [app (con "Either") [var "a", con "String"]])
+    "Maybe (a -> b)" ==> scheme [] (app (con "Maybe") [parens $ var "a" --> var "b"])
+    "Maybe (Maybe a)" ==> scheme [] (app (con "Maybe") [parens $ app (con "Maybe") [var "a"]])
+    "Maybe (Either a String)"
+      ==> scheme [] (app (con "Maybe") [parens $ app (con "Either") [var "a", con "String"]])
     "(Eq a) => (Maybe (a -> b))"
-      ==> Scheme [isIn "Eq" [var "a"]] (app (con "Maybe") [var "a" --> var "b"])
+      ==> scheme [isIn "Eq" [var "a"]] (parens $ app (con "Maybe") [parens $ var "a" --> var "b"])
 
   it "fails with readable error message" $ do
     (parser', "") `shouldFailWith` err 0 (ueof <> elabel "typescheme")

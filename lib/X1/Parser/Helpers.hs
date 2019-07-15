@@ -10,7 +10,7 @@ module X1.Parser.Helpers ( Parser, ParseError, ParseErr, ParseResult
                          , notFollowedBy, lookAhead, hidden
                          , sepBy, sepBy1, endBy, endBy1
                          , L.indentLevel, withIndent, indented, sameLine
-                         , withDefault
+                         , withDefault, getOffset, withSpan
                          , satisfy, takeWhileP
                          , try
                          , (<?>)
@@ -18,6 +18,8 @@ module X1.Parser.Helpers ( Parser, ParseError, ParseErr, ParseResult
 
 import Protolude hiding (try, first)
 import Control.Monad ( fail )
+import X1.Types.Ann
+import X1.Types.Span
 import qualified Data.Vector.Unboxed as VU
 import qualified Data.Vector as V
 import qualified Data.Text as T
@@ -38,7 +40,7 @@ type IndentLevel = Pos
 data ParseMode = Normal | SameLine
   deriving (Eq, Show)
 
-data ParseState = ParseState { psIndentLevel :: IndentLevel, psParseMode :: ParseMode }
+data ParseState  = ParseState { psIndentLevel :: IndentLevel, psParseMode :: ParseMode }
   deriving (Eq, Show)
 
 type ParseErr = Void
@@ -173,4 +175,14 @@ opIdentifier = do
 
 singleQuote :: Parser Char
 singleQuote = char '\''
+
+-- | Helper function for getting the begin and end offset when parsing something.
+--   Important: use this function before lexeme/lexeme' or the trailing
+--   whitespace will also be counted!
+withSpan :: Parser a -> Parser (Ann 'Parsed, a)
+withSpan p = do
+  begin <- getOffset
+  result <- p
+  end <- getOffset
+  pure (Span begin end, result)
 

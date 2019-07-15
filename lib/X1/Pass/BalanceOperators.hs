@@ -1,5 +1,7 @@
 
-module X1.Pass.BalanceOperators ( BalanceError(..), FixityInfo(..), pass ) where
+{-# LANGUAGE UndecidableInstances #-}
+
+module X1.Pass.BalanceOperators ( BalanceError(..), FixitySpec(..), pass ) where
 
 {-
 Algorithm based on: https://github.com/haskell/haskell-report/blob/master/report/fixity.verb
@@ -17,37 +19,50 @@ import X1.Types.Expr1.Impl
 import X1.Types.Expr1.Expr
 import X1.Types.Fixity
 import X1.Types.Id
+import X1.Types.Ann
 
 
-data BalanceError = BadPrecedence FixityInfo FixityInfo Decl
-                  | InvalidPrefixPrecedence FixityInfo Decl
-                  deriving (Eq, Show)
+type Module' = Module 'Parsed
+type Decl' = Decl 'Parsed
+type Binding' = Binding 'Parsed
+type Expr1' = Expr1 'Parsed
+type ExprDecl' = ExprDecl 'Parsed
+type Ann' = Ann 'Parsed
+type BalanceError' = BalanceError 'Parsed
 
-data FixityInfo = FI Fixity Int Id
+data BalanceError ph
+  = BadPrecedence FixitySpec FixitySpec (Decl ph)
+  | InvalidPrefixPrecedence FixitySpec (Decl ph)
+
+deriving instance Eq (Decl a) => Eq (BalanceError a)
+deriving instance Show (Decl a) => Show (BalanceError a)
+
+data FixitySpec = FI Fixity Int Id
   deriving (Eq, Show)
 
-data Token = TExpr Expr1
-           | TOp (Id -> Expr1) FixityInfo
-           | TNeg
+data Token = TExpr Expr1'
+           | TOp (Id -> Expr1' -> Expr1' -> Expr1') FixitySpec
+           | TNeg Ann'
 
-data Env = Env { envFixities :: [FixityInfo], envDecl :: Decl }
-  deriving (Eq, Show)
+data Env = Env { envFixities :: [FixitySpec]
+               , envDecl :: Decl'
+               }
 
-type RebalanceM m = ReaderT Env (ExceptT BalanceError m)
+type RebalanceM m = ReaderT Env (ExceptT BalanceError' m)
 
 
-pass :: Monad m => Module -> ExceptT BalanceError m Module
+pass :: Monad m => Module' -> ExceptT BalanceError' m Module'
 pass (Module decls) =
-  let fixities = map toFixityInfo $ filter isFixityDecl decls
+  let fixities = map toFixitySpec $ filter isFixityDecl decls
       isFixityDecl FixityDecl {} = True
       isFixityDecl _ = False
-      toFixityInfo (FixityDecl fixity prec op) = FI fixity prec op
-      toFixityInfo _ = panic "Error while computing operator precedences."
+      toFixitySpec (FixityDecl (FixityInfo _ fixity prec op)) = FI fixity prec op
+      toFixitySpec _ = panic "Error while computing operator precedences."
       parMap' = parMap rpar
    in Module <$> sequenceA (parMap' (runRebalance fixities) decls)
 
 
-runRebalance :: Monad m => [FixityInfo] -> Decl -> ExceptT BalanceError m Decl
+runRebalance :: Monad m => [FixitySpec] -> Decl' -> ExceptT BalanceError' m Decl'
 runRebalance fsSpecs decl = runReaderT (rebalance decl) env
   where env = Env fsSpecs decl
 
@@ -60,23 +75,23 @@ instance Balance a => Balance [a] where
 instance Balance b => Balance (a, b) where
   rebalance = traverse rebalance
 
-instance Balance Decl where
-  rebalance (ImplDecl (Impl preds p bindings)) =
-    ImplDecl . Impl preds p <$> rebalance bindings
-  rebalance (BindingDecl (Binding id expr)) =
-    BindingDecl . Binding id <$> rebalance expr
+instance Balance Decl' where
+  rebalance (ImplDecl (Impl ann preds p bindings)) =
+    ImplDecl . Impl ann preds p <$> rebalance bindings
+  rebalance (BindingDecl (Binding ann id expr)) =
+    BindingDecl . Binding ann id <$> rebalance expr
   rebalance d = pure d
 
-instance Balance ExprDecl where
+instance Balance ExprDecl' where
   rebalance (ExprBindingDecl binding) =
     ExprBindingDecl <$> rebalance binding
   rebalance d = pure d
 
-instance Balance Binding where
-  rebalance (Binding id expr) =
-    Binding id <$> rebalance expr
+instance Balance Binding' where
+  rebalance (Binding ann id expr) =
+    Binding ann id <$> rebalance expr
 
-instance Balance Expr1 where
+instance Balance Expr1' where
   rebalance expr = do
     tokens <- toTokens expr
     rebalancedExpr <- fst <$> rebalanceTokens startOp tokens
@@ -84,34 +99,41 @@ instance Balance Expr1 where
     where
       startOp = FI M (-1) (Id "startOp")
       -- Bin op is already rebalanced, only do the rest (inner layers of AST).
-      rebalanceInner (E1BinOp op e1 e2) =
-        E1BinOp op <$> rebalanceInner e1 <*> rebalanceInner e2
-      rebalanceInner (E1Parens e) = E1Parens <$> rebalance e
-      rebalanceInner (E1Lam vars body) = E1Lam vars <$> rebalance body
-      rebalanceInner (E1App f args) =
-        E1App <$> rebalance f <*> rebalance args
-      rebalanceInner (E1Case e clauses) =
-        E1Case <$> rebalance e <*> rebalance clauses
-      rebalanceInner (E1If cond tClause fClause) =
-        E1If <$> rebalance cond <*> rebalance tClause <*> rebalance fClause
-      rebalanceInner (E1Neg e) = E1Neg <$> rebalance e
-      rebalanceInner (E1Let decls body) =
-        E1Let <$> rebalance decls <*> rebalance body
+      rebalanceInner (E1BinOp ann op e1 e2) =
+        E1BinOp ann op <$> rebalanceInner e1 <*> rebalanceInner e2
+      rebalanceInner (E1Parens ann e) = E1Parens ann <$> rebalance e
+      rebalanceInner (E1Lam ann vars body) = E1Lam ann vars <$> rebalance body
+      rebalanceInner (E1App ann f args) =
+        E1App ann <$> rebalance f <*> rebalance args
+      rebalanceInner (E1Case ann e clauses) =
+        E1Case ann <$> rebalance e <*> rebalance clauses
+      rebalanceInner (E1If ann cond tClause fClause) =
+        E1If ann <$> rebalance cond <*> rebalance tClause <*> rebalance fClause
+      rebalanceInner (E1Neg ann e) = E1Neg ann <$> rebalance e
+      rebalanceInner (E1Let ann decls body) =
+        E1Let ann <$> rebalance decls <*> rebalance body
       rebalanceInner e = pure e
 
-lookupFixity :: [FixityInfo] -> Id -> FixityInfo
+lookupFixity :: [FixitySpec] -> Id -> FixitySpec
 lookupFixity fsSpecs op =
   let result = List.find (\(FI _ _ op') -> op == op') fsSpecs
       defaultFixity = FI L 9 op
    in maybe defaultFixity identity result
 
-toTokens :: Monad m => Expr1 -> RebalanceM m [Token]
-toTokens (E1BinOp (E1Var op) e1 e2) = opToTokens E1Var op e1 e2
-toTokens (E1BinOp (E1Con op) e1 e2) = opToTokens E1Con op e1 e2
-toTokens (E1Neg e) = pure [TNeg, TExpr e]
+toBinOp :: Ann' -> (Id -> Expr1') -> Id -> (Expr1' -> Expr1' -> Expr1')
+toBinOp opAnn f opName = E1BinOp opAnn (f opName)
+
+toTokens :: Monad m => Expr1' -> RebalanceM m [Token]
+toTokens (E1BinOp opAnn (E1Var ann op) e1 e2) =
+  opToTokens (toBinOp opAnn (E1Var ann)) op e1 e2
+toTokens (E1BinOp opAnn (E1Con ann op) e1 e2) =
+  opToTokens (toBinOp opAnn (E1Con ann)) op e1 e2
+toTokens (E1Neg ann e) = pure [TNeg ann, TExpr e]
 toTokens e = pure [TExpr e]
 
-opToTokens :: Monad m => (Id -> Expr1) -> Id -> Expr1 -> Expr1 -> RebalanceM m [Token]
+opToTokens :: Monad m
+           => (Id -> Expr1' -> Expr1' -> Expr1')
+           -> Id -> Expr1' -> Expr1' -> RebalanceM m [Token]
 opToTokens f op e1 e2 = do
   fsSpecs <- asks envFixities
   let fs = lookupFixity fsSpecs op
@@ -119,18 +141,18 @@ opToTokens f op e1 e2 = do
   e2Tokens <- toTokens e2
   pure $ e1Tokens <> [TOp f fs] <> e2Tokens
 
-rebalanceTokens :: Monad m => FixityInfo -> [Token] -> RebalanceM m (Expr1, [Token])
+rebalanceTokens :: Monad m => FixitySpec -> [Token] -> RebalanceM m (Expr1', [Token])
 rebalanceTokens op1 (TExpr e1 : rest) = rebalanceTokens' op1 e1 rest
-rebalanceTokens op1 (TNeg : rest) = do
+rebalanceTokens op1 (TNeg ann : rest) = do
   when (prec1 >= 6) $ throwError . InvalidPrefixPrecedence op1 =<< asks envDecl
   (r, rest') <- rebalanceTokens negateOp rest
-  rebalanceTokens' op1 (E1Neg r) rest'
+  rebalanceTokens' op1 (E1Neg ann r) rest'
   where
     negateOp = FI L 6 (Id "-")
     FI _ prec1 _  = op1
 rebalanceTokens _ _ = panic "Error while rebalancing tokens!"
 
-rebalanceTokens' :: Monad m => FixityInfo -> Expr1 -> [Token] -> RebalanceM m (Expr1, [Token])
+rebalanceTokens' :: Monad m => FixitySpec -> Expr1' -> [Token] -> RebalanceM m (Expr1', [Token])
 rebalanceTokens' _ e1 [] = pure (e1, [])
 rebalanceTokens' op1 e1 (TOp f op2 : rest)
   -- case (1): check for illegal expressions
@@ -144,7 +166,7 @@ rebalanceTokens' op1 e1 (TOp f op2 : rest)
   -- case (3): op1 and op2 should associate to the right
   | otherwise = do
     (r, rest') <- rebalanceTokens op2 rest
-    rebalanceTokens' op1 (E1BinOp (f operator) e1 r) rest'
+    rebalanceTokens' op1 (f operator e1 r) rest'
 
   where
     FI fix1 prec1 _ = op1
