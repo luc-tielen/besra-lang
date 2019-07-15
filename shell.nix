@@ -1,3 +1,3 @@
-{ compiler ? "ghc864", pkgs ? import ./packages.nix {} }:
+{ compiler ? "ghc864", pkgs ? import ./nix/packages.nix {} }:
 
 (import ./. { inherit pkgs compiler; }).besra-shell
