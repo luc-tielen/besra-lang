@@ -76,8 +76,8 @@ instance Balance b => Balance (a, b) where
   rebalance = traverse rebalance
 
 instance Balance Decl' where
-  rebalance (ImplDecl ann1 (Impl ann2 preds p bindings)) =
-    ImplDecl ann1 . Impl ann2 preds p <$> rebalance bindings
+  rebalance (ImplDecl (Impl ann preds p bindings)) =
+    ImplDecl . Impl ann preds p <$> rebalance bindings
   rebalance (BindingDecl (Binding ann id expr)) =
     BindingDecl . Binding ann id <$> rebalance expr
   rebalance d = pure d

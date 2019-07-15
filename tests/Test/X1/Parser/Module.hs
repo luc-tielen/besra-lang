@@ -323,7 +323,7 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
         typeAnn' x = TypeAnn emptyAnn (Id x)
 
     it "can parse multiple traits in a row" $ do
-      let mapType = (parens $ var "a" --> var "b")
+      let mapType = parens (var "a" --> var "b")
                   --> app (con "List") [var "a"]
                   --> app (con "List") [var "b"]
       [text|
@@ -387,7 +387,7 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
         (utok ':' <> elabel "properly indented type declaration in trait")
 
   describe "impl declarations" $ parallel $ do
-    let impl p bindings = ImplDecl emptyAnn $ Impl emptyAnn [] p bindings
+    let impl p bindings = ImplDecl $ Impl emptyAnn [] p bindings
         pred clazz = IsIn emptyAnn (Id clazz)
         binding' x = Binding emptyAnn (Id x)
 
@@ -449,7 +449,12 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
         num' ann = E1Lit ann . LNumber . SInt
         lam' ann vars = E1Lam ann (PVar . Id <$> vars)
         pred sp clazz = IsIn sp (Id clazz)
-        con' ann = TCon . Tycon ann . Id
+        con' sp = TCon . Tycon sp . Id
+        var' sp = TVar . Tyvar sp . Id
+        app' = TApp
+        arr' sp t1 t2 = app' (con' sp "->") [t1, t2]
+        typeAnn' sp x = TypeAnn sp (Id x)
+        trait' sp ps p ts = TraitDecl $ Trait sp ps p ts
 
     it "keeps track of location info for constant bindings" $ do
       "a = 3  " ~~> Module [BindingDecl $ binding' (Span 0 5) "a" (num' (Span 4 5) 3)]
@@ -468,12 +473,33 @@ spec_moduleParseTest = describe "module parser" $ parallel $ do
 
     it "keeps track of location info for impl declaration" $ do
       "impl MyClass Int where "
-        ~~> Module [ImplDecl (Span 0 22)
+        ~~> Module [ImplDecl
                    $ Impl (Span 0 22) [] (pred (Span 5 16) "MyClass" [con' (Span 13 16) "Int"]) []]
       "impl MyClass Int where\n abc def ghi = 123 "
-        ~~> Module [ImplDecl (Span 0 41)
+        ~~> Module [ImplDecl
                    $ Impl (Span 0 41) [] (pred (Span 5 16) "MyClass" [con' (Span 13 16) "Int"])
                       [binding' (Span 24 41) "abc" $
                         lam' (Span 24 41) ["def", "ghi"] $ num' (Span 38 41) 123]
                    ]
+
+    it "keeps track of location info for trait declaration" $ do
+      let tInt sp = con' sp "Int"
+          varA sp = var' sp "a"
+          myClass = pred (Span 60 69) "MyClass" [var' (Span 68 69) "a"]
+          p1 = TParen (Span 73 81) (arr' (Span 76 78) (varA (Span 74 75)) (var' (Span 79 80) "a"))
+          complexType = arr' (Span 82 84) p1 (varA (Span 85 86))
+      [text|
+        trait Eq a where
+          x : Int
+        trait Eq a where
+          x : Int
+          y : MyClass a => (a -> a) -> a
+        |] ~~> Module
+          [ trait' (Span 0 26) [] (pred (Span 6 10) "Eq" [varA (Span 9 10)])
+            [typeAnn' (Span 19 26) "x" (Scheme (Span 23 26) [] $ tInt (Span 23 26))]
+          , trait' (Span 27 86) [] (pred (Span 33 37) "Eq" [varA (Span 36 37)])
+            [ typeAnn' (Span 46 53) "x" (Scheme (Span 50 53) [] (tInt (Span 50 53)))
+            , typeAnn' (Span 56 86) "y"  (Scheme (Span 60 86) [myClass] complexType)
+            ]
+          ]
 

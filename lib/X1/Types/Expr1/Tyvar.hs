@@ -9,7 +9,8 @@ import X1.Types.Ann
 import X1.Types.Span
 
 
-data Tyvar (ph :: Phase) = Tyvar (Ann ph) Id
+data Tyvar (ph :: Phase)
+  = Tyvar (Ann ph) Id
 
 deriving instance Eq (Ann ph) => Eq (Tyvar ph)
 deriving instance Show (Ann ph) => Show (Tyvar ph)

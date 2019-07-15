@@ -10,7 +10,6 @@ import qualified X1.Parser.Trait as Trait
 import qualified X1.Parser.Impl as Impl
 import X1.Parser.Helpers
 import X1.Types.Ann
-import X1.Types.Span
 
 
 type Module' = Module 'Parsed
@@ -46,7 +45,5 @@ traitDecl :: Parser Decl'
 traitDecl = TraitDecl <$> Trait.parser
 
 implDecl :: Parser Decl'
-implDecl = do
-  impl <- Impl.parser
-  pure $ ImplDecl (span impl) impl
+implDecl = ImplDecl <$> Impl.parser
 

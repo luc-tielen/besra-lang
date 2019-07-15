@@ -18,7 +18,7 @@ data Decl (ph :: Phase)
   = TypeAnnDecl (TypeAnn ph)
   | DataDecl (ADT ph)
   | TraitDecl (Trait ph)
-  | ImplDecl (Ann ph) (Impl ph)
+  | ImplDecl (Impl ph)
   | BindingDecl (Binding ph)
   | FixityDecl (Ann ph) Fixity Int Id
 

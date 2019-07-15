@@ -35,7 +35,7 @@ instance StripAnns (Decl ph) where
     TypeAnnDecl typeAnn -> TypeAnnDecl (stripAnns typeAnn)
     DataDecl adt -> DataDecl (stripAnns adt)
     TraitDecl trait -> TraitDecl (stripAnns trait)
-    ImplDecl _ impl -> ImplDecl emptyAnn (stripAnns impl)
+    ImplDecl impl -> ImplDecl (stripAnns impl)
     BindingDecl binding -> BindingDecl (stripAnns binding)
     FixityDecl _ fixity prio op -> FixityDecl emptyAnn fixity prio op
 

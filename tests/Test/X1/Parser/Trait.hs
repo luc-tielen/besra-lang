@@ -67,7 +67,7 @@ spec_traitParseTest = describe "trait parser" $ parallel $ do
     "trait Eq a where " ==> trait [] (pred "Eq" ["a"]) []
 
   it "can parse trait with no superclasses" $ do
-    let mapType = (parens $ var "a" --> var "b")
+    let mapType = parens (var "a" --> var "b")
                 --> app (con "List") [var "a"]
                 --> app (con "List") [var "b"]
     "trait Eq a where\n x : Int"
