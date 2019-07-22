@@ -18,7 +18,7 @@ input ==> expected =
     parsed = parseFile "prettyprinter.test" input
    in
     case parsed of
-      Left err -> panic $ printError err
+      Left err -> panic $ formatError err
       Right ast -> do
         let reprinted = prettyPrint ast
             reparsed = parseFile "reprinted.test" reprinted

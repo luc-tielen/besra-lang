@@ -1,11 +1,18 @@
-module Besra.Parser ( Parser, ParseError, parse, parseFile, printError ) where
+module Besra.Parser
+  ( Parser
+  , ParseResult
+  , ParseError
+  , parse
+  , parseFile
+  , formatError
+  ) where
 
--- Mostly based on https://www.haskell.org/onlinereport/lexemes.html,
+-- Syntax is mostly based on https://www.haskell.org/onlinereport/lexemes.html,
 -- with some minor variations.
 
 import Protolude
 import Besra.Parser.Helpers ( Parser, ParseErr, ParseError
-                         , ParseResult, ParseState(..), ParseMode(..) )
+                            , ParseResult, ParseState(..), ParseMode(..) )
 import qualified Besra.Parser.Module as Module
 import Besra.Types.IR1.Module
 import Besra.Types.Ann
@@ -23,6 +30,7 @@ parse p path txt =
 parseFile :: FilePath -> Text -> ParseResult Module'
 parseFile = parse Module.parser
 
--- | Pretty prints a parser error
-printError :: P.ParseErrorBundle Text ParseErr -> Text
-printError e = T.pack $ P.errorBundlePretty e
+-- | Pretty prints a parser error.
+formatError :: P.ParseErrorBundle Text ParseErr -> Text
+formatError e = T.pack $ P.errorBundlePretty e
+
