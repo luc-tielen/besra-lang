@@ -20,7 +20,7 @@ dependencies:
   - megaparsec >= 7.0.4 && < 8
   - parser-combinators >= 1.0.1 && < 2
   - parallel >= 3.2.2.0 && < 4
-  - prettyprinter >= 1.3.0 && < 2
+  - prettyprinter >= 1.2.1 && < 2
 
 default-extensions:
   - NoImplicitPrelude
