@@ -70,6 +70,9 @@ str = ELit emptyAnn . LString . String
 char :: Char -> Expr'
 char = ELit emptyAnn . LChar
 
+case' :: Expr' -> [(Pattern, Expr')] -> Expr'
+case' = ECase emptyAnn
+
 lam :: [Text] -> Expr' -> Expr'
 lam vars = ELam emptyAnn (PVar . Id <$> vars)
 
@@ -172,6 +175,27 @@ spec = describe "module parser" $ parallel $ do
         ==> Module [ binding "f" $ lam ["x"] (num 5)
                 , binding "g" $ lam ["x", "y"] (str "abc123")
                 ]
+
+    it "can parse multiline lambda assigned to binding" $
+      "f = \\a ->\n 123" ==> Module [binding "f" $ lam ["a"] (num 123)]
+
+    it "can parse multiline case expr assigned to binding" $
+      [text|
+        x = case 123 of
+          123 -> 456
+          _ -> 789
+        |] ==> Module [ binding "x" $
+                          case' (num 123) [ (PLit (LNumber (SInt 123)), num 456)
+                                          , (PWildcard, num 789) ]
+                      ]
+
+    it "fails with readable error message" $ do
+      (parse, "f = \\a ->\nb") `shouldFailWith` errFancy 10 (badIndent 1 1)
+      (parse, [text|
+        x = case 123 of
+        123 -> 456
+        _ -> 789
+        |]) `shouldFailWith` errFancy 16 (badIndent 1 1)
 
   it "fails with readable error message" $ do
     let labels = mconcat $ elabel <$> ["pattern", "rest of assignment", "rest of type declaration"]
