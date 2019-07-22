@@ -35,7 +35,7 @@ runPass input =
   let
     parseResult = parseFile "balance_operators.test" input
     passResult = case parseResult of
-      Left err -> panic $ printError err
+      Left err -> panic $ formatError err
       Right result -> pass result
   in
     runExceptT $ stripAnns <$> passResult
