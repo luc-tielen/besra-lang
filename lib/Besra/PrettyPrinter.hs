@@ -1,7 +1,7 @@
 
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-module Besra.PrettyPrinter ( prettyPrint ) where
+module Besra.PrettyPrinter ( prettyFormat ) where
 
 import Protolude
 import qualified Data.Text as T
@@ -13,8 +13,8 @@ import Besra.Types.Id
 import Besra.Parser.Helpers ( isOperatorChar )
 
 
-prettyPrint :: Pretty a => a -> Text
-prettyPrint =
+prettyFormat :: Pretty a => a -> Text
+prettyFormat =
   renderStrict . layoutSmart defaultLayoutOptions . pretty
 
 indentation :: Int
