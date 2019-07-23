@@ -61,7 +61,6 @@ pass (Module decls) =
       parMap' = parMap rpar
    in Module <$> sequenceA (parMap' (runRebalance fixities) decls)
 
-
 runRebalance :: Monad m => [FixitySpec] -> Decl' -> ExceptT BalanceError' m Decl'
 runRebalance fsSpecs decl = runReaderT (rebalance decl) env
   where env = Env fsSpecs decl
@@ -97,7 +96,6 @@ instance Balance Expr' where
     rebalancedExpr <- fst <$> rebalanceTokens startOp tokens
     rebalanceInner rebalancedExpr
     where
-      startOp = FI M (-1) (Id "startOp")
       -- Bin op is already rebalanced, only do the rest (inner layers of AST).
       rebalanceInner (EBinOp ann op e1 e2) =
         EBinOp ann op <$> rebalanceInner e1 <*> rebalanceInner e2
@@ -110,9 +108,22 @@ instance Balance Expr' where
       rebalanceInner (EIf ann cond tClause fClause) =
         EIf ann <$> rebalance cond <*> rebalance tClause <*> rebalance fClause
       rebalanceInner (ENeg ann e) = ENeg ann <$> rebalance e
-      rebalanceInner (ELet ann decls body) =
-        ELet ann <$> rebalance decls <*> rebalance body
+      rebalanceInner (ELet ann decls body) = do
+        let fixities' = map toFixitySpec $ filter isFixityDecl decls
+        local (updateFixities fixities') $
+          ELet ann <$> rebalance decls <*> rebalance body
       rebalanceInner e = pure e
+      isFixityDecl ExprFixityDecl {} = True
+      isFixityDecl _ = False
+      toFixitySpec (ExprFixityDecl (FixityInfo _ fixity prec op)) = FI fixity prec op
+      toFixitySpec _ = panic "Error while computing operator precedences."
+
+startOp :: FixitySpec
+startOp = FI M (-1) (Id "startOp")
+
+updateFixities :: [FixitySpec] -> Env -> Env
+updateFixities newFixities env =
+  env { envFixities = newFixities ++ envFixities env }
 
 lookupFixity :: [FixitySpec] -> Id -> FixitySpec
 lookupFixity fsSpecs op =

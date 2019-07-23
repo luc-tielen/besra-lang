@@ -323,13 +323,63 @@ spec = describe "balance operators pass" $ parallel $ do
                 c = 4 + 5 * 6
              in b + c * c
         |] ==> ELet emptyAnn [ bindingDecl "b" $ complex (num 1) (num 2) (num 3)
-                              , bindingDecl "c" $ complex (num 4) (num 5) (num 6)
-                              ]
-                              (complex (var "b") (var "c") (var "c"))
+                             , bindingDecl "c" $ complex (num 4) (num 5) (num 6)
+                             ]
+                             (complex (var "b") (var "c") (var "c"))
 
-    -- TODO 2 lvls deep, 2 separate bindings to check they don't collide
-    --it "takes fixity decls inside let into account" $
-    --  pending
+    it "takes nested fixity decls inside let into account" $ do
+      let complex x y = op "*" (op "+" x y)
+          bindingDecl x expr = ExprBindingDecl (binding x expr)
+      [text|
+        infixl 4 +
+        a = let b = 1 + 2 * 3
+                infixl 3 *
+                c = 4 + 5 * 6
+             in b + c * c
+        |] ==> Module
+                [ FixityDecl $ FixityInfo emptyAnn L 4 (Id "+")
+                , BindingDecl $ binding "a" $
+                  ELet emptyAnn [ bindingDecl "b" $ complex (num 1) (num 2) (num 3)
+                                , ExprFixityDecl $ FixityInfo emptyAnn L 3 (Id "*")
+                                , bindingDecl "c" $ complex (num 4) (num 5) (num 6)
+                                ]
+                      (complex (var "b") (var "c") (var "c"))
+                ]
+      [text|
+        a = let b = 1 + 2 * 3
+                infixl 5 *
+             in let infixl 4 +
+                in 4 + 5 * 6
+        |] ==> Module
+                [ BindingDecl $ binding "a" $
+                  ELet emptyAnn [ bindingDecl "b" $ complex (num 1) (num 2) (num 3)
+                                , ExprFixityDecl $ FixityInfo emptyAnn L 5 (Id "*")
+                                ]
+                    (ELet emptyAnn [ ExprFixityDecl $ FixityInfo emptyAnn L 4 (Id "+")
+                                   ]
+                          (op "+" (num 4) (op "*" (num 5) (num 6))))
+                ]
+
+    it "keeps track of scope of fixity declarations inside multiple let exprs" $
+      [text|
+        a = let infixl 4 +
+                infixl 5 *
+             in 1 + 2 * 3
+        b = let infixl 4 +
+                infixl 3 *
+             in 4 + 5 * 6
+        |] ==> Module
+                [ BindingDecl $ binding "a" $
+                  ELet emptyAnn [ ExprFixityDecl $ FixityInfo emptyAnn L 4 (Id "+")
+                                , ExprFixityDecl $ FixityInfo emptyAnn L 5 (Id "*")
+                                ]
+                      (op "+" (num 1) (op "*" (num 2) (num 3)))
+                , BindingDecl $ binding "b" $
+                  ELet emptyAnn [ ExprFixityDecl $ FixityInfo emptyAnn L 4 (Id "+")
+                                , ExprFixityDecl $ FixityInfo emptyAnn L 3 (Id "*")
+                                ]
+                      (op "*" (op "+" (num 4) (num 5)) (num 6))
+                ]
 
     it "rebalances infix functions" $ do
       let op' operator = EBinOp emptyAnn (con operator)
