@@ -2,6 +2,9 @@
 module Besra.Types.IR1
   ( module Besra.Types.IR1.Module
   , module Besra.Types.IR1.Expr
+  , module Besra.Types.IR1.ADT
+  , module Besra.Types.IR1.Trait
+  , module Besra.Types.IR1.Impl
   , module Besra.Types.IR1.TypeAnn
   , module Besra.Types.IR1.Scheme
   , module Besra.Types.IR1.Pred
@@ -15,7 +18,10 @@ module Besra.Types.IR1
   ) where
 
 import Besra.Types.IR1.Module
+import Besra.Types.IR1.ADT
 import Besra.Types.IR1.Expr
+import Besra.Types.IR1.Trait
+import Besra.Types.IR1.Impl
 import Besra.Types.IR1.TypeAnn
 import Besra.Types.IR1.Scheme
 import Besra.Types.IR1.Pred

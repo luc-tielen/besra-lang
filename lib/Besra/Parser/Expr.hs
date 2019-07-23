@@ -52,15 +52,14 @@ exprOperators =
 term :: Parser Expr'
 term = lexeme term' <?> "expression" where
   term' =  litParser
-       <|> withLineFold lineFoldedExprs
+       <|> withLineFold ifParser
+       <|> caseParser
+       <|> lamParser
        <|> letParser
        <|> try applyFuncParser
        <|> varParser
        <|> conParser
        <|> parens parser
-  lineFoldedExprs =  lamParser
-                 <|> ifParser
-                 <|> caseParser
 
 litParser :: Parser Expr'
 litParser = uncurry ELit <$> withSpan Lit.parser
@@ -95,6 +94,8 @@ conParser :: Parser Expr'
 conParser =
   uncurry ECon <$> withSpan (Id <$> capitalIdentifier)
 
+-- NOTE: No linefold added here for body, linefold is already
+--       present on binding level
 lamParser :: Parser Expr'
 lamParser = do
   startPos <- getOffset
@@ -119,6 +120,8 @@ ifParser = do
   falseClause <- parser
   pure $ EIf (startPos .> span falseClause) cond trueClause falseClause
 
+-- NOTE: Only alignment of clauses is checked here,
+--       linefold is already present on binding level
 caseParser :: Parser Expr'
 caseParser = do
   startPos <- getOffset

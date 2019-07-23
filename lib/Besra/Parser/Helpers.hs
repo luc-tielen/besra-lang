@@ -4,7 +4,7 @@ module Besra.Parser.Helpers ( Parser, ParseError, ParseErr, ParseResult
                          , lexeme, lexeme', whitespace, whitespace', withLineFold
                          , eof, between, betweenParens, betweenOptionalParens
                          , singleQuote, digitChar, hexDigitChars, binDigitChars
-                         , letterChar, opIdentifier
+                         , letterChar, opIdentifier, isOperatorChar
                          , keyword, keyword', chunk, char
                          , identifier, capitalIdentifier
                          , notFollowedBy, lookAhead, hidden
@@ -168,10 +168,14 @@ opIdentifier = do
   notFollowedBy $ satisfy isDigit
   pure parsed
   where
-    isOperatorChar c = c `VU.elem` opChars
-    opChars = ['!', '#', '$', '%', '&', '.', '+', '*', '/', '<', '>'
-              , '=', '?', '@', '\\', '^', '|', '-', '~', ':']
     reserved = [ "..", ":", "=", "\\", "|", "<-", "->", "=>", "@", "~" ]
+
+isOperatorChar :: Char -> Bool
+isOperatorChar c = c `VU.elem` opChars
+
+opChars :: VU.Vector Char
+opChars = ['!', '#', '$', '%', '&', '.', '+', '*', '/', '<', '>'
+          , '=', '?', '@', '\\', '^', '|', '-', '~', ':']
 
 singleQuote :: Parser Char
 singleQuote = char '\''
