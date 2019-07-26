@@ -1,7 +1,7 @@
 
 {-# LANGUAGE UndecidableInstances #-}
 
-module Besra.Types.IR1.Tycon ( Tycon(..) ) where
+module Besra.Types.Tycon ( Tycon(..) ) where
 
 import Protolude
 import Besra.Types.Id

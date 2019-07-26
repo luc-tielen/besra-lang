@@ -4,8 +4,8 @@
 module Besra.Types.IR1.Type ( Type(..), Tycon(..), Tyvar(..) ) where
 
 import Protolude hiding ( Type )
-import Besra.Types.IR1.Tycon
-import Besra.Types.IR1.Tyvar
+import Besra.Types.Tycon
+import Besra.Types.Tyvar
 import Besra.Types.Ann
 import Besra.Types.Span
 
