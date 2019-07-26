@@ -1,7 +1,7 @@
 
 {-# LANGUAGE UndecidableInstances #-}
 
-module Besra.Types.IR1.Tyvar ( Tyvar(..) ) where
+module Besra.Types.Tyvar ( Tyvar(..) ) where
 
 import Protolude
 import Besra.Types.Id

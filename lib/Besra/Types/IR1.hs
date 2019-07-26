@@ -9,8 +9,6 @@ module Besra.Types.IR1
   , module Besra.Types.IR1.Scheme
   , module Besra.Types.IR1.Pred
   , module Besra.Types.IR1.Type
-  , module Besra.Types.IR1.Tycon
-  , module Besra.Types.IR1.Tyvar
   , module Besra.Types.IR1.Lit
   , module Besra.Types.IR1.String
   , module Besra.Types.IR1.Number
@@ -26,8 +24,6 @@ import Besra.Types.IR1.TypeAnn
 import Besra.Types.IR1.Scheme
 import Besra.Types.IR1.Pred
 import Besra.Types.IR1.Type
-import Besra.Types.IR1.Tycon
-import Besra.Types.IR1.Tyvar
 import Besra.Types.IR1.Lit
 import Besra.Types.IR1.String
 import Besra.Types.IR1.Number

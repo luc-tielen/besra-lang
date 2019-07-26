@@ -2,7 +2,7 @@ module Besra.Parser.Tycon ( parser ) where
 
 import Protolude
 import Besra.Parser.Helpers
-import Besra.Types.IR1.Tycon
+import Besra.Types.Tycon
 import Besra.Types.Id
 import Besra.Types.Ann
 
