@@ -10,10 +10,10 @@ import Besra.Types.Span
 
 
 data Tyvar (ph :: Phase)
-  = Tyvar (Ann ph) Id
+  = Tyvar (AnnTy ph) Id
 
-deriving instance Eq (Ann ph) => Eq (Tyvar ph)
-deriving instance Show (Ann ph) => Show (Tyvar ph)
+deriving instance Eq (AnnTy ph) => Eq (Tyvar ph)
+deriving instance Show (AnnTy ph) => Show (Tyvar ph)
 
-instance HasSpan (Ann ph) => HasSpan (Tyvar ph) where
+instance HasSpan (AnnTy ph) => HasSpan (Tyvar ph) where
   span (Tyvar ann _) = span ann

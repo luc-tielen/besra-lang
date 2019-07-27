@@ -38,6 +38,7 @@ default-extensions:
   - GADTs
   - TypeFamilies
   - DataKinds
+  - ConstraintKinds
   - DeriveFunctor
   - StandaloneDeriving
   - PatternSynonyms

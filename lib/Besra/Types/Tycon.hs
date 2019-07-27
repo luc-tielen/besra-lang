@@ -10,10 +10,10 @@ import Besra.Types.Span
 
 
 data Tycon (ph :: Phase)
-  = Tycon (Ann ph) Id
+  = Tycon (AnnTy ph) Id
 
-deriving instance Eq (Ann ph) => Eq (Tycon ph)
-deriving instance Show (Ann ph) => Show (Tycon ph)
+deriving instance Eq (AnnTy ph) => Eq (Tycon ph)
+deriving instance Show (AnnTy ph) => Show (Tycon ph)
 
-instance HasSpan (Ann ph) => HasSpan (Tycon ph) where
+instance HasSpan (AnnTy ph) => HasSpan (Tycon ph) where
   span (Tycon ann _) = span ann

@@ -12,6 +12,5 @@ import Besra.Types.IR2.Type
 data Pred (ph :: Phase)
   = IsIn (Ann ph) Id [Type ph]
 
-deriving instance Eq (Ann ph) => Eq (Pred ph)
-deriving instance Show (Ann ph) => Show (Pred ph)
-
+deriving instance AnnHas Eq ph => Eq (Pred ph)
+deriving instance AnnHas Show ph => Show (Pred ph)

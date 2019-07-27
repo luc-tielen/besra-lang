@@ -24,19 +24,19 @@ type ADTBody ph = [ConDecl ph]
 data ADT (ph :: Phase)
   = ADT (Ann ph) (ADTHead ph) (ADTBody ph)
 
-deriving instance Eq (Ann ph) => Eq (ConDecl ph)
-deriving instance Show (Ann ph) => Show (ConDecl ph)
-deriving instance Eq (Ann ph) => Eq (ADTHead ph)
-deriving instance Show (Ann ph) => Show (ADTHead ph)
-deriving instance Eq (Ann ph) => Eq (ADT ph)
-deriving instance Show (Ann ph) => Show (ADT ph)
+deriving instance AnnHas Eq ph => Eq (ConDecl ph)
+deriving instance AnnHas Eq ph => Eq (ADTHead ph)
+deriving instance AnnHas Eq ph => Eq (ADT ph)
+deriving instance AnnHas Show ph => Show (ConDecl ph)
+deriving instance AnnHas Show ph => Show (ADTHead ph)
+deriving instance AnnHas Show ph => Show (ADT ph)
 
-instance HasSpan (Ann ph) => HasSpan (ConDecl ph) where
+instance AnnHas HasSpan ph => HasSpan (ConDecl ph) where
   span (ConDecl ann _ _) = span ann
 
-instance HasSpan (Ann ph) => HasSpan (ADTHead ph) where
+instance AnnHas HasSpan ph => HasSpan (ADTHead ph) where
   span (ADTHead name vars) = span $ span name :| map span vars
 
-instance HasSpan (Ann ph) => HasSpan (ADT ph) where
+instance AnnHas HasSpan ph => HasSpan (ADT ph) where
   span (ADT ann _ _) = span ann
 

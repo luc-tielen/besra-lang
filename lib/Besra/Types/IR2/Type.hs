@@ -14,5 +14,6 @@ data Type (ph :: Phase)
   | TVar (Tyvar ph)
   | TApp (Type ph) (Type ph)
 
-deriving instance Eq (Ann ph) => Eq (Type ph)
-deriving instance Show (Ann ph) => Show (Type ph)
+deriving instance AnnHas Eq ph => Eq (Type ph)
+deriving instance AnnHas Show ph => Show (Type ph)
+

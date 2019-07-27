@@ -13,8 +13,8 @@ import Besra.Types.Span
 data TypeAnn (ph :: Phase)
   = TypeAnn (Ann ph) Id (Scheme ph)
 
-deriving instance Eq (Ann ph) => Eq (TypeAnn ph)
-deriving instance Show (Ann ph) => Show (TypeAnn ph)
+deriving instance AnnHas Eq ph => Eq (TypeAnn ph)
+deriving instance AnnHas Show ph => Show (TypeAnn ph)
 
-instance HasSpan (Ann ph) => HasSpan (TypeAnn ph) where
+instance AnnHas HasSpan ph => HasSpan (TypeAnn ph) where
   span (TypeAnn ann _ _) = span ann

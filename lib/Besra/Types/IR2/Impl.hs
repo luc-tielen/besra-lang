@@ -12,5 +12,6 @@ import Besra.Types.IR2.Pred
 data Impl (ph :: Phase)
   = Impl (Ann ph) [Pred ph] (Pred ph) [Binding ph]
 
-deriving instance Eq (Ann ph) => Eq (Impl ph)
-deriving instance Show (Ann ph) => Show (Impl ph)
+deriving instance AnnHas Eq ph => Eq (Impl ph)
+deriving instance AnnHas Show ph => Show (Impl ph)
+
