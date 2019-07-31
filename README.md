@@ -61,10 +61,8 @@ take a look at the
 [list of open issues](https://github.com/luc-tielen/besra-lang.git/issues).
 
 
-## Why another programming language?
+## Documentation
 
-When learning about programming, I always found it fascinating how compilers
-can convert very high level concepts into low level code that can actually
-run on a machine and perform work.
-And it's just fun and challenging to work on. ;)
+See the [docs folder](https://github.com/luc-tielen/besra-lang.git/docs)
+for more information.
 
