@@ -25,7 +25,7 @@ As an added benefit, this also makes it easy to reuse functions in a different
 way (for example in a pretty-printer).
 
 The parts of the compiler themselves are explained more in depth
-[here](https://github.com/luc-tielen/besra-lang.git/docs/architecture.md#nanopass_compiler).
+[here](https://github.com/luc-tielen/besra-lang/blob/master/docs/architecture.md#nanopass-compiler).
 
 
 ### src/
@@ -53,7 +53,7 @@ compiler are implemented.
 The tests folder contains all the tests / fixtures of the project.
 Most tests import functions from `lib/` and run a set of
 compiler-passes (see
-[below](https://github.com/luc-tielen/besra-lang.git/docs/architecture.md#nanopass_compiler))
+[below](https://github.com/luc-tielen/besra-lang/blob/master/docs/architecture.md#nanopass-compiler))
 on a piece of Besra code, and check it against the resulting output.
 
 

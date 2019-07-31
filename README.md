@@ -29,7 +29,7 @@ $ cabal new-build     # done inside the nix-shell
 The most often used commands are provided by a Makefile, so instead of
 `cabal new-build` it is possible to also to use `make build`. For other
 interesting commands, take a look at the
-[Makefile](https://github.com/luc-tielen/besra-lang/Makefile).
+[Makefile](https://github.com/luc-tielen/besra-lang/blob/master/Makefile).
 
 Because the project makes use of Nix, it is also very easy to lookup Haskell
 docs using a local Hoogle server (start with `make Hoogle`). After the Hoogle
@@ -51,18 +51,18 @@ $ ghcid --command="cabal new-repl besra-test"
 
 There are ofcourse many more possibilities when using ghcid. For a full guide
 on how to use ghcid, please refer to the [ghcid
-README](https://github.com/ndmitchell/ghcid.git/README.md).
+README](https://github.com/ndmitchell/ghcid).
 
 
 ## Contributing
 
 Interested in contributing? Great! To get an idea if where you can contribute,
 take a look at the
-[list of open issues](https://github.com/luc-tielen/besra-lang.git/issues).
+[list of open issues](https://github.com/luc-tielen/besra-lang/issues).
 
 
 ## Documentation
 
-See the [docs folder](https://github.com/luc-tielen/besra-lang.git/docs)
+See the [docs folder](https://github.com/luc-tielen/besra-lang/tree/master/docs)
 for more information.
 
