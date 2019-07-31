@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/luc-tielen/besra-lang/blob/master/LICENSE)
 
 This repository contains the code for the Besra programming language.
-Besra aims to be a statically typed, purely functional programming language with
+Besra is a statically typed, purely functional programming language with
 a focus on correctness and performance.
 
 Note: This is currently still an **extreme** WIP project, not usable at the moment.

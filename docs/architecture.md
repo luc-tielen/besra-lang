@@ -38,7 +38,7 @@ The `besra` executable is structured in such a way that the CLI interface
 contains various subcommands:
 
 - fmt (formatter)
-- repl (REPL)
+- repl (interactive REPL)
 - compiler
 - ...
 
@@ -85,22 +85,14 @@ The data types that together form an IR are grouped together in files named
 
 ## Specific concepts
 
-Some of the more notable parts of the compiler (sometimes consisting of multiple
-passes):
-
-- Parser (converts input text to IR1)
-- Semantic analysis (performs read-only passes over the AST)
-- Type system (for computing types in the AST)
-- Optimizer (for converting an AST for a functional language into an
-  imperative one).
-the following section explains some of the bigger concepts used in the project
+The following section explains some of the concepts used in the project.
 
 
 ### Annotations
 
 For most algorithms in a compiler, information specific for each node needs to
 be tracked. The way this is done in the Besra compiler is by making use of the
-"trees that grow" approach
+"trees that grow" approach.
 
 In short, each AST node is decorated with a specific annotation type. The
 annotations are specified by a type family, taking the compiler phase as input,
