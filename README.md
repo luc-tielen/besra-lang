@@ -20,7 +20,7 @@ The easiest way to get started is as follows
 
 ```bash
 $ git clone git@github.com:luc-tielen/besra-lang.git
-$ cd besra
+$ cd besra-lang
 $ nix-shell
 $ cabal new-configure # done inside the nix-shell
 $ cabal new-build     # done inside the nix-shell
