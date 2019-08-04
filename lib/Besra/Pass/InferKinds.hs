@@ -1,60 +1,77 @@
 
-module Besra.Pass.InferKinds ( pass ) where
+{-# LANGUAGE UndecidableInstances #-}
+
+module Besra.Pass.InferKinds ( pass, CompilerState(..) ) where
 
 import Protolude hiding ( Type, pass, show )
-import Prelude ( Show(..) )
-import Control.Monad.RWS hiding ( pass )
-import qualified Data.List as List
 import Data.Maybe ( fromJust )
 import Data.Graph
+import Besra.TypeSystem.KindSolver
 import Besra.Types.IR2
 import Besra.Types.Ann
 import Besra.Types.Id
 import Besra.Types.Kind
-import Data.Map ( Map )
 import qualified Data.Map as Map
-import qualified Data.Text as T
+import Data.Map ( Map )
 
 
 -- The complete documentation for this algorithm can be found here:
 -- https://github.com/luc-tielen/besra-lang/blob/master/docs/algorithms/kind_inference.md
-
 
 -- TODO consistent naming of types?
 -- TODO move to other file
 data CompilerState (ph :: Phase)
   = CompilerState [ADT ph] [Trait ph] [Impl ph] KindEnv
 
+deriving instance AnnHas Eq ph => Eq (CompilerState ph)
+deriving instance AnnHas Show ph => Show (CompilerState ph)
+
+
 pass :: MonadError KindError m
      => CompilerState 'Parsed
      -> Module 'Parsed
      -> m (Module 'KindInferred, CompilerState 'KindInferred)
-pass (CompilerState adts traits impls kindEnv) ast =
+pass (CompilerState adts _ _ kindEnv) _ =
   flip evalStateT kindEnv $ do
     -- TODO naming of helper functions
     adts' <- inferADTs adts
-    traits' <- inferTraits traits
-    impls' <- inferImpls impls
-    ast' <- inferAST ast
+    --traits' <- inferTraits traits
+    --impls' <- inferImpls impls
+    --ast' <- inferAST ast
     kindEnv' <- get
-    pure (ast', CompilerState adts' traits' impls' kindEnv')
+    --pure (ast', CompilerState adts' traits' impls' kindEnv')
+    pure (Module [], CompilerState adts' [] [] kindEnv')
 
+-- TODO refactor these 2 blocks of code into 1
 inferADTs :: (MonadError KindError m, MonadState KindEnv m)
           => [ADT 'Parsed]
           -> m [ADT 'KindInferred]
 inferADTs adts = concatMapM inferADTGroup groupedADTs where
   adtsGraph = map (\adt -> (adt, adtName adt, adtRefersTo adt)) adts
   groupedADTs = graphToGroupedLists adtsGraph
-  updateState (env', adts') = put env' $> adts'
+  updateState (solution, adts') = do
+    oldEnv <- get
+    let newEnv = oldEnv <> (toIKind . normalizeKind <$> solution)
+    put newEnv $> adts'
   inferADTGroup adtGroup = do
     env <- get
     let result = runInfer (inferKindForADTs adtGroup) env
     either throwError updateState result
 
+
+{-
 inferTraits :: (MonadError KindError m, MonadState KindEnv m)
             => [Trait 'Parsed]
             -> m [Trait 'KindInferred]
-inferTraits = undefined
+inferTraits traits = concatMapM inferTraitGroup groupedTraits where
+  traitsGraph = map (\t -> (t, traitName t, traitRefersTo t)) traits
+  groupedTraits = graphToGroupedLists traitsGraph
+  updateState (env', traits') = put env' $> traits'
+  inferTraitGroup traitGroup = do
+    env <- get
+    -- TODO runInfer puts ctr at 0 each group
+    let result = runInfer (inferKindForTraits traitGroup) env
+    either throwError updateState result
 
 inferImpls :: (MonadError KindError m, MonadState KindEnv m)
            => [Impl 'Parsed]
@@ -65,78 +82,7 @@ inferAST :: (MonadError KindError m, MonadState KindEnv m)
          => Module 'Parsed
          -> m (Module 'KindInferred)
 inferAST = undefined
-
--- | Data type used internally for representing equations of kinds.
---   Compared to the normal kind type, this also contains a variable that
---   is used during the unification algorithm.
-data IKind = IStar
-           | IKArr IKind IKind
-           | IKVar Id
-           deriving Eq
-
--- TODO remove, not needed?
-instance Show IKind where
-  show IStar         = "*"
-  show (IKArr k1 k2) = "(" <> show k1 <> " -> " <> show k2 <> ")"
-  show (IKVar var)   = show var
-
--- | Function for getting the actual kind from an inferred kind.
---   This defaults kinds of remaining phantom type variables to *
-normalizeKind :: IKind -> Kind
-normalizeKind = \case
-  IStar -> Star
-  IKArr k1 k2 -> KArr (normalizeKind k1) (normalizeKind k2)
-  IKVar _ -> Star
-
-data KConstraint = KConstraint IKind IKind
-  deriving Eq
-
--- TODO remove, not needed?
-instance Show KConstraint where
-  show (KConstraint k1 k2) = show k1 <> " ~ " <> show k2
-
-type Counter = Int
-
-type KAssump = (Id, IKind)
-
-type KindEnv = Map Id IKind
-
--- TODO add spans
-data KindError = UnificationFail IKind IKind
-               | InfiniteKind Id IKind
-  deriving (Eq, Show)
-
-type Infer = RWST KindEnv () Counter (Except KindError)
-
-newtype KSubst = KSubst (Map Id IKind)
-  deriving (Eq, Show)
-
-instance Semigroup KSubst where
-  s1 <> s2 = substitute s1 s2 `union` s1
-    where union (KSubst a) (KSubst b) = KSubst (a `Map.union` b)
-
-instance Monoid KSubst where
-  mempty = KSubst mempty
-
-
-class Substitutable a where
-  substitute :: KSubst -> a -> a
-
-instance Substitutable a => Substitutable [a] where
-  substitute = map . substitute
-
-instance Substitutable KSubst where
-  substitute s1 (KSubst m) = KSubst $ map (substitute s1) m
-
-instance Substitutable IKind where
-  substitute s@(KSubst subst) = \case
-    IStar -> IStar
-    IKArr k1 k2 -> IKArr (substitute s k1) (substitute s k2)
-    k@(IKVar kv) -> Map.findWithDefault k kv subst
-
-instance Substitutable KConstraint where
-  substitute s (KConstraint k1 k2) =
-    KConstraint (substitute s k1) (substitute s k2)
+-}
 
 
 class HasType a ph where
@@ -148,15 +94,6 @@ instance HasType (ADTHead ph) ph where
 instance HasType (ConDecl ph) ph where
   getType (ConDecl _ _ ty) = ty
 
-
-runInfer :: Infer a -> KindEnv -> Either KindError a
-runInfer m env = fst <$> runExcept (evalRWST m env 0)
-
-fresh :: Infer Id
-fresh = do
-  ctr <- get
-  modify (+ 1)
-  pure . Id $ "k" <> T.pack (show ctr)
 
 inferKindForADTs :: [ADT 'Parsed] -> Infer (KindEnv, [ADT 'KindInferred])
 inferKindForADTs adts = do
@@ -172,6 +109,56 @@ getTypeEquations (ADT _ hd bodies) =
       bodyTypes = getType <$> bodies
    in hdType:bodyTypes
 
+{-
+inferKindForTraits :: [Trait 'Parsed] -> Infer (KindEnv, [Trait 'KindInferred])
+inferKindForTraits traits = undefined
+-}
+
+
+{- TODO different typeclass? can be used for impls as well
+    or only use it after constraints solved
+instance Enrichable Module where
+  enrich (Module decls) =
+    Module <$> traverse enrich decls
+
+instance Enrichable Decl where
+    TypeAnnDecl typeAnn -> TypeAnnDecl <$> enrich typeAnn
+    BindingDecl binding -> BindingDecl <$> enrich binding
+
+instance Enrichable TypeAnn where
+  enrich (TypeAnn sp name sch) =
+    TypeAnn sp name <$> enrich sch
+
+instance Enrichable Binding where
+  enrich (Binding sp name expr) =
+    Binding sp name <$> enrich expr
+
+instance Enrichable Expr where
+  enrich = \case
+    ELit sp lit -> pure $ ELit sp lit
+    EVar sp var -> pure $ EVar sp var
+    ECon sp con -> pure $ ECon sp con
+    ELam sp args body -> ELam sp args <$> enrich body
+    EApp sp f arg ->
+      EApp sp <$> enrich f <*> enrich arg
+    EIf sp cnd tr fl ->
+      EIf sp <$> enrich cnd <*> enrich tr <*> enrich fl
+    ECase sp expr clauses ->
+      ECase sp <$> enrich expr <*> traverse (traverse enrich) clauses
+    ELet sp decls body ->
+      ELet sp <$> traverse enrich decls <*> enrich body
+
+instance Enrichable Scheme where
+  enrich (Scheme sp ps ty) =
+    Scheme sp <$> traverse enrich ps <*> enrich ty
+
+instance Enrichable Pred where
+  enrich (IsIn sp name ts) =
+    IsIn sp name <$> traverse enrich ts
+      -}
+
+enrichADT :: KindEnv -> ADT 'Parsed -> ADT 'KindInferred
+enrichADT kindEnv adt = runReader (enrich adt) kindEnv
 
 class Enrichable a where
   enrich :: a 'Parsed -> Reader KindEnv (a 'KindInferred)
@@ -206,87 +193,6 @@ instance Enrichable Tycon where
 
 getKindForId :: Id -> Map Id IKind -> Kind
 getKindForId target = normalizeKind . fromJust . Map.lookup target
-
-enrichADT :: KindEnv -> ADT 'Parsed -> ADT 'KindInferred
-enrichADT kindEnv adt = runReader (enrich adt) kindEnv
-
-solveConstraints :: [Type 'Parsed] -> Infer KindEnv
-solveConstraints ts = do
-  results <- traverse infer ts
-  let combine :: Monoid a => (([KAssump], [KConstraint], IKind) -> a) -> a
-      combine f = mconcat $ map f results
-      as = combine (\(as', _, _) -> as')
-      cs = combine (\(_, cs', _) -> cs')
-      constraints = cs <> eqKConstraints as
-  subst <- solve constraints
-  pure $ mkKindEnv as subst
-
--- | Infers the kind of an expression at the type level
-infer :: Type 'Parsed -> Infer ([KAssump], [KConstraint], IKind)
-infer = \case
-  TVar (Tyvar _ varName) -> do
-    kv <- IKVar <$> fresh
-    pure ([(varName, kv)], mempty, kv)
-  TCon (Tycon _ con) -> do
-    kv <- IKVar <$> fresh
-    maybeK <- asks (Map.lookup con)
-    let cs = maybe mempty (\k -> [KConstraint kv k]) maybeK
-    pure ([(con, kv)], cs, kv)
-  TApp f arg -> do
-    (as1, cs1, k1) <- infer f
-    (as2, cs2, k2) <- infer arg
-    kv <- IKVar <$> fresh
-    let cs = cs1 <> cs2 <> [KConstraint k1 (IKArr k2 kv)]
-    pure (as1 <> as2, cs, kv)
-
--- | Since we have multiple equations all with different variables,
---   generate extra constraints making them equal
-eqKConstraints :: [KAssump] -> [KConstraint]
-eqKConstraints as =
-  let groupById = List.groupBy ((==) `on` fst) . List.sortOn fst
-      groupedAs = groupById as
-      groupedEquations = map (map snd) groupedAs
-      allCombinations xs = [(x, y) | x <- xs, y <- xs, x /= y]
-      groupedCs = map allCombinations groupedEquations
-   in uncurry KConstraint <$> mconcat groupedCs
-
-solve :: [KConstraint] -> Infer KSubst
-solve [] = pure mempty
-solve (KConstraint k1 k2 : cs) = do
-  su1 <- unify k1 k2
-  su2 <- solve $ substitute su1 cs
-  pure $ su2 <> su1
-
-unify :: IKind -> IKind -> Infer KSubst
-unify k1 k2 | k1 == k2 = pure mempty
-unify (IKVar v) k = v `bindTo` k
-unify k (IKVar v) = v `bindTo` k
-unify (IKArr k1 k2) (IKArr k3 k4) = do
-  su1 <- unify k1 k3
-  su2 <- unify (substitute su1 k2) (substitute su1 k4)
-  pure $ su2 <> su1
-unify k1 k2 = throwError $ UnificationFail k1 k2
-
-bindTo :: Id -> IKind -> Infer KSubst
-bindTo kv k
-  | k == IKVar kv = pure mempty
-  | occursCheck kv k = throwError $ InfiniteKind kv k
-  | otherwise = pure . KSubst $ Map.fromList [(kv, k)]
-
-occursCheck :: Id -> IKind -> Bool
-occursCheck kv k = kv `elem` kindVars where
-  kindVars = getVars k
-  getVars = \case
-    IKArr k1 k2 -> getVars k1 ++ getVars k2
-    IKVar v -> [v]
-    IStar -> []
-
--- TODO refactor
-mkKindEnv :: [KAssump] -> KSubst -> KindEnv
-mkKindEnv as subst =
-  let trimmedAs = List.nubBy ((==) `on` fst) as
-      filledInAs = [(var, substitute subst k) | (var, k) <- trimmedAs]
-  in Map.fromList filledInAs
 
 graphToGroupedLists :: Ord key => [(node, key, [key])] -> [[node]]
 graphToGroupedLists = map f . stronglyConnComp

@@ -43,6 +43,7 @@ default-extensions:
   - DeriveFunctor
   - StandaloneDeriving
   - PatternSynonyms
+  - RecordWildCards
 
 ghc-options:
   - -Wall

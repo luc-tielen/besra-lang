@@ -14,3 +14,9 @@ data Kind
 class HasKind a where
   kind :: a -> Kind
 
+instance HasKind Kind where
+  kind = identity
+
+instance HasKind b => HasKind (a, b) where
+  kind = kind . snd
+
