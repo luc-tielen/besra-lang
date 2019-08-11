@@ -9,14 +9,19 @@ module Besra.TypeSystem.KindSolver
   , Infer
   , IKind(..)
   , runInfer
+  , fresh -- TODO dont export
+  , infer
+  , solve
   , solveConstraints
+  , sameVarConstraints
   , normalizeKind
   , toIKind
+  , mkKindEnv
   ) where
 
 import Protolude hiding ( Type, show )
 import Prelude ( Show(..) )
-import Control.Monad.RWS
+import Control.Monad.RWS.Strict
 import Besra.Types.IR2.Type
 import Besra.Types.Kind
 import Besra.Types.Ann
@@ -112,7 +117,7 @@ solveConstraints :: [Type 'Parsed] -> Infer KindEnv
 solveConstraints ts = do
   results <- traverse infer ts
   let combine :: Monoid a => (([KAssump], [KConstraint], IKind) -> a) -> a
-      combine f = mconcat $ map f results
+      combine f = foldMap f results
       as = combine (\(as', _, _) -> as')
       cs = combine (\(_, cs', _) -> cs')
       constraints = cs <> sameVarConstraints as

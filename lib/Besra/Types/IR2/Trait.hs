@@ -12,8 +12,8 @@ import Unsafe ( unsafeHead )
 import Besra.Types.Id
 import Besra.Types.Ann
 import Besra.Types.IR2.Pred
-import Besra.Types.IR2.Expr ( TypeAnn(..) )
 import Besra.Types.IR2.Scheme
+import Besra.Types.IR2.Expr ( TypeAnn(..) )
 
 
 data Trait (ph :: Phase)
