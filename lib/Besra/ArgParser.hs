@@ -63,7 +63,7 @@ fmtParser = Fmt <$> fmtParser' where
     (long "stdin" <> help "Whether input should be read from standard input.")
   outputMode = checkMode' <|> writeMode
   checkMode' = CheckMode <$ checkMode
-  checkMode = flag NoCheck DoCheck
+  checkMode = flag' DoCheck
     (long "check"
     <> help ("Whether check for already formatted file needs to be performed?"
           <> "If checking, exits with 0 if already formatted, otherwise 1.")
