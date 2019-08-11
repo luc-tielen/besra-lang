@@ -26,6 +26,7 @@ type ADTHead' = ADTHead 'KindInferred
 type ADTBody' = ADTBody 'KindInferred
 type ADT' = ADT 'KindInferred
 type Trait' = Trait 'KindInferred
+type Impl' = Impl 'KindInferred
 type Module' = Module 'KindInferred
 type Binding' = Binding 'KindInferred
 type Expr' = Expr 'KindInferred
@@ -84,6 +85,14 @@ instance Testable [Trait 'KindInferred] where
       Right (_, IK.CompilerState _ traits' _ _) ->
         traits' `shouldBe` traits
 
+instance Testable [Impl 'KindInferred] where
+  input ==> impls = do
+    let result = runPass input
+    case result of
+      Left err -> panic $ show err
+      Right (_, IK.CompilerState _ _ impls' _) ->
+        impls' `shouldBe` impls
+
 instance Testable IK.PredKindEnv where
   input ==> predKindEnv = do
     let result = runPass input
@@ -137,6 +146,8 @@ predEnv :: Text -> [IKind] -> IK.PredKindEnv
 predEnv predName = Map.singleton (Id predName)
 
 
+-- Some test inputs would never get past SA phase,
+-- but this is minimal needed for test.
 spec :: Spec
 spec = describe "kind inference algorithm" $ parallel $ do
   describe "ADT kind inference" $ parallel $ do
@@ -336,15 +347,56 @@ spec = describe "kind inference algorithm" $ parallel $ do
         |] ==> InfiniteKind (Id "k2") (IKArr (IKVar (Id "k2")) IStar)
 
   describe "impl kind inference" $ parallel $ do
-    it "can infer kind for type annotations inside impl" pending
+    let impl :: Ann' -> [Pred'] -> Pred' -> [Binding'] -> Impl'
+        impl = Impl
+    it "can infer kind for type annotations inside impl" $ do
+      let tyInt = TCon (Tycon (Span 55 58, Star) (Id "Int"))
+          x = binding (Span 67 103) "x" letExpr
+          letExpr = ELet (Span 71 103) [taY] (ECon (Span 96 103) (Id "Nothing"))
+          taY = TypeAnnDecl $ typeAnn (Span 75 86) (Id "y") schY
+          schY = Scheme (Span 79 86) [] tY
+          tY = TApp (TCon (Tycon (Span 79 84, KArr Star Star) (Id "Maybe")))
+                    (TVar (Tyvar (Span 85 86, Star) (Id "a")))
+      [text|
+        data Maybe a = Just a | Nothing
+        trait X a where
+        impl X Int where
+          x = let y : Maybe a
+              in Nothing
+        |] ==> [impl (Span 48 103) [] (IsIn (Span 53 58) (Id "X") [tyInt]) [x]]
 
-    it "can infer kind for type annotations inside impl with constraints" pending
+    it "can infer kind for type annotations inside impl with constraints" $ do
+      let p = IsIn (Span 54 58) (Id "Eq") [tA]
+          tA = TVar (Tyvar (Span 57 58, Star) (Id "a"))
+          tMaybe = TApp (TCon (Tycon (Span 66 71, KArr Star Star) (Id "Maybe")))
+                        (TVar (Tyvar (Span 72 73, Star) (Id "a")))
+      [text|
+        data Maybe a = Just a | Nothing
+        trait Eq a where
+        impl Eq a => Eq (Maybe a) where
+          |] ==> [impl (Span 49 80) [p] (IsIn (Span 62 73) (Id "Eq") [tMaybe]) []]
 
-    it "enriches impl bindings with kind information" pending
+    it "returns error during unification failure" $ do
+      [text|
+        data Maybe a = Nothing | Just a
+        trait X a where
+        impl X Maybe where
+          |] ==> UnificationFail (IKArr IStar IStar) IStar
+      [text|
+        data Maybe a = Nothing | Just a
+        trait X a where
+        impl X (Maybe a) where
+          x = let y : Maybe
+              in Nothing
+          |] ==> UnificationFail IStar (IKArr IStar IStar)
 
-    it "returns error during unification failure" pending
-
-    it "returns error when trying to construct infinite kinds" pending
+    it "returns error when trying to construct infinite kinds" $
+      [text|
+        trait X a where
+        impl X Int where
+          x = let y : a a
+              in Nothing
+          |] ==> InfiniteKind (Id "k2") (IKArr (IKVar $ Id "k2") IStar)
 
   describe "type signature kind inference" $ parallel $ do
     let mkA sp = TVar (Tyvar (sp, Star) (Id "a"))
@@ -363,7 +415,23 @@ spec = describe "kind inference algorithm" $ parallel $ do
         x : Maybe a
         |] ==> typeAnn (Span 32 43) (Id "x") schMaybe
 
-    it "can infer kind for type annotations with constraints" pending
+    it "can infer kind for type annotations with constraints" $ do
+      let schMap = scheme (Span 61 96) [predFunctor] tyMap
+          predFunctor = IsIn (Span 61 70) (Id "Functor")
+                          [TVar (Tyvar (Span 69 70, KArr Star Star) (Id "f"))]
+          tyMap = arrow (Span 83 85) tyFunc tyFunc'
+          tyFunc = arrow (Span 77 79) (TVar (Tyvar (Span 75 76, Star) (Id "a")))
+                                      (TVar (Tyvar (Span 80 81, Star) (Id "b")))
+          tyFunc' = arrow (Span 90 92) tyFA tyFB
+          tyFA = TApp (TVar (Tyvar (Span 86 87, KArr Star Star) (Id "f")))
+                      (TVar (Tyvar (Span 88 89, Star) (Id "a")))
+          tyFB = TApp (TVar (Tyvar (Span 93 94, KArr Star Star) (Id "f")))
+                      (TVar (Tyvar (Span 95 96, Star) (Id "b")))
+      [text|
+        trait Functor f where
+          map : (a -> b) -> f a -> f b
+        (<$>) : Functor f => (a -> b) -> f a -> f b
+        |] ==> typeAnn (Span 53 96) (Id "<$>") schMap
 
     it "enriches nested type annotations with kind information" $ do
       let expr = ELet (Span 36 60) decls (num (Span 59 60) 1)
@@ -402,6 +470,11 @@ spec = describe "kind inference algorithm" $ parallel $ do
       [text|
         data Maybe a = Just a | Nothing
         x : Maybe -> Maybe a
+        |] ==> UnificationFail IStar (IKArr IStar IStar)
+      [text|
+        trait X a where
+          x : a Int
+        y : X a => a
         |] ==> UnificationFail IStar (IKArr IStar IStar)
 
     it "returns error when trying to construct infinite kinds" $

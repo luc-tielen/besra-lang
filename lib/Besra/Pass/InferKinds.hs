@@ -51,18 +51,20 @@ pass :: MonadError KindError m
      => CompilerState 'Parsed
      -> Module 'Parsed
      -> m (Module 'KindInferred, CompilerState 'KindInferred)
-pass (CompilerState adts traits _ kEnv) ast =
+pass (CompilerState adts traits impls kEnv) ast =
   flip evalStateT kEnv $ do
     -- TODO naming of helper functions
     adts' <- inferADTs adts
     traits' <- inferTraits traits
-    --impls' <- inferImpls impls
     kEnv' <- get
-    let result = runKI (solveKinds ast) kEnv'
+    let result = flip runKI kEnv' $ do
+          impls' <- solveKinds impls
+          ast' <- solveKinds ast
+          pure (impls', ast')
     case result of
       Left err -> throwError err
-      Right ast' ->
-        pure (ast', CompilerState adts' traits' [] kEnv')
+      Right (impls', ast') ->
+        pure (ast', CompilerState adts' traits' impls' kEnv')
 
 runKI :: KI a -> KEnv -> Either KindError a
 runKI m (KEnv kindEnv predEnv) =
@@ -76,6 +78,7 @@ inferADTs adts = concatMapM inferADTGroup groupedADTs where
   adtsGraph = map (\adt -> (adt, adtName adt, adtRefersTo adt)) adts
   groupedADTs = graphToGroupedLists adtsGraph
   updateState (solution, adts') = do
+    -- TODO: move this to where kindenv is computed (right before return)
     let solution' = Map.filterWithKey (\k _ -> isNoVar k) solution
     KEnv oldEnv predEnv <- get
     let newEnv = oldEnv <> (toIKind . normalizeKind <$> solution')
@@ -231,15 +234,36 @@ instance SolveKinds (TypeAnn 'Parsed) where
     let kindEnv = mkKindEnv assumps subst
     pure $ runReader (enrich t) kindEnv
 
+instance SolveKinds (Impl 'Parsed) where
+  type Result (Impl 'Parsed) = Impl 'KindInferred
+
+  solveKinds (Impl ann ps p@(IsIn _ _ tys) bindings) = do
+    predEnv <- ask
+    implResults <- lift $ traverse infer tys
+    predResults <- traverse (lift . constraintsForPred predEnv) ps
+    let implAs = foldMap (\(as, _, _) -> as) implResults
+        implCs = foldMap (\(_, cs, _) -> cs) implResults
+        implKs = map (\(_, _, k) -> k) implResults
+        (predAs, predCs) = (foldMap fst predResults, foldMap snd predResults)
+        predKs = lookupPred p predEnv
+        predCs' = zipWith KConstraint implKs predKs
+        assumps = implAs <> predAs
+        constraints = implCs <> predCs <> predCs' <> sameVarConstraints assumps
+    subst <- lift $ solve constraints
+    let kindEnv = mkKindEnv assumps subst
+        ps' = map (flip runReader kindEnv . enrich) ps
+        p' = runReader (enrich p) kindEnv
+    Impl ann ps' p' <$> solveKinds bindings
+
 -- TODO rename to inferPred, move to kindsolver.hs? run in KI?
 constraintsForPred :: PredKindEnv -> Pred 'Parsed -> Infer ([KAssump], [KConstraint])
 constraintsForPred predEnv p = do
   let ks = lookupPred p predEnv
       vars = getPredVars p
-  results <- traverse f $ zip ks vars
+  results <- traverse (uncurry f) $ zip ks vars
   pure (foldMap fst results, foldMap snd results)
   where
-    f (k, var) = do
+    f k var = do
       kv <- IKVar <$> fresh
       let cs = [KConstraint kv k]
       pure ([(var, kv)], cs)
