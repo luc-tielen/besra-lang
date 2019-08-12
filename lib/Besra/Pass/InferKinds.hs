@@ -1,5 +1,4 @@
 
-{-# OPTIONS_GHC -Wno-deprecations #-}  -- TODO remove
 {-# LANGUAGE UndecidableInstances #-}
 
 module Besra.Pass.InferKinds
@@ -78,7 +77,6 @@ inferADTs adts = concatMapM inferADTGroup groupedADTs where
   adtsGraph = map (\adt -> (adt, adtName adt, adtRefersTo adt)) adts
   groupedADTs = graphToGroupedLists adtsGraph
   updateState (solution, adts') = do
-    -- TODO: move this to where kindenv is computed (right before return)
     let solution' = Map.filterWithKey (\k _ -> isNoVar k) solution
     KEnv oldEnv predEnv <- get
     let newEnv = oldEnv <> (toIKind . normalizeKind <$> solution')
@@ -145,7 +143,7 @@ inferKindForTrait (Trait sp ps p@(IsIn _ predName predTys) tys) = do
       constraints = predCs <> headCs <> bodyCs
   subst <- lift $ solve constraints
   let kindEnv = mkKindEnv assumps subst
-      predVars = traceShow (assumps, headCs, subst, kindEnv) $ getPredVars p
+      predVars = getPredVars p
       predEnv' = predEnv <> Map.fromList [(predName, map (\v -> unsafeFromJust $ Map.lookup v kindEnv) predVars)]
       ps' = map (doStuff' predEnv') ps
       p' = doStuff' predEnv' p
