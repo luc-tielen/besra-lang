@@ -129,13 +129,12 @@ solveConstraints ts = do
 --   generate extra constraints making them equal
 sameVarConstraints :: [KAssump] -> [KConstraint]
 sameVarConstraints as =
-  -- TODO check if we can take first of group for less equations?
-  -- Or only equate first to rest of list?
   let groupById = List.groupBy ((==) `on` fst) . List.sortOn fst
       groupedAs = groupById as
       groupedEquations = map (map snd) groupedAs
-      allCombinations xs = [(x, y) | x <- xs, y <- xs, x /= y]
-      groupedCs = map allCombinations groupedEquations
+      getCombinations (x:xs) = [(x, y) | y <- xs, x /= y]
+      getCombinations _ = []
+      groupedCs = map getCombinations groupedEquations
    in uncurry KConstraint <$> mconcat groupedCs
 
 -- | Infers the kind of an expression at the type level
