@@ -25,6 +25,8 @@ import Data.Map ( Map )
 -- The complete documentation for this algorithm can be found here:
 -- https://github.com/luc-tielen/besra-lang/blob/master/docs/algorithms/kind_inference.md
 
+-- TODO cleanup code
+
 -- | Data type for keeping track of mapping for traits and the corresponding
 --   kinds for each of the type variables in a trait.
 type PredKindEnv = Map Id [IKind]
@@ -103,7 +105,7 @@ solveADTConstraints ts = do
 inferTraits :: (MonadError KindError m, MonadState KEnv m)
             => [Trait 'Parsed]
             -> m [Trait 'KindInferred]
-inferTraits traits = mapM inferTrait orderedTraits where
+inferTraits traits = traverse inferTrait orderedTraits where
   traitsGraph = map (\t -> (t, traitName t, traitRefersTo t)) traits
   orderedTraits = mconcat $ graphToGroupedLists traitsGraph
   updateState (solution, trait') = do
@@ -115,25 +117,21 @@ inferTraits traits = mapM inferTrait orderedTraits where
     let result = runKI (inferKindForTrait trait) env
     either throwError updateState result
 
-inferKindForTrait :: Trait 'Parsed
-                  -> KI (PredKindEnv, Trait 'KindInferred)
-inferKindForTrait (Trait sp ps p@(IsIn _ predName predTys) tys) = do
+inferKindForTrait :: Trait 'Parsed -> KI (PredKindEnv, Trait 'KindInferred)
+inferKindForTrait (Trait sp ps p@(IsIn _ _ predTys) tys) = do
   predEnv <- ask
+  (headAs, headCs) <- foldMap gatherResults <$> traverse constraintsForPred ps
   predResults <- lift $ traverse infer predTys
+  results <- traverse gatherTraitTypeConstraints tys
   let (predAs, predCs) = gatherResults predResults
-  results <- mapM gatherTraitTypeConstraints tys
-  headResults <- traverse (lift . inferPred predEnv) ps
-  let (as, cs) = gatherResults results
-      (headAs, headCs) = gatherResults headResults
+      (as, cs) = gatherResults results
       assumps = as <> headAs <> predAs
-      bodyCs = cs <> sameVarConstraints assumps
-      constraints = predCs <> headCs <> bodyCs
+      constraints = predCs <> headCs <> cs <> sameVarConstraints assumps
   subst <- lift $ solve constraints
   let kindEnv = mkKindEnv assumps subst
-      predVars = getPredVars p
-      predEnv' = predEnv <> Map.fromList [(predName, map (\v -> unsafeFromJust $ Map.lookup v kindEnv) predVars)]
-      ps' = map (lookupKindsForPred predEnv') ps
-      p' = lookupKindsForPred predEnv' p
+      predEnv' = predEnv <> getPredKinds p kindEnv
+      ps' = map (flip runReader kindEnv . enrich) ps
+      p' = runReader (enrich p) kindEnv
   tys' <- local (const predEnv') $ solveKinds tys
   let trait = Trait sp ps' p' tys'
   pure (predEnv', trait)
@@ -148,12 +146,11 @@ gatherTraitTypeConstraints (TypeAnn _ _ sch) = do
   let constraints = KConstraint IStar k : cs <> predCs
   pure (as <> predAs, constraints)
 
-lookupKindsForPred :: PredKindEnv -> Pred 'Parsed -> Pred 'KindInferred
-lookupKindsForPred predEnv p@(IsIn ann name tys) = IsIn ann name tys' where
-  ks = lookupPred p predEnv
-  tys' = zipWith f tys ks
-  f (TVar (Tyvar sp var)) k = TVar (Tyvar (sp, normalizeKind k) var)
-  f _ _ = panic "Not implemented!" -- TODO
+getPredKinds :: Pred 'Parsed -> KindEnv -> PredKindEnv
+getPredKinds p@(IsIn _ predName _) kindEnv = predEnv where
+  predVars = getPredVars p
+  predEnv = Map.fromList [(predName, map lookupPredKind predVars)]
+  lookupPredKind = unsafeFromJust . flip Map.lookup kindEnv
 
 class HasType a ph where
   getType :: a -> Type ph
@@ -236,36 +233,35 @@ instance SolveKinds (TypeAnn 'Parsed) where
 instance SolveKinds (Impl 'Parsed) where
   type Result (Impl 'Parsed) = Impl 'KindInferred
 
-  solveKinds (Impl ann ps p@(IsIn _ _ tys) bindings) = do
+  solveKinds (Impl ann ps p bindings) = do
     predEnv <- ask
-    implResults <- lift $ traverse infer tys
-    predResults <- traverse (lift . inferPred predEnv) ps
-    let (implAs, implCs) = gatherResults implResults
-        implKs = map (\(_, _, k) -> k) implResults
-        (predAs, predCs) = gatherResults predResults
-        predKs = lookupPred p predEnv
-        predCs' = zipWith KConstraint implKs predKs
-        assumps = implAs <> predAs
-        constraints = implCs <> predCs <> predCs' <> sameVarConstraints assumps
+    (psAs, psCs) <- gatherResults <$> traverse (lift . inferPred predEnv) ps
+    (pAs, pCs) <- constraintsForPred p
+    let assumps = pAs <> psAs
+        constraints = pCs <> psCs <> sameVarConstraints assumps
     subst <- lift $ solve constraints
     let kindEnv = mkKindEnv assumps subst
         ps' = map (flip runReader kindEnv . enrich) ps
         p' = runReader (enrich p) kindEnv
     Impl ann ps' p' <$> solveKinds bindings
 
+constraintsForPred :: Pred 'Parsed -> KI ([KAssump], [KConstraint])
+constraintsForPred p@(IsIn _ _ tys) = do
+  predEnv <- ask
+  results <- lift $ traverse infer tys
+  let (as, cs) = gatherResults results
+      ks = map (\(_, _, k) -> k) results
+      predKs = lookupPred p predEnv
+      predCs = zipWith KConstraint ks predKs
+  pure (as, cs <> predCs)
+
 -- TODO run in KI?
 inferPred :: PredKindEnv -> Pred 'Parsed -> Infer ([KAssump], [KConstraint])
 inferPred predEnv p = do
   let ks = lookupPred p predEnv
       vars = getPredVars p
-  results <- traverse (uncurry f) $ zip ks vars
+  results <- traverse (uncurry addKnownConstraint) $ zip ks vars
   pure $ gatherResults results
-  where
-    f :: IKind -> Id -> Infer ([KAssump], [KConstraint])
-    f k var = do
-      kv <- IKVar <$> fresh
-      let cs = [KConstraint kv k]
-      pure ([(var, kv)], cs)
 
 getPredVars :: Pred ph -> [Id]
 getPredVars (IsIn _ _ tys) = mapMaybe f tys where
@@ -298,7 +294,7 @@ instance Enrichable Pred where
 instance Enrichable ADT where
   enrich (ADT sp hd bodies) = do
     enrichedHead <- enrich hd
-    enrichedBodies <- mapM enrich bodies
+    enrichedBodies <- traverse enrich bodies
     pure $ ADT sp enrichedHead enrichedBodies
 
 instance Enrichable ADTHead where
@@ -332,4 +328,18 @@ graphToGroupedLists = map f . stronglyConnComp
     f = \case
       AcyclicSCC node -> [node]
       CyclicSCC nodes -> nodes
+
+class GatherResults a where
+  gatherResults :: a -> ([KAssump], [KConstraint])
+
+instance GatherResults ([KAssump], [KConstraint]) where
+  gatherResults = identity
+
+instance GatherResults [([KAssump], [KConstraint])] where
+  gatherResults xs = (foldMap fst xs, foldMap snd xs)
+
+instance GatherResults [([KAssump], [KConstraint], IKind)] where
+  gatherResults xs = (foldMap f xs, foldMap g xs) where
+    f (x, _, _) = x
+    g (_, x, _) = x
 

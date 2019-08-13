@@ -9,14 +9,13 @@ module Besra.TypeSystem.KindSolver
   , Infer
   , IKind(..)
   , runInfer
-  , fresh -- TODO dont export
   , infer
   , solve
+  , addKnownConstraint
   , sameVarConstraints
   , normalizeKind
   , normalizeIKind
   , mkKindEnv
-  , gatherResults
   ) where
 
 import Protolude hiding ( Type, show )
@@ -120,6 +119,12 @@ infer = \case
     let cs = cs1 <> cs2 <> [KConstraint k1 (IKArr k2 kv)]
     pure (as1 <> as2, cs, kv)
 
+addKnownConstraint :: IKind -> Id -> Infer ([KAssump], [KConstraint])
+addKnownConstraint k var = do
+  kv <- IKVar <$> fresh
+  let cs = [KConstraint kv k]
+  pure ([(var, kv)], cs)
+
 fresh :: Infer Id
 fresh = do
   ctr <- get
@@ -194,15 +199,4 @@ toIKind = \case
 
 normalizeIKind :: IKind -> IKind
 normalizeIKind = toIKind . normalizeKind
-
-class GatherResults a where
-  gatherResults :: a -> ([KAssump], [KConstraint])
-
-instance GatherResults [([KAssump], [KConstraint])] where
-  gatherResults xs = (foldMap fst xs, foldMap snd xs)
-
-instance GatherResults [([KAssump], [KConstraint], IKind)] where
-  gatherResults xs = (foldMap f xs, foldMap g xs) where
-    f (x, _, _) = x
-    g (_, x, _) = x
 
