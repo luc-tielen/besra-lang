@@ -12,11 +12,11 @@ module Besra.TypeSystem.KindSolver
   , fresh -- TODO dont export
   , infer
   , solve
-  , solveConstraints
   , sameVarConstraints
   , normalizeKind
-  , toIKind
+  , normalizeIKind
   , mkKindEnv
+  , gatherResults
   ) where
 
 import Protolude hiding ( Type, show )
@@ -47,18 +47,7 @@ instance Show IKind where
   show (IKArr k1 k2) = "(" <> show k1 <> " -> " <> show k2 <> ")"
   show (IKVar var)   = show var
 
--- | Function for getting the actual kind from an inferred kind.
---   This defaults kinds of remaining phantom type variables to *
-normalizeKind :: IKind -> Kind
-normalizeKind = \case
-  IStar -> Star
-  IKArr k1 k2 -> KArr (normalizeKind k1) (normalizeKind k2)
-  IKVar _ -> Star
-
-toIKind :: Kind -> IKind
-toIKind = \case
-  Star -> IStar
-  KArr k1 k2 -> IKArr (toIKind k1) (toIKind k2)
+type KAssump = (Id, IKind)
 
 data KConstraint = KConstraint IKind IKind
   deriving Eq
@@ -69,13 +58,12 @@ instance Show KConstraint where
 
 type Counter = Int
 
-type KAssump = (Id, IKind)
-
 type KindEnv = Map Id IKind
 
 -- TODO add spans
-data KindError = UnificationFail IKind IKind
-               | InfiniteKind Id IKind
+data KindError
+  = UnificationFail IKind IKind
+  | InfiniteKind Id IKind
   deriving (Eq, Show)
 
 type Infer = RWST KindEnv () Counter (Except KindError)
@@ -114,29 +102,6 @@ instance Substitutable KConstraint where
 runInfer :: Infer a -> KindEnv -> Either KindError a
 runInfer m env = fst <$> runExcept (evalRWST m env 0)
 
-solveConstraints :: [Type 'Parsed] -> Infer KindEnv
-solveConstraints ts = do
-  results <- traverse infer ts
-  let combine :: Monoid a => (([KAssump], [KConstraint], IKind) -> a) -> a
-      combine f = foldMap f results
-      as = combine (\(as', _, _) -> as')
-      cs = combine (\(_, cs', _) -> cs')
-      constraints = cs <> sameVarConstraints as
-  subst <- solve constraints
-  pure $ mkKindEnv as subst
-
--- | Since we have multiple equations all with different variables,
---   generate extra constraints making them equal
-sameVarConstraints :: [KAssump] -> [KConstraint]
-sameVarConstraints as =
-  let groupById = List.groupBy ((==) `on` fst) . List.sortOn fst
-      groupedAs = groupById as
-      groupedEquations = map (map snd) groupedAs
-      getCombinations (x:xs) = [(x, y) | y <- xs, x /= y]
-      getCombinations _ = []
-      groupedCs = map getCombinations groupedEquations
-   in uncurry KConstraint <$> mconcat groupedCs
-
 -- | Infers the kind of an expression at the type level
 infer :: Type 'Parsed -> Infer ([KAssump], [KConstraint], IKind)
 infer = \case
@@ -160,7 +125,6 @@ fresh = do
   ctr <- get
   modify (+ 1)
   pure . Id $ "k" <> T.pack (show ctr)
-
 
 solve :: [KConstraint] -> Infer KSubst
 solve [] = pure mempty
@@ -193,6 +157,7 @@ occursCheck kv k = kv `elem` kindVars where
     IKVar v -> [v]
     IStar -> []
 
+
 mkKindEnv :: [KAssump] -> KSubst -> KindEnv
 mkKindEnv as subst =
   let trimmedAs = uniq as
@@ -201,4 +166,43 @@ mkKindEnv as subst =
 
 uniq :: Ord a => [a] -> [a]
 uniq = map unsafeHead . group . sort
+
+-- | Since we can have multiple equations all with different variables,
+--   generate extra constraints making them equal
+sameVarConstraints :: [KAssump] -> [KConstraint]
+sameVarConstraints as =
+  let groupById = List.groupBy ((==) `on` fst) . List.sortOn fst
+      groupedAs = groupById as
+      groupedEquations = map (map snd) groupedAs
+      getCombinations (x:xs) = [(x, y) | y <- xs, x /= y]
+      getCombinations _ = []
+      groupedCs = map getCombinations groupedEquations
+   in uncurry KConstraint <$> mconcat groupedCs
+
+-- | Function for getting the actual kind from an inferred kind.
+--   This defaults kinds of remaining phantom type variables to *
+normalizeKind :: IKind -> Kind
+normalizeKind = \case
+  IStar -> Star
+  IKArr k1 k2 -> KArr (normalizeKind k1) (normalizeKind k2)
+  IKVar _ -> Star
+
+toIKind :: Kind -> IKind
+toIKind = \case
+  Star -> IStar
+  KArr k1 k2 -> IKArr (toIKind k1) (toIKind k2)
+
+normalizeIKind :: IKind -> IKind
+normalizeIKind = toIKind . normalizeKind
+
+class GatherResults a where
+  gatherResults :: a -> ([KAssump], [KConstraint])
+
+instance GatherResults [([KAssump], [KConstraint])] where
+  gatherResults xs = (foldMap fst xs, foldMap snd xs)
+
+instance GatherResults [([KAssump], [KConstraint], IKind)] where
+  gatherResults xs = (foldMap f xs, foldMap g xs) where
+    f (x, _, _) = x
+    g (_, x, _) = x
 

@@ -481,4 +481,3 @@ spec = describe "kind inference algorithm" $ parallel $ do
       "x : a a" ==> InfiniteKind (Id "k1")
                                   (IKArr (IKVar $ Id "k1") IStar)
 
-    -- TODO less constraints for ADTs possible? how to know?
