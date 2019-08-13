@@ -21,6 +21,7 @@ module Besra.TypeSystem.KindSolver
 
 import Protolude hiding ( Type, show )
 import Prelude ( Show(..) )
+import Unsafe ( unsafeHead )
 import Control.Monad.RWS.Strict
 import Besra.Types.IR2.Type
 import Besra.Types.Kind
@@ -38,7 +39,7 @@ import qualified Data.Text as T
 data IKind = IStar
            | IKArr IKind IKind
            | IKVar Id
-           deriving Eq
+           deriving (Eq, Ord)
 
 -- TODO remove, not needed?
 instance Show IKind where
@@ -193,10 +194,12 @@ occursCheck kv k = kv `elem` kindVars where
     IKVar v -> [v]
     IStar -> []
 
--- TODO refactor
 mkKindEnv :: [KAssump] -> KSubst -> KindEnv
 mkKindEnv as subst =
-  let trimmedAs = List.nubBy ((==) `on` fst) as
+  let trimmedAs = uniq as
       filledInAs = [(var, substitute subst k) | (var, k) <- trimmedAs]
   in Map.fromList filledInAs
+
+uniq :: Ord a => [a] -> [a]
+uniq = map unsafeHead . group . sort
 

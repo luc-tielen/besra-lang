@@ -69,7 +69,6 @@ runKI :: KI a -> KEnv -> Either KindError a
 runKI m (KEnv kindEnv predEnv) =
   flip runInfer kindEnv $ runReaderT m predEnv
 
--- TODO refactor these 2 blocks of code into 1 (if possible)
 inferADTs :: (MonadError KindError m, MonadState KEnv m)
           => [ADT 'Parsed]
           -> m [ADT 'KindInferred]
