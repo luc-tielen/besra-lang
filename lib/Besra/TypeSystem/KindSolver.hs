@@ -1,6 +1,8 @@
 
 module Besra.TypeSystem.KindSolver
   ( KindEnv
+  , PredKindEnv
+  , KEnv(..)
   , KindError(..)
   , KAssump
   , KConstraint(..)
@@ -59,13 +61,24 @@ type Counter = Int
 
 type KindEnv = Map Id IKind
 
+-- | Data type for keeping track of mapping for traits and the corresponding
+--   kinds for each of the type variables in a trait. It is only used here
+--   to keep all information relevant to kinds in 1 place, but it's not used
+--   directly in this file, but it is used in the InferKinds pass.
+type PredKindEnv = Map Id [IKind]
+
+data KEnv = KEnv
+          { kEnv :: KindEnv
+          , kPredEnv :: PredKindEnv
+          } deriving (Eq, Show)
+
 -- TODO add spans
 data KindError
   = UnificationFail IKind IKind
   | InfiniteKind Id IKind
   deriving (Eq, Show)
 
-type Infer = RWST KindEnv () Counter (Except KindError)
+type Infer = RWST KEnv () Counter (Except KindError)
 
 newtype KSubst = KSubst (Map Id IKind)
   deriving (Eq, Show)
@@ -98,7 +111,7 @@ instance Substitutable KConstraint where
     KConstraint (substitute s k1) (substitute s k2)
 
 
-runInfer :: Infer a -> KindEnv -> Either KindError a
+runInfer :: Infer a -> KEnv -> Either KindError a
 runInfer m env = fst <$> runExcept (evalRWST m env 0)
 
 -- | Infers the kind of an expression at the type level
@@ -109,7 +122,7 @@ infer = \case
     pure ([(varName, kv)], mempty, kv)
   TCon (Tycon _ con) -> do
     kv <- IKVar <$> fresh
-    maybeK <- asks (Map.lookup con)
+    maybeK <- asks (Map.lookup con . kEnv)
     let cs = maybe mempty (\k -> [KConstraint kv k]) maybeK
     pure ([(con, kv)], cs, kv)
   TApp f arg -> do

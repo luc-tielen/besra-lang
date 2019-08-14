@@ -45,7 +45,7 @@ runPass input =
       Right result ->
         let (ast, IR1To2.PassState{..}) = IR1To2.pass result
             kindEnv = Map.fromList [(Id "->", IKArr IStar (IKArr IStar IStar))]
-            kEnv = IK.KEnv kindEnv Map.empty
+            kEnv = KEnv kindEnv Map.empty
             compState = IK.CompilerState adts traits impls kEnv
          in runExcept $ IK.pass compState ast
   in
@@ -98,7 +98,7 @@ instance Testable IK.PredKindEnv where
     let result = runPass input
     case result of
       Left err -> panic $ show err
-      Right (_, IK.CompilerState _ _ _ (IK.KEnv _ predKindEnv')) ->
+      Right (_, IK.CompilerState _ _ _ (KEnv _ predKindEnv')) ->
         predKindEnv' `shouldBe` predKindEnv
 
 instance Testable (Module 'KindInferred) where
@@ -106,7 +106,7 @@ instance Testable (Module 'KindInferred) where
     let result = runPass input
     case result of
       Left err -> panic $ show err
-      Right (ast', IK.CompilerState _ _ _ _) ->
+      Right (ast', IK.CompilerState {}) ->
         ast' `shouldBe` ast
 
 instance Testable TypeAnn' where

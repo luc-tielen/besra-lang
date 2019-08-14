@@ -5,7 +5,6 @@ module Besra.Pass.InferKinds
   ( pass
   , CompilerState(..)
   , PredKindEnv
-  , KEnv(..)
   ) where
 
 import Protolude hiding ( Type, pass, show )
@@ -27,15 +26,6 @@ import Data.Map ( Map )
 
 -- TODO cleanup code
 
--- | Data type for keeping track of mapping for traits and the corresponding
---   kinds for each of the type variables in a trait.
-type PredKindEnv = Map Id [IKind]
-
-data KEnv = KEnv
-          { kEnv :: KindEnv
-          , kPredEnv :: PredKindEnv
-          } deriving (Eq, Show)
-
 -- TODO consistent naming of types?
 -- TODO move to other file
 data CompilerState (ph :: Phase)
@@ -43,9 +33,6 @@ data CompilerState (ph :: Phase)
 
 deriving instance AnnHas Eq ph => Eq (CompilerState ph)
 deriving instance AnnHas Show ph => Show (CompilerState ph)
-
--- TODO merge KI with Infer (and use RWS KEnv ...)
-type KI = ReaderT PredKindEnv Infer
 
 
 pass :: MonadError KindError m
@@ -57,7 +44,7 @@ pass (CompilerState adts traits impls kEnv) ast =
     adts' <- inferADTs adts
     traits' <- inferTraits traits
     kEnv' <- get
-    let result = flip runKI kEnv' $ do
+    let result = flip runInfer kEnv' $ do
           impls' <- solveKinds impls
           ast' <- solveKinds ast
           pure (impls', ast')
@@ -65,10 +52,6 @@ pass (CompilerState adts traits impls kEnv) ast =
       Left err -> throwError err
       Right (impls', ast') ->
         pure (ast', CompilerState adts' traits' impls' kEnv')
-
-runKI :: KI a -> KEnv -> Either KindError a
-runKI m (KEnv kindEnv predEnv) =
-  flip runInfer kindEnv $ runReaderT m predEnv
 
 inferADTs :: (MonadError KindError m, MonadState KEnv m)
           => [ADT 'Parsed]
@@ -82,7 +65,7 @@ inferADTs adts = concatMapM inferADTGroup groupedADTs where
     let newEnv = oldEnv <> (normalizeIKind <$> solution')
     put (KEnv newEnv predEnv) $> adts'
   inferADTGroup adtGroup = do
-    env <- gets kEnv
+    env <- get
     let result = runInfer (inferKindForADTs adtGroup) env
     either throwError updateState result
   isNoVar (Id x) = not $ T.head x `VU.elem` ['a'..'z']
@@ -102,6 +85,7 @@ solveADTConstraints ts = do
   subst <- solve constraints
   pure $ mkKindEnv as subst
 
+-- TODO can deal with trait groups now?
 inferTraits :: (MonadError KindError m, MonadState KEnv m)
             => [Trait 'Parsed]
             -> m [Trait 'KindInferred]
@@ -114,35 +98,33 @@ inferTraits traits = traverse inferTrait orderedTraits where
     put (KEnv env newPredEnv) $> trait'
   inferTrait trait = do
     env <- get
-    let result = runKI (inferKindForTrait trait) env
+    let result = runInfer (inferKindForTrait trait) env
     either throwError updateState result
 
-inferKindForTrait :: Trait 'Parsed -> KI (PredKindEnv, Trait 'KindInferred)
+inferKindForTrait :: Trait 'Parsed -> Infer (PredKindEnv, Trait 'KindInferred)
 inferKindForTrait (Trait sp ps p@(IsIn _ _ predTys) tys) = do
-  predEnv <- ask
-  (headAs, headCs) <- foldMap gatherResults <$> traverse constraintsForPred ps
-  predResults <- lift $ traverse infer predTys
-  results <- traverse gatherTraitTypeConstraints tys
-  let (predAs, predCs) = gatherResults predResults
-      (as, cs) = gatherResults results
-      assumps = as <> headAs <> predAs
+  predEnv <- asks kPredEnv
+  (headAs, headCs) <- gatherResults <$> traverse constraintsForPred ps
+  (predAs, predCs) <- gatherResults <$> traverse infer predTys
+  (as, cs) <- gatherResults <$> traverse gatherTraitTypeConstraints tys
+  let assumps = as <> headAs <> predAs
       constraints = predCs <> headCs <> cs <> sameVarConstraints assumps
-  subst <- lift $ solve constraints
+  subst <- solve constraints
   let kindEnv = mkKindEnv assumps subst
       predEnv' = predEnv <> getPredKinds p kindEnv
       ps' = map (flip runReader kindEnv . enrich) ps
       p' = runReader (enrich p) kindEnv
-  tys' <- local (const predEnv') $ solveKinds tys
+  tys' <- local (const $ KEnv kindEnv predEnv') $ solveKinds tys
   let trait = Trait sp ps' p' tys'
   pure (predEnv', trait)
 
-gatherTraitTypeConstraints :: TypeAnn 'Parsed -> KI ([KAssump], [KConstraint])
+gatherTraitTypeConstraints :: TypeAnn 'Parsed -> Infer ([KAssump], [KConstraint])
 gatherTraitTypeConstraints (TypeAnn _ _ sch) = do
-  predEnv <- ask
+  predEnv <- asks kPredEnv
   let Scheme _ ps ty = sch
-  predResults <- traverse (lift . inferPred predEnv) ps
+  predResults <- traverse (inferPred predEnv) ps
   let (predAs, predCs) = gatherResults predResults
-  (as, cs, k) <- lift $ infer ty
+  (as, cs, k) <- infer ty
   let constraints = KConstraint IStar k : cs <> predCs
   pure (as <> predAs, constraints)
 
@@ -172,7 +154,7 @@ getTypeEquations (ADT _ hd bodies) =
 class SolveKinds a where
   type Result a
 
-  solveKinds :: a -> KI (Result a)
+  solveKinds :: a -> Infer (Result a)
 
 instance SolveKinds a => SolveKinds [a] where
   type Result [a] = [Result a]
@@ -219,14 +201,13 @@ instance SolveKinds (TypeAnn 'Parsed) where
   type Result (TypeAnn 'Parsed) = TypeAnn 'KindInferred
 
   solveKinds t@(TypeAnn _ _ sch) = do
-    predEnv <- ask
+    predEnv <- asks kPredEnv
     let Scheme _ ps ty = sch
-    predResults <- traverse (lift . inferPred predEnv) ps
-    let (predAs, predCs) = gatherResults predResults
-    (as, cs, k) <- lift $ infer ty
+    (predAs, predCs) <- gatherResults <$> traverse (inferPred predEnv) ps
+    (as, cs, k) <- infer ty
     let assumps = as <> predAs
         constraints = KConstraint IStar k : sameVarConstraints assumps <> cs <> predCs
-    subst <- lift $ solve constraints
+    subst <- solve constraints
     let kindEnv = mkKindEnv assumps subst
     pure $ runReader (enrich t) kindEnv
 
@@ -234,28 +215,27 @@ instance SolveKinds (Impl 'Parsed) where
   type Result (Impl 'Parsed) = Impl 'KindInferred
 
   solveKinds (Impl ann ps p bindings) = do
-    predEnv <- ask
-    (psAs, psCs) <- gatherResults <$> traverse (lift . inferPred predEnv) ps
+    predEnv <- asks kPredEnv
+    (psAs, psCs) <- gatherResults <$> traverse (inferPred predEnv) ps
     (pAs, pCs) <- constraintsForPred p
     let assumps = pAs <> psAs
         constraints = pCs <> psCs <> sameVarConstraints assumps
-    subst <- lift $ solve constraints
+    subst <- solve constraints
     let kindEnv = mkKindEnv assumps subst
         ps' = map (flip runReader kindEnv . enrich) ps
         p' = runReader (enrich p) kindEnv
     Impl ann ps' p' <$> solveKinds bindings
 
-constraintsForPred :: Pred 'Parsed -> KI ([KAssump], [KConstraint])
+constraintsForPred :: Pred 'Parsed -> Infer ([KAssump], [KConstraint])
 constraintsForPred p@(IsIn _ _ tys) = do
-  predEnv <- ask
-  results <- lift $ traverse infer tys
+  predEnv <- asks kPredEnv
+  results <- traverse infer tys
   let (as, cs) = gatherResults results
       ks = map (\(_, _, k) -> k) results
       predKs = lookupPred p predEnv
       predCs = zipWith KConstraint ks predKs
   pure (as, cs <> predCs)
 
--- TODO run in KI?
 inferPred :: PredKindEnv -> Pred 'Parsed -> Infer ([KAssump], [KConstraint])
 inferPred predEnv p = do
   let ks = lookupPred p predEnv
