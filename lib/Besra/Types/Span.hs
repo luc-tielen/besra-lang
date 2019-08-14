@@ -5,7 +5,7 @@ import Protolude
 
 
 data Span = Span { beginPos :: Int, endPos :: Int }
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show)
 
 (.>) :: Int -> Span -> Span
 (.>) begin endSpan = Span begin begin <> endSpan

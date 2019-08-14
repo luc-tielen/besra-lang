@@ -27,9 +27,8 @@ type Tyvar' = Tyvar 'Parsed
 type ADT' = ADT 'Parsed
 type ADTHead' = ADTHead 'Parsed
 type ADTBody' = ADTBody 'Parsed
-type PassState' = PassState 'Parsed
 
-runPass :: Text -> (Module', PassState')
+runPass :: Text -> (Module', PassState)
 runPass input =
   let
     parseResult = parseFile "balance_operators.test" input
@@ -55,7 +54,7 @@ instance Testable Binding' where
 instance Testable TypeAnn' where
   input ==> ta = input ==> Module [TypeAnnDecl ta]
 
-instance Testable PassState' where
+instance Testable PassState where
   input ==> passState = do
     let result = runPass input
     result `shouldBe` (Module [], passState)
@@ -216,5 +215,5 @@ spec = describe "IR1 -> IR2 pass" $ parallel $ do
     [text|
       impl ByteSize Int64 where
         byteSize = 8
-      |] ==> (PassState [] [] [impl] :: PassState')
+      |] ==> PassState [] [] [impl]
 

@@ -1,3 +1,4 @@
+:set -XNoImplicitPrelude
 import Protolude
 :set prompt "\ESC[38;5;208m\STXλ>\ESC[m\STX "
 :set -fwarn-unused-binds -fwarn-unused-imports

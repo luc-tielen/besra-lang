@@ -16,10 +16,10 @@ data Type (ph :: Phase)
   | TApp (Type ph) [Type ph]
   | TParen (Ann ph) (Type ph)
 
-deriving instance Eq (Ann ph) => Eq (Type ph)
-deriving instance Show (Ann ph) => Show (Type ph)
+deriving instance AnnHas Eq ph => Eq (Type ph)
+deriving instance AnnHas Show ph => Show (Type ph)
 
-instance HasSpan (Ann ph) => HasSpan (Type ph) where
+instance AnnHas HasSpan ph => HasSpan (Type ph) where
   span = \case
     TCon tycon -> span tycon
     TVar tyvar -> span tyvar
