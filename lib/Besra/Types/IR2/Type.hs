@@ -5,6 +5,7 @@ module Besra.Types.IR2.Type ( Type(..), Tycon(..), Tyvar(..) ) where
 
 import Protolude hiding ( Type )
 import Besra.Types.Ann
+import Besra.Types.Span
 import Besra.Types.Kind
 import Besra.Types.Tyvar
 import Besra.Types.Tycon
@@ -25,4 +26,10 @@ instance HasKind (AnnTy ph) => HasKind (Type ph) where
     TApp t _ -> case kind t of
       KArr _ k -> k
       _ -> panic "Unreachable code"
+
+instance AnnHas HasSpan ph => HasSpan (Type ph) where
+  span = \case
+    TCon tycon -> span tycon
+    TVar tyvar -> span tyvar
+    TApp t1 t2 -> span t1 <> span t2
 

@@ -13,8 +13,9 @@ import Besra.TypeSystem.KindSolver
 import Besra.Types.CompilerState
 import Besra.Types.IR2
 import Besra.Types.Ann
-import Besra.Types.Id
+import Besra.Types.Span
 import Besra.Types.Kind
+import Besra.Types.Id
 import qualified Data.Vector.Unboxed as VU
 import qualified Data.Text as T
 import qualified Data.Map as Map
@@ -130,7 +131,7 @@ gatherTraitTypeConstraints (TypeAnn _ _ sch) = do
   predResults <- traverse (inferPred predEnv) ps
   let (predAs, predCs) = gatherResults predResults
   (as, cs, k) <- infer ty
-  let constraints = Constraint IStar k : cs <> predCs
+  let constraints = Constraint (IStar $ span ty) k : cs <> predCs
   pure (as <> predAs, constraints)
 
 getPredKinds :: Pred 'Parsed -> KindEnv -> K.PredEnv
@@ -195,7 +196,8 @@ instance SolveKinds (TypeAnn 'Parsed) where
     (predAs, predCs) <- gatherResults <$> traverse (inferPred predEnv) ps
     (as, cs, k) <- infer ty
     let assumps = as <> predAs
-        constraints = Constraint IStar k : sameVarConstraints assumps <> cs <> predCs
+        sp = span ty
+        constraints = Constraint (IStar sp) k : sameVarConstraints assumps <> cs <> predCs
     subst <- solve constraints
     let kindEnv = mkKindEnv assumps subst
     pure $ runReader (enrich t) kindEnv
@@ -229,7 +231,8 @@ inferPred :: K.PredEnv -> Pred 'Parsed -> Infer ([K.Assump], [K.Constraint])
 inferPred predEnv p = do
   let ks = lookupPred p predEnv
       vars = getPredVars p
-  results <- traverse (uncurry addKnownConstraint) $ zip ks vars
+      sp = span p
+  results <- traverse (uncurry (addKnownConstraint sp)) $ zip ks vars
   pure $ gatherResults results
 
 getPredVars :: Pred ph -> [Id]

@@ -44,12 +44,19 @@ runPass input =
       Left err -> panic $ formatError err
       Right result ->
         let (ast, IR1To2.PassState{..}) = IR1To2.pass result
-            kindEnv = Map.fromList [(Id "->", IKArr IStar (IKArr IStar IStar))]
+            kindEnv = Map.fromList [(Id "->", arrowK)]
             kEnv = Env kindEnv Map.empty
             compState = IK.CompilerState adts traits impls kEnv
          in runExcept $ IK.pass compState ast
   in
     passResult
+
+sp :: Span
+sp = Span 0 0
+
+-- This causes some of the errors/results to have 0..0 spans.
+arrowK :: IKind
+arrowK = IKArr sp (IStar sp) (IKArr sp (IStar sp) (IStar sp))
 
 class Testable a where
   (==>) :: Text -> a -> IO ()
@@ -129,7 +136,7 @@ trait :: Span -> [Pred'] -> Pred' -> [TypeAnn'] -> Trait'
 trait = Trait
 
 binding :: Span -> Text -> Expr' -> Binding'
-binding sp x = Binding sp (Id x)
+binding ann x = Binding ann (Id x)
 
 typeAnn :: Span -> Id -> Scheme' -> TypeAnn'
 typeAnn = TypeAnn
@@ -138,9 +145,9 @@ scheme :: Span -> [Pred 'KindInferred] -> Type' -> Scheme'
 scheme = Scheme
 
 arrow :: Span -> Type' -> Type' -> Type'
-arrow sp t1 t2 =
+arrow ann t1 t2 =
   let k = KArr Star (KArr Star Star)
-   in TApp (TApp (TCon (Tycon (sp, k) (Id "->"))) t1) t2
+   in TApp (TApp (TCon (Tycon (ann, k) (Id "->"))) t1) t2
 
 predEnv :: Text -> [IKind] -> PredEnv
 predEnv predName = Map.singleton (Id predName)
@@ -211,10 +218,10 @@ spec = describe "kind inference algorithm" $ parallel $ do
     it "enriches ADT with kind information" $ do
       let name = Id "Either"
           eitherCon = TCon $ Tycon (Span 5 11, KArr Star (KArr Star Star)) name
-          aTy sp = TVar $ Tyvar (sp, Star) (Id "a")
-          bTy sp = TVar $ Tyvar (sp, Star) (Id "b")
+          aTy ann = TVar $ Tyvar (ann, Star) (Id "a")
+          bTy ann = TVar $ Tyvar (ann, Star) (Id "b")
           eitherTy = TApp (TApp eitherCon (aTy (Span 12 13))) (bTy (Span 14 15))
-          arrowTy sp a = TApp (TApp (TCon $ Tycon (sp,
+          arrowTy ann a = TApp (TApp (TCon $ Tycon (ann,
                            KArr Star (KArr Star Star)) (Id "->")) a)
           leftTy = arrowTy (Span 18 24) (aTy (Span 23 24)) eitherTy
           rightTy = arrowTy (Span 27 34) (bTy (Span 33 34)) eitherTy
@@ -225,55 +232,61 @@ spec = describe "kind inference algorithm" $ parallel $ do
 
     it "returns an error when kind unification failed" $ do
       "data X f a = X (f a) | Y f"
-        ==> UnificationFail (IKArr (IKVar $ Id "k7") IStar) IStar
+        ==> UnificationFail (IKArr (Span 16 19) (IKVar (Span 18 19) $ Id "k7")
+                              (IStar sp)) (IStar sp)
       [text|
         data X a = X
         data Y = Y (X X)
-        |] ==> UnificationFail IStar (IKArr IStar IStar)
+        |] ==> UnificationFail (IStar (Span 7 8))
+                (IKArr (Span 5 8) (IStar (Span 7 8)) (IStar (Span 5 8)))
 
     it "returns an error for trying to create an infinite kind" $ do
       "data X a = X (X X)"
         ==> InfiniteKind (Id "k5")
-                         (IKArr (IKVar $ Id "k5") IStar)
+                         (IKArr (Span 5 8) (IKVar (Span 16 17) $ Id "k5") (IStar sp))
       "data X a = X (a X)"
         ==> InfiniteKind (Id "k9")
-                         (IKArr (IKArr (IKVar $ Id "k9") IStar) IStar)
+                         (IKArr (Span 14 17)
+                          (IKArr (Span 5 8) (IKVar (Span 7 8) $ Id "k9")
+                                    (IStar sp)) (IStar sp))
 
   describe "trait kind inference" $ parallel $ do
     it "can infer kinds for traits without type signatures" $ do
-      "trait Eq a where" ==> predEnv "Eq" [IStar]
-      "trait Convert a b where" ==> predEnv "Convert" [IStar, IStar]
-      "trait Monad m where" ==> predEnv "Monad" [IStar]
+      "trait Eq a where" ==> predEnv "Eq" [IStar (Span 9 10)]
+      "trait Convert a b where"
+        ==> predEnv "Convert" [IStar (Span 14 15), IStar (Span 16 17)]
+      "trait Monad m where" ==> predEnv "Monad" [IStar (Span 12 13)]
       [text|
         trait Eq a where
         trait Eq a => Ord a where
-        |] ==> Map.fromList [(Id "Eq", [IStar]), (Id "Ord", [IStar])]
+          |] ==> Map.fromList [ (Id "Eq", [IStar (Span 9 10)])
+                              , (Id "Ord", [IStar (Span 9 10)])]
 
     it "can infer kinds for traits with single type signature" $ do
       [text|
         trait Eq a where
           (==) : a -> a -> Bool
-        |] ==> predEnv "Eq" [IStar]
+        |] ==> predEnv "Eq" [IStar sp]
       [text|
         trait Functor f where
           map : (a -> b) -> (f a -> f b)
-        |] ==> predEnv "Functor" [IKArr IStar IStar]
+        |] ==> predEnv "Functor" [IKArr (Span 50 53) (IStar sp) (IStar sp)]
 
     it "can infer kinds for traits with multiple type signatures" $ do
       [text|
         trait MyClass a b where
           func1 : a -> a -> Bool
           func2 : b a -> a -> Bool
-        |] ==> predEnv "MyClass" [IStar, IKArr IStar IStar]
+        |] ==> predEnv "MyClass" [IStar sp, IKArr (Span 59 62) (IStar sp) (IStar sp)]
       [text|
         data Fix f = Fix (f (Fix f))
         trait MyClass a b where
           func1 : a -> a -> Bool
           func2 : Fix b -> a -> Bool
-        |] ==> predEnv "MyClass" [IStar, IKArr IStar IStar]
+        |] ==> predEnv "MyClass" [IStar sp, IKArr (Span 18 26) (IStar sp) (IStar sp)]
 
     it "can infer kinds for traits with supertraits" $ do
-      let kF = IKArr IStar IStar
+      let kF = IKArr (Span 89 92) (IStar sp) (IStar sp)
       [text|
         trait Functor f => Applicative f where
         trait Functor f where
@@ -281,17 +294,18 @@ spec = describe "kind inference algorithm" $ parallel $ do
         |] ==> Map.fromList [(Id "Functor", [kF]), (Id "Applicative", [kF])]
 
     it "can infer kinds for traits with types that require other traits" $ do
-      let kF = IKArr IStar IStar
+      let kF sp' = IKArr sp' (IStar sp) (IStar sp)
       [text|
         trait Applicative f where
           (<*>) : Functor f => f (a -> b) -> f a -> f b
         trait Functor f where
           map : (a -> b) -> (f a -> f b)
-        |] ==> Map.fromList [(Id "Functor", [kF]), (Id "Applicative", [kF])]
+        |] ==> Map.fromList [ (Id "Functor", [kF (Span 124 127)])
+                            , (Id "Applicative", [kF (Span 70 73)])]
 
     it "enriches trait with kind information" $ do
       let var ann x = TVar $ Tyvar ann (Id x)
-          mkF sp = var (sp, KArr Star Star) "f"
+          mkF ann = var (ann, KArr Star Star) "f"
           tyaX = TypeAnn (Span 24 33) (Id "x") schX
           tyaY = TypeAnn (Span 74 86) (Id "y") schY
           tyaY' = TypeAnn (Span 61 86) (Id "y") schY'
@@ -331,20 +345,25 @@ spec = describe "kind inference algorithm" $ parallel $ do
           x : a Int
         trait X a => Y a where
           y : a
-          |] ==> UnificationFail IStar (IKArr IStar IStar)
+          |] ==> UnificationFail (IStar (Span 57 58))
+                  (IKArr (Span 22 27) (IStar (Span 24 27)) (IStar (Span 22 27)))
 
     it "returns error during unification failure in trait body" $
       [text|
         trait X a where
           x : a
           y : a Int
-          |] ==> UnificationFail IStar (IKArr (IKVar $ Id "k3") IStar)
+          |] ==> UnificationFail (IStar (Span 22 23))
+                  (IKArr (Span 30 35) (IKVar (Span 32 35) $ Id "k3")
+                                      (IStar (Span 30 35)))
 
     it "returns error when trying to construct infinite kinds" $
       [text|
         trait MyClass a where
           x : a a
-        |] ==> InfiniteKind (Id "k2") (IKArr (IKVar (Id "k2")) IStar)
+        |] ==> InfiniteKind (Id "k2")
+                (IKArr (Span 28 31) (IKVar (Span 30 31) (Id "k2"))
+                                    (IStar (Span 28 31)))
 
   describe "impl kind inference" $ parallel $ do
     let impl :: Ann' -> [Pred'] -> Pred' -> [Binding'] -> Impl'
@@ -381,14 +400,16 @@ spec = describe "kind inference algorithm" $ parallel $ do
         data Maybe a = Nothing | Just a
         trait X a where
         impl X Maybe where
-          |] ==> UnificationFail (IKArr IStar IStar) IStar
+          |] ==> UnificationFail (IKArr (Span 5 12) (IStar sp) (IStar sp))
+                                 (IStar (Span 40 41))
       [text|
         data Maybe a = Nothing | Just a
         trait X a where
         impl X (Maybe a) where
           x = let y : Maybe
               in Nothing
-          |] ==> UnificationFail IStar (IKArr IStar IStar)
+          |] ==> UnificationFail (IStar (Span 85 90))
+                  (IKArr (Span 5 12) (IStar sp) (IStar sp))
 
     it "returns error when trying to construct infinite kinds" $
       [text|
@@ -396,11 +417,13 @@ spec = describe "kind inference algorithm" $ parallel $ do
         impl X Int where
           x = let y : a a
               in Nothing
-          |] ==> InfiniteKind (Id "k2") (IKArr (IKVar $ Id "k2") IStar)
+          |] ==> InfiniteKind (Id "k2")
+                  (IKArr (Span 47 50) (IKVar (Span 49 50) $ Id "k2")
+                                      (IStar (Span 47 50)))
 
   describe "type signature kind inference" $ parallel $ do
-    let mkA sp = TVar (Tyvar (sp, Star) (Id "a"))
-        mkMaybe sp = TApp (TCon (Tycon (sp, KArr Star Star) (Id "Maybe")))
+    let mkA ann = TVar (Tyvar (ann, Star) (Id "a"))
+        mkMaybe ann = TApp (TCon (Tycon (ann, KArr Star Star) (Id "Maybe")))
 
     it "can infer kind for type annotations" $ do
       let schA = scheme (Span 4 5) [] (mkA (Span 4 5))
@@ -438,7 +461,7 @@ spec = describe "kind inference algorithm" $ parallel $ do
           decls = [TypeAnnDecl $ typeAnn (Span 40 51) (Id "y") sch]
           sch = Scheme (Span 44 51) [] tyY
           tyY = mkMaybe (Span 44 49) (mkA (Span 50 51))
-          num sp = ELit sp . LNumber . Number
+          num ann = ELit ann . LNumber . Number
       [text|
         data Maybe a = Just a | Nothing
         x = let y : Maybe a
@@ -462,22 +485,27 @@ spec = describe "kind inference algorithm" $ parallel $ do
       [text|
         data Maybe a = Just a | Nothing
         x : Maybe
-        |] ==> UnificationFail IStar (IKArr IStar IStar)
+        |] ==> UnificationFail (IStar (Span 36 41))
+                               (IKArr (Span 5 12) (IStar sp) (IStar sp))
       [text|
         data Maybe a = Just a | Nothing
         x : Maybe Maybe
-        |] ==> UnificationFail IStar (IKArr IStar IStar)
+        |] ==> UnificationFail (IStar sp) (IKArr (Span 5 12) (IStar sp) (IStar sp))
       [text|
         data Maybe a = Just a | Nothing
         x : Maybe -> Maybe a
-        |] ==> UnificationFail IStar (IKArr IStar IStar)
+        |] ==> UnificationFail (IStar sp) (IKArr (Span 5 12) (IStar sp) (IStar sp))
       [text|
         trait X a where
           x : a Int
         y : X a => a
-        |] ==> UnificationFail IStar (IKArr IStar IStar)
+        |] ==> UnificationFail (IStar (Span 39 40))
+                               (IKArr (Span 22 27) (IStar (Span 24 27))
+                                                   (IStar (Span 22 27)))
 
     it "returns error when trying to construct infinite kinds" $
       "x : a a" ==> InfiniteKind (Id "k1")
-                                  (IKArr (IKVar $ Id "k1") IStar)
+                                  (IKArr (Span 4 7)
+                                    (IKVar (Span 6 7) $ Id "k1")
+                                    (IStar (Span 4 7)))
 

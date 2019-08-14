@@ -26,6 +26,7 @@ import Unsafe ( unsafeHead )
 import Control.Monad.RWS.Strict
 import Besra.Types.IR2.Type
 import Besra.Types.Kind
+import Besra.Types.Span
 import Besra.Types.Ann
 import Besra.Types.Id
 import qualified Data.List as List
@@ -37,10 +38,18 @@ import qualified Data.Text as T
 -- | Data type used internally for representing equations of kinds.
 --   Compared to the normal kind type, this also contains a variable that
 --   is used during the unification algorithm.
-data IKind = IStar
-           | IKArr IKind IKind
-           | IKVar Id
+--   TODO: Use "Maybe Span" or add filename to Span for more clear errors
+data IKind = IStar Span
+           | IKArr Span IKind IKind
+           | IKVar Span Id
            deriving (Eq, Ord, Show)
+
+(===) :: IKind -> IKind -> Bool
+IStar _ === IStar _ = True
+IKVar _ kv === IKVar _ kv' = kv == kv'
+IKArr _ k1 k2 === IKArr _ k1' k2' =
+  k1 === k1' && k2 === k2'
+_ === _ = False
 
 type Assump = (Id, IKind)
 
@@ -62,7 +71,6 @@ data Env = Env
          , kPredEnv :: PredEnv
          } deriving (Eq, Show)
 
--- TODO add spans
 data KindError
   = UnificationFail IKind IKind
   | InfiniteKind Id IKind
@@ -92,9 +100,9 @@ instance Substitutable Subst where
 
 instance Substitutable IKind where
   substitute s@(Subst subst) = \case
-    IStar -> IStar
-    IKArr k1 k2 -> IKArr (substitute s k1) (substitute s k2)
-    k@(IKVar kv) -> Map.findWithDefault k kv subst
+    IStar sp -> IStar sp
+    IKArr sp k1 k2 -> IKArr sp (substitute s k1) (substitute s k2)
+    k@(IKVar _ kv) -> Map.findWithDefault k kv subst
 
 instance Substitutable Constraint where
   substitute s (Constraint k1 k2) =
@@ -107,24 +115,25 @@ runInfer m env = fst <$> runExcept (evalRWST m env 0)
 -- | Infers the kind of an expression at the type level
 infer :: Type 'Parsed -> Infer ([Assump], [Constraint], IKind)
 infer = \case
-  TVar (Tyvar _ varName) -> do
-    kv <- IKVar <$> fresh
+  TVar (Tyvar sp varName) -> do
+    kv <- IKVar sp <$> fresh
     pure ([(varName, kv)], mempty, kv)
-  TCon (Tycon _ con) -> do
-    kv <- IKVar <$> fresh
+  TCon (Tycon sp con) -> do
+    kv <- IKVar sp <$> fresh
     maybeK <- asks (Map.lookup con . kEnv)
     let cs = maybe mempty (\k -> [Constraint kv k]) maybeK
     pure ([(con, kv)], cs, kv)
-  TApp f arg -> do
+  t@(TApp f arg) -> do
     (as1, cs1, k1) <- infer f
     (as2, cs2, k2) <- infer arg
-    kv <- IKVar <$> fresh
-    let cs = cs1 <> cs2 <> [Constraint k1 (IKArr k2 kv)]
+    let sp = span t
+    kv <- IKVar sp <$> fresh
+    let cs = cs1 <> cs2 <> [Constraint k1 (IKArr sp k2 kv)]
     pure (as1 <> as2, cs, kv)
 
-addKnownConstraint :: IKind -> Id -> Infer ([Assump], [Constraint])
-addKnownConstraint k var = do
-  kv <- IKVar <$> fresh
+addKnownConstraint :: Span -> IKind -> Id -> Infer ([Assump], [Constraint])
+addKnownConstraint sp k var = do
+  kv <- IKVar sp <$> fresh
   let cs = [Constraint kv k]
   pure ([(var, kv)], cs)
 
@@ -142,18 +151,18 @@ solve (Constraint k1 k2 : cs) = do
   pure $ su2 <> su1
 
 unify :: IKind -> IKind -> Infer Subst
-unify k1 k2 | k1 == k2 = pure mempty
-unify (IKVar v) k = v `bindTo` k
-unify k (IKVar v) = v `bindTo` k
-unify (IKArr k1 k2) (IKArr k3 k4) = do
+unify k1 k2 | k1 === k2 = pure mempty
+unify (IKVar _ v) k = v `bindTo` k
+unify k (IKVar _ v) = v `bindTo` k
+unify (IKArr _ k1 k2) (IKArr _ k3 k4) = do
   su1 <- unify k1 k3
   su2 <- unify (substitute su1 k2) (substitute su1 k4)
   pure $ su2 <> su1
 unify k1 k2 = throwError $ UnificationFail k1 k2
 
 bindTo :: Id -> IKind -> Infer Subst
+bindTo kv (IKVar _ k) | k == kv = pure mempty
 bindTo kv k
-  | k == IKVar kv = pure mempty
   | occursCheck kv k = throwError $ InfiniteKind kv k
   | otherwise = pure . Subst $ Map.fromList [(kv, k)]
 
@@ -161,9 +170,9 @@ occursCheck :: Id -> IKind -> Bool
 occursCheck kv k = kv `elem` kindVars where
   kindVars = getVars k
   getVars = \case
-    IKArr k1 k2 -> getVars k1 ++ getVars k2
-    IKVar v -> [v]
-    IStar -> []
+    IKArr _ k1 k2 -> getVars k1 ++ getVars k2
+    IKVar _ v -> [v]
+    IStar _ -> []
 
 
 mkKindEnv :: [Assump] -> Subst -> KindEnv
@@ -191,15 +200,13 @@ sameVarConstraints as =
 --   This defaults kinds of remaining phantom type variables to *
 normalizeKind :: IKind -> Kind
 normalizeKind = \case
-  IStar -> Star
-  IKArr k1 k2 -> KArr (normalizeKind k1) (normalizeKind k2)
-  IKVar _ -> Star
-
-toIKind :: Kind -> IKind
-toIKind = \case
-  Star -> IStar
-  KArr k1 k2 -> IKArr (toIKind k1) (toIKind k2)
+  IStar _ -> Star
+  IKArr _ k1 k2 -> KArr (normalizeKind k1) (normalizeKind k2)
+  IKVar _ _ -> Star
 
 normalizeIKind :: IKind -> IKind
-normalizeIKind = toIKind . normalizeKind
+normalizeIKind = \case
+  IStar sp -> IStar sp
+  IKArr sp k1 k2 -> IKArr sp (normalizeIKind k1) (normalizeIKind k2)
+  IKVar sp _ -> IStar sp
 
