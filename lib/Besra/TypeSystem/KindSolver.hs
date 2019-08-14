@@ -1,12 +1,12 @@
 
 module Besra.TypeSystem.KindSolver
   ( KindEnv
-  , PredKindEnv
-  , KEnv(..)
+  , PredEnv
+  , Env(..)
   , KindError(..)
-  , KAssump
-  , KConstraint(..)
-  , KSubst
+  , Assump
+  , Constraint(..)
+  , Subst
   , Substitutable(..)
   , Infer
   , IKind(..)
@@ -20,7 +20,7 @@ module Besra.TypeSystem.KindSolver
   , mkKindEnv
   ) where
 
-import Protolude hiding ( Type, show )
+import Protolude hiding ( Constraint, Type, show )
 import Prelude ( Show(..) )
 import Unsafe ( unsafeHead )
 import Control.Monad.RWS.Strict
@@ -40,22 +40,12 @@ import qualified Data.Text as T
 data IKind = IStar
            | IKArr IKind IKind
            | IKVar Id
-           deriving (Eq, Ord)
+           deriving (Eq, Ord, Show)
 
--- TODO remove, not needed?
-instance Show IKind where
-  show IStar         = "*"
-  show (IKArr k1 k2) = "(" <> show k1 <> " -> " <> show k2 <> ")"
-  show (IKVar var)   = show var
+type Assump = (Id, IKind)
 
-type KAssump = (Id, IKind)
-
-data KConstraint = KConstraint IKind IKind
-  deriving Eq
-
--- TODO remove, not needed?
-instance Show KConstraint where
-  show (KConstraint k1 k2) = show k1 <> " ~ " <> show k2
+data Constraint = Constraint IKind IKind
+  deriving (Eq, Show)
 
 type Counter = Int
 
@@ -65,12 +55,12 @@ type KindEnv = Map Id IKind
 --   kinds for each of the type variables in a trait. It is only used here
 --   to keep all information relevant to kinds in 1 place, but it's not used
 --   directly in this file, but it is used in the InferKinds pass.
-type PredKindEnv = Map Id [IKind]
+type PredEnv = Map Id [IKind]
 
-data KEnv = KEnv
-          { kEnv :: KindEnv
-          , kPredEnv :: PredKindEnv
-          } deriving (Eq, Show)
+data Env = Env
+         { kEnv :: KindEnv
+         , kPredEnv :: PredEnv
+         } deriving (Eq, Show)
 
 -- TODO add spans
 data KindError
@@ -78,44 +68,44 @@ data KindError
   | InfiniteKind Id IKind
   deriving (Eq, Show)
 
-type Infer = RWST KEnv () Counter (Except KindError)
+type Infer = RWST Env () Counter (Except KindError)
 
-newtype KSubst = KSubst (Map Id IKind)
+newtype Subst = Subst (Map Id IKind)
   deriving (Eq, Show)
 
-instance Semigroup KSubst where
+instance Semigroup Subst where
   s1 <> s2 = substitute s1 s2 `union` s1
-    where union (KSubst a) (KSubst b) = KSubst (a `Map.union` b)
+    where union (Subst a) (Subst b) = Subst (a `Map.union` b)
 
-instance Monoid KSubst where
-  mempty = KSubst mempty
+instance Monoid Subst where
+  mempty = Subst mempty
 
 
 class Substitutable a where
-  substitute :: KSubst -> a -> a
+  substitute :: Subst -> a -> a
 
 instance Substitutable a => Substitutable [a] where
   substitute = map . substitute
 
-instance Substitutable KSubst where
-  substitute s1 (KSubst m) = KSubst $ map (substitute s1) m
+instance Substitutable Subst where
+  substitute s1 (Subst m) = Subst $ map (substitute s1) m
 
 instance Substitutable IKind where
-  substitute s@(KSubst subst) = \case
+  substitute s@(Subst subst) = \case
     IStar -> IStar
     IKArr k1 k2 -> IKArr (substitute s k1) (substitute s k2)
     k@(IKVar kv) -> Map.findWithDefault k kv subst
 
-instance Substitutable KConstraint where
-  substitute s (KConstraint k1 k2) =
-    KConstraint (substitute s k1) (substitute s k2)
+instance Substitutable Constraint where
+  substitute s (Constraint k1 k2) =
+    Constraint (substitute s k1) (substitute s k2)
 
 
-runInfer :: Infer a -> KEnv -> Either KindError a
+runInfer :: Infer a -> Env -> Either KindError a
 runInfer m env = fst <$> runExcept (evalRWST m env 0)
 
 -- | Infers the kind of an expression at the type level
-infer :: Type 'Parsed -> Infer ([KAssump], [KConstraint], IKind)
+infer :: Type 'Parsed -> Infer ([Assump], [Constraint], IKind)
 infer = \case
   TVar (Tyvar _ varName) -> do
     kv <- IKVar <$> fresh
@@ -123,19 +113,19 @@ infer = \case
   TCon (Tycon _ con) -> do
     kv <- IKVar <$> fresh
     maybeK <- asks (Map.lookup con . kEnv)
-    let cs = maybe mempty (\k -> [KConstraint kv k]) maybeK
+    let cs = maybe mempty (\k -> [Constraint kv k]) maybeK
     pure ([(con, kv)], cs, kv)
   TApp f arg -> do
     (as1, cs1, k1) <- infer f
     (as2, cs2, k2) <- infer arg
     kv <- IKVar <$> fresh
-    let cs = cs1 <> cs2 <> [KConstraint k1 (IKArr k2 kv)]
+    let cs = cs1 <> cs2 <> [Constraint k1 (IKArr k2 kv)]
     pure (as1 <> as2, cs, kv)
 
-addKnownConstraint :: IKind -> Id -> Infer ([KAssump], [KConstraint])
+addKnownConstraint :: IKind -> Id -> Infer ([Assump], [Constraint])
 addKnownConstraint k var = do
   kv <- IKVar <$> fresh
-  let cs = [KConstraint kv k]
+  let cs = [Constraint kv k]
   pure ([(var, kv)], cs)
 
 fresh :: Infer Id
@@ -144,14 +134,14 @@ fresh = do
   modify (+ 1)
   pure . Id $ "k" <> T.pack (show ctr)
 
-solve :: [KConstraint] -> Infer KSubst
+solve :: [Constraint] -> Infer Subst
 solve [] = pure mempty
-solve (KConstraint k1 k2 : cs) = do
+solve (Constraint k1 k2 : cs) = do
   su1 <- unify k1 k2
   su2 <- solve $ substitute su1 cs
   pure $ su2 <> su1
 
-unify :: IKind -> IKind -> Infer KSubst
+unify :: IKind -> IKind -> Infer Subst
 unify k1 k2 | k1 == k2 = pure mempty
 unify (IKVar v) k = v `bindTo` k
 unify k (IKVar v) = v `bindTo` k
@@ -161,11 +151,11 @@ unify (IKArr k1 k2) (IKArr k3 k4) = do
   pure $ su2 <> su1
 unify k1 k2 = throwError $ UnificationFail k1 k2
 
-bindTo :: Id -> IKind -> Infer KSubst
+bindTo :: Id -> IKind -> Infer Subst
 bindTo kv k
   | k == IKVar kv = pure mempty
   | occursCheck kv k = throwError $ InfiniteKind kv k
-  | otherwise = pure . KSubst $ Map.fromList [(kv, k)]
+  | otherwise = pure . Subst $ Map.fromList [(kv, k)]
 
 occursCheck :: Id -> IKind -> Bool
 occursCheck kv k = kv `elem` kindVars where
@@ -176,7 +166,7 @@ occursCheck kv k = kv `elem` kindVars where
     IStar -> []
 
 
-mkKindEnv :: [KAssump] -> KSubst -> KindEnv
+mkKindEnv :: [Assump] -> Subst -> KindEnv
 mkKindEnv as subst =
   let trimmedAs = uniq as
       filledInAs = [(var, substitute subst k) | (var, k) <- trimmedAs]
@@ -187,7 +177,7 @@ uniq = map unsafeHead . group . sort
 
 -- | Since we can have multiple equations all with different variables,
 --   generate extra constraints making them equal
-sameVarConstraints :: [KAssump] -> [KConstraint]
+sameVarConstraints :: [Assump] -> [Constraint]
 sameVarConstraints as =
   let groupById = List.groupBy ((==) `on` fst) . List.sortOn fst
       groupedAs = groupById as
@@ -195,7 +185,7 @@ sameVarConstraints as =
       getCombinations (x:xs) = [(x, y) | y <- xs, x /= y]
       getCombinations _ = []
       groupedCs = map getCombinations groupedEquations
-   in uncurry KConstraint <$> mconcat groupedCs
+   in uncurry Constraint <$> mconcat groupedCs
 
 -- | Function for getting the actual kind from an inferred kind.
 --   This defaults kinds of remaining phantom type variables to *

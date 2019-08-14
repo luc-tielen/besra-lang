@@ -1,16 +1,16 @@
 
-{-# LANGUAGE UndecidableInstances #-}
-
 module Besra.Pass.InferKinds
   ( pass
   , CompilerState(..)
-  , PredKindEnv
   ) where
 
 import Protolude hiding ( Type, pass, show )
 import Unsafe ( unsafeFromJust )
 import Data.Graph
+import qualified Besra.TypeSystem.KindSolver as K
+  ( Env(..), PredEnv, Assump, Constraint(..) )
 import Besra.TypeSystem.KindSolver
+import Besra.Types.CompilerState
 import Besra.Types.IR2
 import Besra.Types.Ann
 import Besra.Types.Id
@@ -23,16 +23,6 @@ import Data.Map ( Map )
 
 -- The complete documentation for this algorithm can be found here:
 -- https://github.com/luc-tielen/besra-lang/blob/master/docs/algorithms/kind_inference.md
-
--- TODO cleanup code
-
--- TODO consistent naming of types?
--- TODO move to other file
-data CompilerState (ph :: Phase)
-  = CompilerState [ADT ph] [Trait ph] [Impl ph] KEnv
-
-deriving instance AnnHas Eq ph => Eq (CompilerState ph)
-deriving instance AnnHas Show ph => Show (CompilerState ph)
 
 
 pass :: MonadError KindError m
@@ -53,7 +43,7 @@ pass (CompilerState adts traits impls kEnv) ast =
       Right (impls', ast') ->
         pure (ast', CompilerState adts' traits' impls' kEnv')
 
-inferADTs :: (MonadError KindError m, MonadState KEnv m)
+inferADTs :: (MonadError KindError m, MonadState K.Env m)
           => [ADT 'Parsed]
           -> m [ADT 'KindInferred]
 inferADTs adts = concatMapM inferADTGroup groupedADTs where
@@ -61,9 +51,9 @@ inferADTs adts = concatMapM inferADTGroup groupedADTs where
   groupedADTs = graphToGroupedLists adtsGraph
   updateState (solution, adts') = do
     let solution' = Map.filterWithKey (\k _ -> isNoVar k) solution
-    KEnv oldEnv predEnv <- get
+    K.Env oldEnv predEnv <- get
     let newEnv = oldEnv <> (normalizeIKind <$> solution')
-    put (KEnv newEnv predEnv) $> adts'
+    put (K.Env newEnv predEnv) $> adts'
   inferADTGroup adtGroup = do
     env <- get
     let result = runInfer (inferKindForADTs adtGroup) env
@@ -76,63 +66,6 @@ inferKindForADTs adts = do
   updatedKindEnv <- solveADTConstraints types
   let adts' = map (enrichADT updatedKindEnv) adts
   pure (updatedKindEnv, adts')
-
-solveADTConstraints :: [Type 'Parsed] -> Infer KindEnv
-solveADTConstraints ts = do
-  results <- traverse infer ts
-  let (as, cs) = gatherResults results
-      constraints = cs <> sameVarConstraints as
-  subst <- solve constraints
-  pure $ mkKindEnv as subst
-
--- TODO can deal with trait groups now?
-inferTraits :: (MonadError KindError m, MonadState KEnv m)
-            => [Trait 'Parsed]
-            -> m [Trait 'KindInferred]
-inferTraits traits = traverse inferTrait orderedTraits where
-  traitsGraph = map (\t -> (t, traitName t, traitRefersTo t)) traits
-  orderedTraits = mconcat $ graphToGroupedLists traitsGraph
-  updateState (solution, trait') = do
-    KEnv env _ <- get
-    let newPredEnv = map normalizeIKind <$> solution
-    put (KEnv env newPredEnv) $> trait'
-  inferTrait trait = do
-    env <- get
-    let result = runInfer (inferKindForTrait trait) env
-    either throwError updateState result
-
-inferKindForTrait :: Trait 'Parsed -> Infer (PredKindEnv, Trait 'KindInferred)
-inferKindForTrait (Trait sp ps p@(IsIn _ _ predTys) tys) = do
-  predEnv <- asks kPredEnv
-  (headAs, headCs) <- gatherResults <$> traverse constraintsForPred ps
-  (predAs, predCs) <- gatherResults <$> traverse infer predTys
-  (as, cs) <- gatherResults <$> traverse gatherTraitTypeConstraints tys
-  let assumps = as <> headAs <> predAs
-      constraints = predCs <> headCs <> cs <> sameVarConstraints assumps
-  subst <- solve constraints
-  let kindEnv = mkKindEnv assumps subst
-      predEnv' = predEnv <> getPredKinds p kindEnv
-      ps' = map (flip runReader kindEnv . enrich) ps
-      p' = runReader (enrich p) kindEnv
-  tys' <- local (const $ KEnv kindEnv predEnv') $ solveKinds tys
-  let trait = Trait sp ps' p' tys'
-  pure (predEnv', trait)
-
-gatherTraitTypeConstraints :: TypeAnn 'Parsed -> Infer ([KAssump], [KConstraint])
-gatherTraitTypeConstraints (TypeAnn _ _ sch) = do
-  predEnv <- asks kPredEnv
-  let Scheme _ ps ty = sch
-  predResults <- traverse (inferPred predEnv) ps
-  let (predAs, predCs) = gatherResults predResults
-  (as, cs, k) <- infer ty
-  let constraints = KConstraint IStar k : cs <> predCs
-  pure (as <> predAs, constraints)
-
-getPredKinds :: Pred 'Parsed -> KindEnv -> PredKindEnv
-getPredKinds p@(IsIn _ predName _) kindEnv = predEnv where
-  predVars = getPredVars p
-  predEnv = Map.fromList [(predName, map lookupPredKind predVars)]
-  lookupPredKind = unsafeFromJust . flip Map.lookup kindEnv
 
 class HasType a ph where
   getType :: a -> Type ph
@@ -149,6 +82,62 @@ getTypeEquations (ADT _ hd bodies) =
   let hdType = getType hd
       bodyTypes = getType <$> bodies
    in hdType:bodyTypes
+
+solveADTConstraints :: [Type 'Parsed] -> Infer KindEnv
+solveADTConstraints ts = do
+  results <- traverse infer ts
+  let (as, cs) = gatherResults results
+      constraints = cs <> sameVarConstraints as
+  subst <- solve constraints
+  pure $ mkKindEnv as subst
+
+inferTraits :: (MonadError KindError m, MonadState K.Env m)
+            => [Trait 'Parsed]
+            -> m [Trait 'KindInferred]
+inferTraits traits = traverse inferTrait orderedTraits where
+  traitsGraph = map (\t -> (t, traitName t, traitRefersTo t)) traits
+  orderedTraits = mconcat $ graphToGroupedLists traitsGraph
+  updateState (solution, trait') = do
+    K.Env env _ <- get
+    let newPredEnv = map normalizeIKind <$> solution
+    put (K.Env env newPredEnv) $> trait'
+  inferTrait trait = do
+    env <- get
+    let result = runInfer (inferKindForTrait trait) env
+    either throwError updateState result
+
+inferKindForTrait :: Trait 'Parsed -> Infer (K.PredEnv, Trait 'KindInferred)
+inferKindForTrait (Trait sp ps p@(IsIn _ _ predTys) tys) = do
+  predEnv <- asks kPredEnv
+  (headAs, headCs) <- gatherResults <$> traverse constraintsForPred ps
+  (predAs, predCs) <- gatherResults <$> traverse infer predTys
+  (as, cs) <- gatherResults <$> traverse gatherTraitTypeConstraints tys
+  let assumps = as <> headAs <> predAs
+      constraints = predCs <> headCs <> cs <> sameVarConstraints assumps
+  subst <- solve constraints
+  let kindEnv = mkKindEnv assumps subst
+      predEnv' = predEnv <> getPredKinds p kindEnv
+      ps' = map (flip runReader kindEnv . enrich) ps
+      p' = runReader (enrich p) kindEnv
+  tys' <- local (const $ K.Env kindEnv predEnv') $ solveKinds tys
+  let trait = Trait sp ps' p' tys'
+  pure (predEnv', trait)
+
+gatherTraitTypeConstraints :: TypeAnn 'Parsed -> Infer ([K.Assump], [K.Constraint])
+gatherTraitTypeConstraints (TypeAnn _ _ sch) = do
+  predEnv <- asks kPredEnv
+  let Scheme _ ps ty = sch
+  predResults <- traverse (inferPred predEnv) ps
+  let (predAs, predCs) = gatherResults predResults
+  (as, cs, k) <- infer ty
+  let constraints = Constraint IStar k : cs <> predCs
+  pure (as <> predAs, constraints)
+
+getPredKinds :: Pred 'Parsed -> KindEnv -> K.PredEnv
+getPredKinds p@(IsIn _ predName _) kindEnv = predEnv where
+  predVars = getPredVars p
+  predEnv = Map.fromList [(predName, map lookupPredKind predVars)]
+  lookupPredKind = unsafeFromJust . flip Map.lookup kindEnv
 
 
 class SolveKinds a where
@@ -206,7 +195,7 @@ instance SolveKinds (TypeAnn 'Parsed) where
     (predAs, predCs) <- gatherResults <$> traverse (inferPred predEnv) ps
     (as, cs, k) <- infer ty
     let assumps = as <> predAs
-        constraints = KConstraint IStar k : sameVarConstraints assumps <> cs <> predCs
+        constraints = Constraint IStar k : sameVarConstraints assumps <> cs <> predCs
     subst <- solve constraints
     let kindEnv = mkKindEnv assumps subst
     pure $ runReader (enrich t) kindEnv
@@ -226,17 +215,17 @@ instance SolveKinds (Impl 'Parsed) where
         p' = runReader (enrich p) kindEnv
     Impl ann ps' p' <$> solveKinds bindings
 
-constraintsForPred :: Pred 'Parsed -> Infer ([KAssump], [KConstraint])
+constraintsForPred :: Pred 'Parsed -> Infer ([K.Assump], [K.Constraint])
 constraintsForPred p@(IsIn _ _ tys) = do
   predEnv <- asks kPredEnv
   results <- traverse infer tys
   let (as, cs) = gatherResults results
       ks = map (\(_, _, k) -> k) results
       predKs = lookupPred p predEnv
-      predCs = zipWith KConstraint ks predKs
+      predCs = zipWith Constraint ks predKs
   pure (as, cs <> predCs)
 
-inferPred :: PredKindEnv -> Pred 'Parsed -> Infer ([KAssump], [KConstraint])
+inferPred :: K.PredEnv -> Pred 'Parsed -> Infer ([K.Assump], [K.Constraint])
 inferPred predEnv p = do
   let ks = lookupPred p predEnv
       vars = getPredVars p
@@ -249,7 +238,7 @@ getPredVars (IsIn _ _ tys) = mapMaybe f tys where
     TVar (Tyvar _ var) -> Just var
     _ -> Nothing
 
-lookupPred :: Pred 'Parsed -> PredKindEnv -> [IKind]
+lookupPred :: Pred 'Parsed -> K.PredEnv -> [IKind]
 lookupPred (IsIn _ predName _) predEnv =
   unsafeFromJust $ Map.lookup predName predEnv
 
@@ -310,15 +299,15 @@ graphToGroupedLists = map f . stronglyConnComp
       CyclicSCC nodes -> nodes
 
 class GatherResults a where
-  gatherResults :: a -> ([KAssump], [KConstraint])
+  gatherResults :: a -> ([K.Assump], [K.Constraint])
 
-instance GatherResults ([KAssump], [KConstraint]) where
+instance GatherResults ([K.Assump], [K.Constraint]) where
   gatherResults = identity
 
-instance GatherResults [([KAssump], [KConstraint])] where
+instance GatherResults [([K.Assump], [K.Constraint])] where
   gatherResults xs = (foldMap fst xs, foldMap snd xs)
 
-instance GatherResults [([KAssump], [KConstraint], IKind)] where
+instance GatherResults [([K.Assump], [K.Constraint], IKind)] where
   gatherResults xs = (foldMap f xs, foldMap g xs) where
     f (x, _, _) = x
     g (_, x, _) = x

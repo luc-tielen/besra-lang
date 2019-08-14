@@ -45,7 +45,7 @@ runPass input =
       Right result ->
         let (ast, IR1To2.PassState{..}) = IR1To2.pass result
             kindEnv = Map.fromList [(Id "->", IKArr IStar (IKArr IStar IStar))]
-            kEnv = KEnv kindEnv Map.empty
+            kEnv = Env kindEnv Map.empty
             compState = IK.CompilerState adts traits impls kEnv
          in runExcept $ IK.pass compState ast
   in
@@ -93,12 +93,12 @@ instance Testable [Impl 'KindInferred] where
       Right (_, IK.CompilerState _ _ impls' _) ->
         impls' `shouldBe` impls
 
-instance Testable IK.PredKindEnv where
+instance Testable PredEnv where
   input ==> predKindEnv = do
     let result = runPass input
     case result of
       Left err -> panic $ show err
-      Right (_, IK.CompilerState _ _ _ (KEnv _ predKindEnv')) ->
+      Right (_, IK.CompilerState _ _ _ (Env _ predKindEnv')) ->
         predKindEnv' `shouldBe` predKindEnv
 
 instance Testable (Module 'KindInferred) where
@@ -142,7 +142,7 @@ arrow sp t1 t2 =
   let k = KArr Star (KArr Star Star)
    in TApp (TApp (TCon (Tycon (sp, k) (Id "->"))) t1) t2
 
-predEnv :: Text -> [IKind] -> IK.PredKindEnv
+predEnv :: Text -> [IKind] -> PredEnv
 predEnv predName = Map.singleton (Id predName)
 
 
