@@ -9,6 +9,7 @@ module Besra.ArgParser
   ) where
 
 import Protolude hiding ( WriteMode )
+import Prelude ( String )
 import Options.Applicative
 
 
@@ -40,9 +41,10 @@ data WriteOpts
   deriving (Eq, Show)
 
 
-parse :: IO Args
-parse = execParser $ info parser desc
+parse :: [String] -> IO Args
+parse = handleParseResult . execParserPure defaultPrefs parserInfo
   where desc = fullDesc <> progDesc "CLI interface to the Besra compiler"
+        parserInfo = info parser desc
 
 parser :: Parser Args
 parser = subparser fmtCommand

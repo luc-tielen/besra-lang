@@ -12,8 +12,10 @@ import Besra.Types.Ann
 type Module' = Module 'Parsed
 
 main :: IO ()
-main = ArgParser.parse >>= \case
-  Fmt fmtArgs -> fmt fmtArgs
+main = do
+  args <- getArgs
+  ArgParser.parse args >>= \case
+    Fmt fmtArgs -> fmt fmtArgs
 
 fmt :: FmtArgs -> IO ()
 fmt = \case
