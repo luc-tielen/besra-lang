@@ -42,14 +42,15 @@ data Expr (ph :: Phase)
   | ELet (Ann ph) [ExprDecl ph] (Expr ph)            -- bindings end result
   | EParens (Ann ph) (Expr ph)
 
-deriving instance Eq (Ann ph) => Eq (FixityInfo ph)
-deriving instance Show (Ann ph) => Show (FixityInfo ph)
-deriving instance Eq (Ann ph) => Eq (ExprDecl ph)
-deriving instance Show (Ann ph) => Show (ExprDecl ph)
-deriving instance Eq (Ann ph) => Eq (Binding ph)
-deriving instance Show (Ann ph) => Show( Binding ph)
-deriving instance Eq (Ann ph) => Eq (Expr ph)
-deriving instance Show (Ann ph) => Show (Expr ph)
+
+deriving instance AnnHas Eq ph => Eq (Expr ph)
+deriving instance AnnHas Eq ph => Eq (ExprDecl ph)
+deriving instance AnnHas Eq ph => Eq (Binding ph)
+deriving instance AnnHas Show ph => Show (Expr ph)
+deriving instance AnnHas Show ph => Show (ExprDecl ph)
+deriving instance AnnHas Show ph => Show (Binding ph)
+deriving instance AnnHas Eq ph => Eq (FixityInfo ph)
+deriving instance AnnHas Show ph => Show (FixityInfo ph)
 
 instance HasSpan (Ann ph) => HasSpan (Expr ph) where
   span = \case

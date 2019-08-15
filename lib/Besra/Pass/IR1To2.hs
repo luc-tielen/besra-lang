@@ -1,6 +1,4 @@
 
-{-# LANGUAGE UndecidableInstances #-}
-
 module Besra.Pass.IR1To2
   ( pass
   , PassState(..)
@@ -32,52 +30,45 @@ This pass does a few transformations all in 1 go:
 -}
 
 
-data PassState (ph :: Phase)
+data PassState
   = PassState
-  { adts :: [IR2.ADT ph]
-  , traits :: [IR2.Trait ph]
-  , impls :: [IR2.Impl ph]
+  { adts :: [IR2.ADT 'Parsed]
+  , traits :: [IR2.Trait 'Parsed]
+  , impls :: [IR2.Impl 'Parsed]
   }
+  deriving (Eq, Show)
 
-deriving instance Eq (Ann ph) => Eq (PassState ph)
-deriving instance Show (Ann ph) => Show (PassState ph)
-
-type PassM ph = State (PassState ph)
+type PassM = State PassState
 
 -- | Function that converts IR1 to IR2. Also returns the state of the pass
 --   containing ADT, trait and impl decls for further use in the compiler.
-pass :: IR1.Module ph -> (IR2.Module ph, PassState ph)
+pass :: IR1.Module 'Parsed -> (IR2.Module 'Parsed, PassState)
 pass ast = runState (desugar ast) (PassState [] [] [])
 
 -- | Typeclass that performs the heavy lifting of this pass.
---   The 2nd parameter ph is used for convincing the typesystem that
---   these conversions are possible for every phase in the compiler.
---   (This leads to more reuse and is more correct than hardcoding it
---   to 'Parsed since we can't touch the contents of the annotations
---   themselves now.)
-class Desugarable a (ph :: Phase) where
+class Desugarable a where
   type Desugared a
 
-  desugar :: a -> PassM ph (Desugared a)
+  desugar :: a -> PassM (Desugared a)
 
-instance Desugarable a ph => Desugarable [a] ph where
+instance Desugarable a => Desugarable [a] where
   type Desugared [a] = [Desugared a]
 
   desugar = traverse desugar
 
-instance (Desugarable a ph, Desugarable b ph) => Desugarable (a, b) ph where
+instance (Desugarable a, Desugarable b) => Desugarable (a, b) where
   type Desugared (a, b) = (Desugared a, Desugared b)
 
   desugar (a, b) = (,) <$> desugar a <*> desugar b
 
-instance Desugarable (IR1.Module ph) ph where
-  type Desugared (IR1.Module ph) = IR2.Module ph
+instance Desugarable (IR1.Module 'Parsed) where
+  type Desugared (IR1.Module 'Parsed) = IR2.Module 'Parsed
 
   desugar (IR1.Module decls) =
     IR2.Module . catMaybes <$> desugar decls
 
-instance Desugarable (IR1.ADT ph) ph where
-  type Desugared (IR1.ADT ph) = IR2.ADT ph
+instance Desugarable (IR1.ADT 'Parsed) where
+  type Desugared (IR1.ADT 'Parsed) = IR2.ADT 'Parsed
 
   desugar (IR1.ADT sp hd constrs) = do
     hd'@(IR2.ADTHead _ ty) <- desugar hd
@@ -91,8 +82,8 @@ instance Desugarable (IR1.ADT ph) ph where
         let ty' = foldr (arrow ann) ty ts'
         pure $ IR2.ConDecl ann name ty'
 
-instance Desugarable (IR1.ADTHead ph) ph where
-  type Desugared (IR1.ADTHead ph) = IR2.ADTHead ph
+instance Desugarable (IR1.ADTHead 'Parsed) where
+  type Desugared (IR1.ADTHead 'Parsed) = IR2.ADTHead 'Parsed
 
   desugar (IR1.ADTHead con@(IR1.Tycon _ name) vars) = do
     con' <- desugar con
@@ -100,20 +91,20 @@ instance Desugarable (IR1.ADTHead ph) ph where
     let ty = foldl' IR2.TApp (IR2.TCon con') (IR2.TVar <$> vars')
     pure $ IR2.ADTHead name ty
 
-instance Desugarable (IR1.Trait ph) ph where
-  type Desugared (IR1.Trait ph) = IR2.Trait ph
+instance Desugarable (IR1.Trait 'Parsed) where
+  type Desugared (IR1.Trait 'Parsed) = IR2.Trait 'Parsed
 
   desugar (IR1.Trait ann ps p ts) =
     IR2.Trait ann <$> desugar ps <*> desugar p <*> desugar ts
 
-instance Desugarable (IR1.Impl ph) ph where
-  type Desugared (IR1.Impl ph) = IR2.Impl ph
+instance Desugarable (IR1.Impl 'Parsed) where
+  type Desugared (IR1.Impl 'Parsed) = IR2.Impl 'Parsed
 
   desugar (IR1.Impl ann ps p bindings) =
     IR2.Impl ann <$> desugar ps <*> desugar p <*> desugar bindings
 
-instance Desugarable (IR1.Decl ph) ph where
-  type Desugared (IR1.Decl ph) = Maybe (IR2.Decl ph)
+instance Desugarable (IR1.Decl 'Parsed) where
+  type Desugared (IR1.Decl 'Parsed) = Maybe (IR2.Decl 'Parsed)
 
   desugar = \case
     IR1.TypeAnnDecl typeAnn ->
@@ -131,26 +122,26 @@ instance Desugarable (IR1.Decl ph) ph where
       Nothing <$ modify (\s -> s { impls = impl' : impls s })
     _ -> pure Nothing
 
-instance Desugarable (IR1.TypeAnn ph) ph where
-  type Desugared (IR1.TypeAnn ph) = IR2.TypeAnn ph
+instance Desugarable (IR1.TypeAnn 'Parsed) where
+  type Desugared (IR1.TypeAnn 'Parsed) = IR2.TypeAnn 'Parsed
 
   desugar (IR1.TypeAnn ann id scheme) =
     IR2.TypeAnn ann id <$> desugar scheme
 
-instance Desugarable (IR1.Scheme ph) ph where
-  type Desugared (IR1.Scheme ph) = IR2.Scheme ph
+instance Desugarable (IR1.Scheme 'Parsed) where
+  type Desugared (IR1.Scheme 'Parsed) = IR2.Scheme 'Parsed
 
   desugar (IR1.Scheme ann ps t) =
     IR2.Scheme ann <$> desugar ps <*> desugar t
 
-instance Desugarable (IR1.Pred ph) ph where
-  type Desugared (IR1.Pred ph) = IR2.Pred ph
+instance Desugarable (IR1.Pred 'Parsed) where
+  type Desugared (IR1.Pred 'Parsed) = IR2.Pred 'Parsed
 
   desugar (IR1.IsIn ann id ts) =
     IR2.IsIn ann id <$> desugar ts
 
-instance Desugarable (IR1.Type ph) ph where
-  type Desugared (IR1.Type ph) = IR2.Type ph
+instance Desugarable (IR1.Type 'Parsed) where
+  type Desugared (IR1.Type 'Parsed) = IR2.Type 'Parsed
 
   desugar = \case
     IR1.TCon tycon -> IR2.TCon <$> desugar tycon
@@ -162,24 +153,24 @@ instance Desugarable (IR1.Type ph) ph where
       pure $ foldl' app t' ts'
     IR1.TParen _ t -> desugar t
 
-instance Desugarable (IR1.Tycon ph) ph where
-  type Desugared (IR1.Tycon ph) = IR2.Tycon ph
+instance Desugarable (IR1.Tycon 'Parsed) where
+  type Desugared (IR1.Tycon 'Parsed) = IR2.Tycon 'Parsed
 
   desugar (IR1.Tycon ann con) = pure $ IR2.Tycon ann con
 
-instance Desugarable (IR1.Tyvar ph) ph where
-  type Desugared (IR1.Tyvar ph) = IR2.Tyvar ph
+instance Desugarable (IR1.Tyvar 'Parsed) where
+  type Desugared (IR1.Tyvar 'Parsed) = IR2.Tyvar 'Parsed
 
   desugar (IR1.Tyvar ann con) = pure $ IR2.Tyvar ann con
 
-instance Desugarable (IR1.Binding ph) ph where
-  type Desugared (IR1.Binding ph) = IR2.Binding ph
+instance Desugarable (IR1.Binding 'Parsed) where
+  type Desugared (IR1.Binding 'Parsed) = IR2.Binding 'Parsed
 
   desugar (IR1.Binding ann id expr) =
     IR2.Binding ann id <$> desugar expr
 
-instance Desugarable (IR1.Expr ph) ph where
-  type Desugared (IR1.Expr ph) = IR2.Expr ph
+instance Desugarable (IR1.Expr 'Parsed) where
+  type Desugared (IR1.Expr 'Parsed) = IR2.Expr 'Parsed
 
   desugar = \case
     IR1.ELit ann lit -> IR2.ELit ann <$> desugar lit
@@ -207,7 +198,7 @@ instance Desugarable (IR1.Expr ph) ph where
       IR2.EApp ann (IR2.EVar ann $ Id "negate") <$> desugar e
     IR1.EParens _ e -> desugar e
 
-instance Desugarable IR1.Pattern ph where
+instance Desugarable IR1.Pattern where
   type Desugared IR1.Pattern = IR2.Pattern
 
   desugar = \case
@@ -217,8 +208,8 @@ instance Desugarable IR1.Pattern ph where
     IR1.PCon con pats -> IR2.PCon con <$> desugar pats
     IR1.PAs id pat -> IR2.PAs id <$> desugar pat
 
-instance Desugarable (IR1.ExprDecl ph) ph where
-  type Desugared (IR1.ExprDecl ph) = Maybe (IR2.Decl ph)
+instance Desugarable (IR1.ExprDecl 'Parsed) where
+  type Desugared (IR1.ExprDecl 'Parsed) = Maybe (IR2.Decl 'Parsed)
 
   desugar = \case
     IR1.ExprTypeAnnDecl typeAnn ->
@@ -227,7 +218,7 @@ instance Desugarable (IR1.ExprDecl ph) ph where
       Just . IR2.BindingDecl <$> desugar binding
     IR1.ExprFixityDecl _ -> pure Nothing
 
-instance Desugarable IR1.Lit ph where
+instance Desugarable IR1.Lit where
   type Desugared IR1.Lit = IR2.Lit
 
   desugar = \case
@@ -235,12 +226,12 @@ instance Desugarable IR1.Lit ph where
     IR1.LString str -> IR2.LString <$> desugar str
     IR1.LNumber num -> IR2.LNumber <$> desugar num
 
-instance Desugarable IR1.String ph where
+instance Desugarable IR1.String where
   type Desugared IR1.String = IR2.String
 
   desugar (IR1.String str) = pure $ IR2.String str
 
-instance Desugarable IR1.Number ph where
+instance Desugarable IR1.Number where
   type Desugared IR1.Number = IR2.Number
 
   desugar = \case

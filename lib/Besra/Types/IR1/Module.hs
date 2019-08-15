@@ -23,8 +23,8 @@ data Decl (ph :: Phase)
 newtype Module (ph :: Phase)
   = Module [Decl ph]
 
-deriving instance Eq (Ann ph) => Eq (Decl ph)
-deriving instance Show (Ann ph) => Show (Decl ph)
-deriving instance Eq (Ann ph) => Eq (Module ph)
-deriving instance Show (Ann ph) => Show (Module ph)
+deriving instance AnnHas Eq ph => Eq (Decl ph)
+deriving instance AnnHas Show ph => Show (Decl ph)
+deriving instance AnnHas Eq ph => Eq (Module ph)
+deriving instance AnnHas Show ph => Show (Module ph)
 
