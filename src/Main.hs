@@ -3,6 +3,7 @@ module Main ( main ) where
 import Protolude hiding ( WriteMode )
 import qualified Besra.ArgParser as ArgParser
 import Besra.ArgParser hiding ( parse )
+import qualified Besra.Repl as Repl
 import Besra.Parser
 import Besra.PrettyPrinter
 import Besra.Types.IR1.Module
@@ -16,6 +17,7 @@ main = do
   args <- getArgs
   ArgParser.parse args >>= \case
     Fmt fmtArgs -> fmt fmtArgs
+    Repl -> Repl.run
 
 fmt :: FmtArgs -> IO ()
 fmt = \case

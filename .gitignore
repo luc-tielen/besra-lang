@@ -6,3 +6,4 @@ cabal.project.local~
 .ghc.*
 result
 result-2
+.history
