@@ -16,7 +16,7 @@ type Repl a = HaskelineT (StateT ReplState IO) a
 
 run :: IO ()
 run = flip evalStateT initialState
-    $ evalRepl banner interpretLine options cmdPrefix completer initializer
+    $ evalRepl banner interpretLine options cmdPrefix initializer
   where initialState = ReplState 1
         interpretLine = const (pure ())
         cmdPrefix = Just ':'
