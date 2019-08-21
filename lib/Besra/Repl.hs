@@ -8,6 +8,8 @@ import Besra.Repl.Internal
 import Besra.PrettyPrinter
 import Besra.Parser
 import Besra.Parser.Module ( declParser )
+import Besra.Types.IR1.Module ( Decl )
+import Besra.Types.Ann
 
 
 type LineNum = Int
@@ -23,10 +25,12 @@ run :: IO ()
 run = flip evalStateT initialState
     $ evalRepl banner interpretInput (toReplOptions options) cmdPrefix initializer
   where initialState = ReplState 1
-        interpretInput = const (pure ())
+        interpretInput = const (pure ())  -- TODO actual handling of new decls / exprs
         cmdPrefix = Just ':'
         options = [ (["q", "quit"], const quit)
                   , (["p", "prettyprint"], prettyPrintDecl)
+                  , (["d", "debug"], debugDecl)
+                  -- TODO "k" / "kind" and "t" / "type" commands
                   ]
         initializer = pure ()
         banner = do
@@ -38,16 +42,37 @@ toReplOptions = concatMap toReplOption where
   toReplOption (xs, handler) = map (, handler) xs
 
 quit :: Repl ()
-quit = printRepl "Quitting Besra REPL.\n" *> abort
+quit = printlnRepl "Quitting Besra REPL." *> abort
+
+{-
+TODO increment line number when actual line is entered (not with options prefix)
+
+incrReplLine :: Repl ()
+incrReplLine = modify $ \s -> s { lineNum = lineNum s + 1 }
+-}
 
 printRepl :: Handler ()
 printRepl text = putStr text *> liftIO (hFlush stdout)
 
+printlnRepl :: Handler ()
+printlnRepl = printRepl . (<> "\n")
 
 prettyPrintDecl :: Handler ()
-prettyPrintDecl input = do
+prettyPrintDecl = withParsedDecl $ printlnRepl . prettyFormat
+
+debugDecl :: Handler ()
+debugDecl = withParsedDecl $ \decl -> do
+  printlnRepl "Debug info:"
+  printlnRepl $ "Parsed AST: " <> show decl
+  printlnRepl $ "Pretty printed AST: " <> prettyFormat decl
+
+withParsedDecl :: (Decl 'Parsed -> Repl ()) -> Text -> Repl ()
+withParsedDecl f input = do
   let parseResult = parse declParser "<interactive>" input
   case parseResult of
-    Left err -> putStrLn $ formatError err
-    Right decl -> putStrLn $ prettyFormat decl
+    Left err -> handleParseError err
+    Right decl -> f decl
+
+handleParseError :: ParseError -> Repl ()
+handleParseError = printlnRepl . formatError
 
