@@ -1,5 +1,5 @@
 
-module Besra.Parser.Module ( parser ) where
+module Besra.Parser.Module ( parser, declParser ) where
 
 import Protolude
 import Besra.Types.IR1.Module
@@ -18,17 +18,17 @@ type Decl' = Decl 'Parsed
 parser :: Parser Module'
 parser = do
   void $ optional whitespace
-  decls <- decl `endBy` whitespace
+  decls <- declParser `endBy` whitespace
   eof
   pure $ Module decls
 
-decl :: Parser Decl'
-decl = decl' <?> "declaration"
+declParser :: Parser Decl'
+declParser = decl <?> "declaration"
   where
-    decl' =  dataDecl
-         <|> traitDecl
-         <|> implDecl
-         <|> typeOrBindingDecl
+    decl =  dataDecl
+        <|> traitDecl
+        <|> implDecl
+        <|> typeOrBindingDecl
 
 typeOrBindingDecl :: Parser Decl'
 typeOrBindingDecl = do
