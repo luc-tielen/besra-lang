@@ -23,13 +23,13 @@ class StripAnns a where
   stripAnns :: a -> Result a
 
 instance StripAnns (Module ph) where
-  type Result (Module ph) = Module 'Testing
+  type Result (Module ph) = Module Testing
 
   stripAnns (Module decls) =
     Module (stripAnns decls)
 
 instance StripAnns (Decl ph) where
-  type Result (Decl ph) = Decl 'Testing
+  type Result (Decl ph) = Decl Testing
 
   stripAnns = \case
     TypeAnnDecl typeAnn -> TypeAnnDecl (stripAnns typeAnn)
@@ -40,25 +40,25 @@ instance StripAnns (Decl ph) where
     FixityDecl fixity -> FixityDecl (stripAnns fixity)
 
 instance StripAnns (FixityInfo ph) where
-  type Result (FixityInfo ph) = FixityInfo 'Testing
+  type Result (FixityInfo ph) = FixityInfo Testing
 
   stripAnns (FixityInfo _ fixity prio name) =
     FixityInfo emptyAnn fixity prio name
 
 instance StripAnns (ADT ph) where
-  type Result (ADT ph) = ADT 'Testing
+  type Result (ADT ph) = ADT Testing
 
   stripAnns (ADT _ adtHead body) =
     ADT emptyAnn (stripAnns adtHead) (stripAnns body)
 
 instance StripAnns (ADTHead ph) where
-  type Result (ADTHead ph) = ADTHead 'Testing
+  type Result (ADTHead ph) = ADTHead Testing
 
   stripAnns (ADTHead con vars) =
     ADTHead (stripAnns con) (stripAnns vars)
 
 instance StripAnns (ConDecl ph) where
-  type Result (ConDecl ph) = ConDecl 'Testing
+  type Result (ConDecl ph) = ConDecl Testing
 
   stripAnns (ConDecl _ name tys) =
     ConDecl emptyAnn name (stripAnns tys)
@@ -74,31 +74,31 @@ instance StripAnns b => StripAnns (a, b) where
   stripAnns = map stripAnns
 
 instance StripAnns (Trait ph) where
-  type Result (Trait ph) = Trait 'Testing
+  type Result (Trait ph) = Trait Testing
 
   stripAnns (Trait _ ps p tys) =
     Trait emptyAnn (stripAnns ps) (stripAnns p) (stripAnns tys)
 
 instance StripAnns (Impl ph) where
-  type Result (Impl ph) = Impl 'Testing
+  type Result (Impl ph) = Impl Testing
 
   stripAnns (Impl _ ps p bindings) =
     Impl emptyAnn (stripAnns ps) (stripAnns p) (stripAnns bindings)
 
 instance StripAnns (Pred ph) where
-  type Result (Pred ph) = Pred 'Testing
+  type Result (Pred ph) = Pred Testing
 
   stripAnns (IsIn _ name tys) =
     IsIn emptyAnn name (stripAnns tys)
 
 instance StripAnns (Binding ph) where
-  type Result (Binding ph) = Binding 'Testing
+  type Result (Binding ph) = Binding Testing
 
   stripAnns (Binding _ name expr) =
     Binding emptyAnn name (stripAnns expr)
 
 instance StripAnns (Expr ph) where
-  type Result (Expr ph) = Expr 'Testing
+  type Result (Expr ph) = Expr Testing
 
   stripAnns = \case
     ELit _ lit -> ELit emptyAnn lit
@@ -114,7 +114,7 @@ instance StripAnns (Expr ph) where
     EParens _ e -> EParens emptyAnn (stripAnns e)
 
 instance StripAnns (ExprDecl ph) where
-  type Result (ExprDecl ph) = ExprDecl 'Testing
+  type Result (ExprDecl ph) = ExprDecl Testing
 
   stripAnns = \case
     ExprTypeAnnDecl typeAnn ->
@@ -125,19 +125,19 @@ instance StripAnns (ExprDecl ph) where
       ExprFixityDecl (stripAnns fixity)
 
 instance StripAnns (TypeAnn ph) where
-  type Result (TypeAnn ph) = TypeAnn 'Testing
+  type Result (TypeAnn ph) = TypeAnn Testing
 
   stripAnns (TypeAnn _ name scheme) =
     TypeAnn emptyAnn name (stripAnns scheme)
 
 instance StripAnns (Scheme ph) where
-  type Result (Scheme ph) = Scheme 'Testing
+  type Result (Scheme ph) = Scheme Testing
 
   stripAnns (Scheme _ ps ty) =
     Scheme emptyAnn (stripAnns ps) (stripAnns ty)
 
 instance StripAnns (Type ph) where
-  type Result (Type ph) = Type 'Testing
+  type Result (Type ph) = Type Testing
 
   stripAnns = \case
     TCon tycon -> TCon (stripAnns tycon)
@@ -146,12 +146,12 @@ instance StripAnns (Type ph) where
     TParen _ t -> TParen emptyAnn (stripAnns t)
 
 instance StripAnns (Tycon ph) where
-  type Result (Tycon ph) = Tycon 'Testing
+  type Result (Tycon ph) = Tycon Testing
 
   stripAnns (Tycon _ con) = Tycon emptyAnn con
 
 instance StripAnns (Tyvar ph) where
-  type Result (Tyvar ph) = Tyvar 'Testing
+  type Result (Tyvar ph) = Tyvar Testing
 
   stripAnns (Tyvar _ var) = Tyvar emptyAnn var
 

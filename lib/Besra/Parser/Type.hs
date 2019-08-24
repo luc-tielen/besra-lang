@@ -12,7 +12,7 @@ import Besra.Types.Ann
 import Control.Monad.Combinators.Expr
 
 
-type Type' = Type 'Parsed
+type Type' = Type Parsed
 -- TODO: upgrade the parsing of types for better precedence handling
 
 parser :: Parser Type'

@@ -16,17 +16,17 @@ import Besra.Types.Span
 import Besra.Types.Id
 
 
-type Module' = Module 'Parsed
-type Binding' = Binding 'Parsed
-type Expr' = Expr 'Parsed
-type TypeAnn' = TypeAnn 'Parsed
-type Scheme' = Scheme 'Parsed
-type Type' = Type 'Parsed
-type Tycon' = Tycon 'Parsed
-type Tyvar' = Tyvar 'Parsed
-type ADT' = ADT 'Parsed
-type ADTHead' = ADTHead 'Parsed
-type ADTBody' = ADTBody 'Parsed
+type Module' = Module Parsed
+type Binding' = Binding Parsed
+type Expr' = Expr Parsed
+type TypeAnn' = TypeAnn Parsed
+type Scheme' = Scheme Parsed
+type Type' = Type Parsed
+type Tycon' = Tycon Parsed
+type Tyvar' = Tyvar Parsed
+type ADT' = ADT Parsed
+type ADTHead' = ADTHead Parsed
+type ADTBody' = ADTBody Parsed
 
 runPass :: Text -> (Module', PassState)
 runPass input =

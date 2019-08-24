@@ -10,7 +10,7 @@ import Besra.Types.IR1.Module
 import Besra.Types.Ann
 
 
-type Module' = Module 'Parsed
+type Module' = Module Parsed
 
 main :: IO ()
 main = do

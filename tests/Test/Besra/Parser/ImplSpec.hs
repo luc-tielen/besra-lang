@@ -20,13 +20,13 @@ import Besra.Parser.Impl (parser)
 import Test.Hspec.Megaparsec hiding (shouldFailWith, succeedsLeaving)
 
 
-type Impl' = Impl 'Testing
-type Expr' = Expr 'Testing
-type Binding' = Binding 'Testing
-type Type' = Type 'Testing
-type Pred' = Pred 'Testing
+type Impl' = Impl Testing
+type Expr' = Expr Testing
+type Binding' = Binding Testing
+type Type' = Type Testing
+type Pred' = Pred Testing
 
-parse :: Text -> ParseResult (Impl 'Parsed)
+parse :: Text -> ParseResult (Impl Parsed)
 parse = mkParser parser
 
 num :: Int -> Expr'
@@ -50,7 +50,7 @@ impl = Impl emptyAnn
 (==>) :: Text -> Impl' -> IO ()
 a ==> b = (stripAnns <$> parse a) `shouldParse` b
 
-(~~>) :: Text -> Impl 'Parsed -> IO ()
+(~~>) :: Text -> Impl Parsed -> IO ()
 a ~~> b = parse a `shouldParse` b
 
 (-->) :: Type' -> Type' -> Type'

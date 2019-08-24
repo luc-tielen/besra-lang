@@ -20,10 +20,10 @@ import Besra.Types.IR1.TypeAnn
 import Test.Hspec.Megaparsec hiding (shouldFailWith, succeedsLeaving)
 import Test.Besra.Helpers
 
-type Expr' = Expr 'Testing
-type ExprDecl' = ExprDecl 'Testing
-type Type' = Type 'Testing
-type Ann' = Ann 'Parsed
+type Expr' = Expr Testing
+type ExprDecl' = ExprDecl Testing
+type Type' = Type Testing
+type Ann' = Ann Parsed
 
 
 -- Same as -->, but strips annotations too
@@ -31,11 +31,11 @@ type Ann' = Ann 'Parsed
 a ==> b = (stripAnns <$> parse a) `shouldParse` b
 infixr 0 ==>
 
-(-->) :: Text -> Expr 'Parsed -> IO ()
+(-->) :: Text -> Expr Parsed -> IO ()
 a --> b = parse a `shouldParse` b
 infixr 0 -->
 
-parse :: Text -> ParseResult (Expr 'Parsed)
+parse :: Text -> ParseResult (Expr Parsed)
 parse = mkParser parser
 
 c :: Text -> Type'

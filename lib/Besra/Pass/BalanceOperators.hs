@@ -22,13 +22,13 @@ import Besra.Types.Id
 import Besra.Types.Ann
 
 
-type Module' = Module 'Parsed
-type Decl' = Decl 'Parsed
-type Binding' = Binding 'Parsed
-type Expr' = Expr 'Parsed
-type ExprDecl' = ExprDecl 'Parsed
-type Ann' = Ann 'Parsed
-type BalanceError' = BalanceError 'Parsed
+type Module' = Module Parsed
+type Decl' = Decl Parsed
+type Binding' = Binding Parsed
+type Expr' = Expr Parsed
+type ExprDecl' = ExprDecl Parsed
+type Ann' = Ann Parsed
+type BalanceError' = BalanceError Parsed
 
 data BalanceError ph
   = BadPrecedence FixitySpec FixitySpec (Decl ph)

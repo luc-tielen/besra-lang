@@ -19,9 +19,9 @@ import Besra.Parser
 import Test.Hspec
 
 
-type Module' = Module 'Parsed
-type Expr' = Expr 'Parsed
-type Ann' = Ann 'Parsed
+type Module' = Module Parsed
+type Expr' = Expr Parsed
+type Ann' = Ann Parsed
 
 file :: FilePath
 file = "Test"

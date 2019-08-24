@@ -12,8 +12,8 @@ import qualified Besra.Parser.Pred as Pred
 import qualified Besra.Parser.Scheme as Scheme
 
 
-type Trait' = Trait 'Parsed
-type TypeAnn' = TypeAnn 'Parsed
+type Trait' = Trait Parsed
+type TypeAnn' = TypeAnn Parsed
 
 parser :: Parser Trait'
 parser = parser' <?> "trait declaration" where

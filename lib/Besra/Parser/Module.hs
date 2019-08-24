@@ -12,8 +12,8 @@ import Besra.Parser.Helpers
 import Besra.Types.Ann
 
 
-type Module' = Module 'Parsed
-type Decl' = Decl 'Parsed
+type Module' = Module Parsed
+type Decl' = Decl Parsed
 
 parser :: Parser Module'
 parser = do

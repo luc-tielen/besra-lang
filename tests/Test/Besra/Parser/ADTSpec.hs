@@ -13,13 +13,13 @@ import Besra.Types.IR1.ADT
 import Besra.Types.IR1.Type
 
 
-type ADT' = ADT 'Parsed
-type ADTHead' = ADTHead 'Parsed
-type ADTBody' = ADTBody 'Parsed
-type ConDecl' = ConDecl 'Parsed
-type Tycon' = Tycon 'Parsed
-type Tyvar' = Tyvar 'Parsed
-type Type' = Type 'Parsed
+type ADT' = ADT Parsed
+type ADTHead' = ADTHead Parsed
+type ADTBody' = ADTBody Parsed
+type ConDecl' = ConDecl Parsed
+type Tycon' = Tycon Parsed
+type Tyvar' = Tyvar Parsed
+type Type' = Type Parsed
 
 con :: Span -> Text -> Tycon'
 con sp = Tycon sp . Id

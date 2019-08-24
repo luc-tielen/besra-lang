@@ -113,7 +113,7 @@ runInfer :: Infer a -> Env -> Either KindError a
 runInfer m env = fst <$> runExcept (evalRWST m env 0)
 
 -- | Infers the kind of an expression at the type level
-infer :: Type 'Parsed -> Infer ([Assump], [Constraint], IKind)
+infer :: Type Parsed -> Infer ([Assump], [Constraint], IKind)
 infer = \case
   TVar (Tyvar sp varName) -> do
     kv <- IKVar sp <$> fresh

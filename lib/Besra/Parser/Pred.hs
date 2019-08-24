@@ -11,7 +11,7 @@ import Besra.Types.Ann
 import Besra.Types.Span
 
 
-type Pred' = Pred 'Parsed
+type Pred' = Pred Parsed
 
 parser :: Parser Pred'
 parser = do

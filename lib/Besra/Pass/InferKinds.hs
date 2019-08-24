@@ -24,9 +24,9 @@ import Data.Map ( Map )
 
 
 pass :: MonadError KindError m
-     => CompilerState 'Parsed
-     -> Module 'Parsed
-     -> m (Module 'KindInferred, CompilerState 'KindInferred)
+     => CompilerState Parsed
+     -> Module Parsed
+     -> m (Module KindInferred, CompilerState KindInferred)
 pass (CompilerState adts traits impls kEnv) ast =
   flip evalStateT kEnv $ do
     adts' <- inferADTs adts
@@ -42,8 +42,8 @@ pass (CompilerState adts traits impls kEnv) ast =
         pure (ast', CompilerState adts' traits' impls' kEnv')
 
 inferADTs :: (MonadError KindError m, MonadState K.Env m)
-          => [ADT 'Parsed]
-          -> m [ADT 'KindInferred]
+          => [ADT Parsed]
+          -> m [ADT KindInferred]
 inferADTs adts = concatMapM inferADTGroup groupedADTs where
   adtsGraph = map (\adt -> (adt, adtName adt, adtRefersTo adt)) adts
   groupedADTs = graphToGroupedLists adtsGraph
@@ -58,7 +58,7 @@ inferADTs adts = concatMapM inferADTGroup groupedADTs where
     either throwError updateState result
   isNoVar (Id x) = not $ T.head x `VU.elem` ['a'..'z']
 
-inferKindForADTs :: [ADT 'Parsed] -> Infer (KindEnv, [ADT 'KindInferred])
+inferKindForADTs :: [ADT Parsed] -> Infer (KindEnv, [ADT KindInferred])
 inferKindForADTs adts = do
   let types = concatMap getTypeEquations adts
   updatedKindEnv <- solveADTConstraints types
@@ -75,13 +75,13 @@ instance HasType (ConDecl ph) ph where
   getType (ConDecl _ _ ty) = ty
 
 -- | Helper function for extracting all the types used in the ADT.
-getTypeEquations :: ADT 'Parsed -> [Type 'Parsed]
+getTypeEquations :: ADT Parsed -> [Type Parsed]
 getTypeEquations (ADT _ hd bodies) =
   let hdType = getType hd
       bodyTypes = getType <$> bodies
    in hdType:bodyTypes
 
-solveADTConstraints :: [Type 'Parsed] -> Infer KindEnv
+solveADTConstraints :: [Type Parsed] -> Infer KindEnv
 solveADTConstraints ts = do
   results <- traverse infer ts
   let (as, cs) = gatherResults results
@@ -90,8 +90,8 @@ solveADTConstraints ts = do
   pure $ mkKindEnv as subst
 
 inferTraits :: (MonadError KindError m, MonadState K.Env m)
-            => [Trait 'Parsed]
-            -> m [Trait 'KindInferred]
+            => [Trait Parsed]
+            -> m [Trait KindInferred]
 inferTraits traits = traverse inferTrait orderedTraits where
   traitsGraph = map (\t -> (t, traitName t, traitRefersTo t)) traits
   orderedTraits = mconcat $ graphToGroupedLists traitsGraph
@@ -104,7 +104,7 @@ inferTraits traits = traverse inferTrait orderedTraits where
     let result = runInfer (inferKindForTrait trait) env
     either throwError updateState result
 
-inferKindForTrait :: Trait 'Parsed -> Infer (K.PredEnv, Trait 'KindInferred)
+inferKindForTrait :: Trait Parsed -> Infer (K.PredEnv, Trait KindInferred)
 inferKindForTrait (Trait sp ps p@(IsIn _ _ predTys) tys) = do
   predEnv <- asks kPredEnv
   (headAs, headCs) <- gatherResults <$> traverse constraintsForPred ps
@@ -121,7 +121,7 @@ inferKindForTrait (Trait sp ps p@(IsIn _ _ predTys) tys) = do
   let trait = Trait sp ps' p' tys'
   pure (predEnv', trait)
 
-gatherTraitTypeConstraints :: TypeAnn 'Parsed -> Infer ([K.Assump], [K.Constraint])
+gatherTraitTypeConstraints :: TypeAnn Parsed -> Infer ([K.Assump], [K.Constraint])
 gatherTraitTypeConstraints (TypeAnn _ _ sch) = do
   predEnv <- asks kPredEnv
   let Scheme _ ps ty = sch
@@ -131,7 +131,7 @@ gatherTraitTypeConstraints (TypeAnn _ _ sch) = do
   let constraints = Constraint (IStar $ span ty) k : cs <> predCs
   pure (as <> predAs, constraints)
 
-getPredKinds :: Pred 'Parsed -> KindEnv -> K.PredEnv
+getPredKinds :: Pred Parsed -> KindEnv -> K.PredEnv
 getPredKinds p@(IsIn _ predName _) kindEnv = predEnv where
   predVars = getPredVars p
   predEnv = Map.fromList [(predName, map lookupPredKind predVars)]
@@ -148,27 +148,27 @@ instance SolveKinds a => SolveKinds [a] where
 
   solveKinds = traverse solveKinds
 
-instance SolveKinds (Module 'Parsed) where
-  type Result (Module 'Parsed) = Module 'KindInferred
+instance SolveKinds (Module Parsed) where
+  type Result (Module Parsed) = Module KindInferred
 
   solveKinds (Module decls) =
     Module <$> solveKinds decls
 
-instance SolveKinds (Decl 'Parsed) where
-  type Result (Decl 'Parsed) = Decl 'KindInferred
+instance SolveKinds (Decl Parsed) where
+  type Result (Decl Parsed) = Decl KindInferred
 
   solveKinds = \case
     TypeAnnDecl t -> TypeAnnDecl <$> solveKinds t
     BindingDecl b -> BindingDecl <$> solveKinds b
 
-instance SolveKinds (Binding 'Parsed) where
-  type Result (Binding 'Parsed) = Binding 'KindInferred
+instance SolveKinds (Binding Parsed) where
+  type Result (Binding Parsed) = Binding KindInferred
 
   solveKinds (Binding ann name e) =
     Binding ann name <$> solveKinds e
 
-instance SolveKinds (Expr 'Parsed) where
-  type Result (Expr 'Parsed) = Expr 'KindInferred
+instance SolveKinds (Expr Parsed) where
+  type Result (Expr Parsed) = Expr KindInferred
 
   solveKinds = \case
     ELit sp lit -> pure $ ELit sp lit
@@ -184,8 +184,8 @@ instance SolveKinds (Expr 'Parsed) where
     ELet sp decls body ->
       ELet sp <$> traverse solveKinds decls <*> solveKinds body
 
-instance SolveKinds (TypeAnn 'Parsed) where
-  type Result (TypeAnn 'Parsed) = TypeAnn 'KindInferred
+instance SolveKinds (TypeAnn Parsed) where
+  type Result (TypeAnn Parsed) = TypeAnn KindInferred
 
   solveKinds t@(TypeAnn _ _ sch) = do
     predEnv <- asks kPredEnv
@@ -199,8 +199,8 @@ instance SolveKinds (TypeAnn 'Parsed) where
     let kindEnv = mkKindEnv assumps subst
     pure $ runReader (enrich t) kindEnv
 
-instance SolveKinds (Impl 'Parsed) where
-  type Result (Impl 'Parsed) = Impl 'KindInferred
+instance SolveKinds (Impl Parsed) where
+  type Result (Impl Parsed) = Impl KindInferred
 
   solveKinds (Impl ann ps p bindings) = do
     predEnv <- asks kPredEnv
@@ -214,7 +214,7 @@ instance SolveKinds (Impl 'Parsed) where
         p' = runReader (enrich p) kindEnv
     Impl ann ps' p' <$> solveKinds bindings
 
-constraintsForPred :: Pred 'Parsed -> Infer ([K.Assump], [K.Constraint])
+constraintsForPred :: Pred Parsed -> Infer ([K.Assump], [K.Constraint])
 constraintsForPred p@(IsIn _ _ tys) = do
   predEnv <- asks kPredEnv
   results <- traverse infer tys
@@ -224,7 +224,7 @@ constraintsForPred p@(IsIn _ _ tys) = do
       predCs = zipWith Constraint ks predKs
   pure (as, cs <> predCs)
 
-inferPred :: K.PredEnv -> Pred 'Parsed -> Infer ([K.Assump], [K.Constraint])
+inferPred :: K.PredEnv -> Pred Parsed -> Infer ([K.Assump], [K.Constraint])
 inferPred predEnv p = do
   let ks = lookupPred p predEnv
       vars = getPredVars p
@@ -238,15 +238,15 @@ getPredVars (IsIn _ _ tys) = mapMaybe f tys where
     TVar (Tyvar _ var) -> Just var
     _ -> Nothing
 
-lookupPred :: Pred 'Parsed -> K.PredEnv -> [IKind]
+lookupPred :: Pred Parsed -> K.PredEnv -> [IKind]
 lookupPred (IsIn _ predName _) predEnv =
   unsafeFromJust $ Map.lookup predName predEnv
 
-enrichADT :: KindEnv -> ADT 'Parsed -> ADT 'KindInferred
+enrichADT :: KindEnv -> ADT Parsed -> ADT KindInferred
 enrichADT kindEnv adt = runReader (enrich adt) kindEnv
 
 class Enrichable a where
-  enrich :: a 'Parsed -> Reader KindEnv (a 'KindInferred)
+  enrich :: a Parsed -> Reader KindEnv (a KindInferred)
 
 instance Enrichable TypeAnn where
   enrich (TypeAnn sp name sch) =

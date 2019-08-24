@@ -18,9 +18,9 @@ import qualified Besra.Parser.Tycon as Tycon
 import qualified Besra.Parser.Tyvar as Tyvar
 
 
-type Impl' = Impl 'Parsed
-type Binding' = Binding 'Parsed
-type Pred' = Pred 'Parsed
+type Impl' = Impl Parsed
+type Binding' = Binding Parsed
+type Pred' = Pred Parsed
 
 parser :: Parser Impl'
 parser = parser' <?> "impl declaration" where

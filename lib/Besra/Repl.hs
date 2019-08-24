@@ -11,9 +11,9 @@ import Besra.Types.IR1 ( Module(..), Decl, Expr )
 import Besra.Types.Ann
 
 
-type Expr' = Expr 'Parsed
-type Decl' = Decl 'Parsed
-type Module' = Module 'Parsed
+type Expr' = Expr Parsed
+type Decl' = Decl Parsed
+type Module' = Module Parsed
 
 type LineNum = Int
 

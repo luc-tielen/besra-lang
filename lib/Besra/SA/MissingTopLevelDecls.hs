@@ -12,8 +12,8 @@ import Besra.Types.IR1.TypeAnn
 import qualified Data.List as List
 
 
-type Module' = Module 'Parsed
-type Decl' = Decl 'Parsed
+type Module' = Module Parsed
+type Decl' = Decl Parsed
 
 validate :: FilePath -> Validation [SAError] Module'
 validate path (Module decls) =

@@ -11,13 +11,14 @@ import Besra.Types.Ann
 import qualified Besra.Pass.BalanceOperators as BalanceOperators
 
 
-type Module' = Module 'Parsed
-type BalanceError' = BalanceOperators.BalanceError 'Parsed
+type Module' = Module Parsed
+type BalanceError' = BalanceOperators.BalanceError Parsed
 
-data BesraError = ParseErr ParseError
-             | BalanceErr BalanceError'
-             | SemanticErr SemanticError
-             deriving (Eq, Show)
+data BesraError
+  = ParseErr ParseError
+  | BalanceErr BalanceError'
+  | SemanticErr SemanticError
+  deriving (Eq, Show)
 
 
 class ToError e where

@@ -20,8 +20,8 @@ import qualified Besra.Parser.Expr as Expr
 import qualified Besra.Parser.Module as Module
 
 
-type Expr' = Expr 'Parsed
-type Decl' = Decl 'Parsed
+type Expr' = Expr Parsed
+type Decl' = Decl Parsed
 
 exprParser :: Parser Expr'
 exprParser = Expr.parser
