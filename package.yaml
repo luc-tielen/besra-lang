@@ -23,7 +23,7 @@ dependencies:
   - parallel >= 3.2.2.0 && < 4
   - prettyprinter >= 1.2.1 && < 2
   - optparse-applicative >= 0.14.3.0 && < 1
-  - haskeline >= 0.7.5.0 && < 1
+  - haskeline >= 0.7.4.3 && < 1
 
 default-extensions:
   - NoImplicitPrelude

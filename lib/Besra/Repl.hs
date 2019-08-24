@@ -5,12 +5,14 @@ import Protolude hiding ( StateT, evalStateT )
 import Control.Monad.State.Strict
 import System.IO (hFlush, stdout)
 import Besra.Repl.Internal
+import Besra.Repl.Parser
 import Besra.PrettyPrinter
-import Besra.Parser
-import Besra.Parser.Module ( declParser )
-import Besra.Types.IR1.Module ( Decl )
+import Besra.Types.IR1 ( Expr, Decl )
 import Besra.Types.Ann
 
+
+type Expr' = Expr 'Parsed
+type Decl' = Decl 'Parsed
 
 type LineNum = Int
 
@@ -28,8 +30,8 @@ run = flip evalStateT initialState
         interpretInput = const (pure ())  -- TODO actual handling of new decls / exprs
         cmdPrefix = Just ':'
         options = [ (["q", "quit"], const quit)
-                  , (["p", "prettyprint"], prettyPrintDecl)
-                  , (["d", "debug"], debugDecl)
+                  , (["p", "prettyprint"], prettyPrint)
+                  , (["d", "debug"], debug)
                   -- TODO "k" / "kind" and "t" / "type" commands
                   ]
         initializer = pure ()
@@ -57,18 +59,21 @@ printRepl text = putStr text *> liftIO (hFlush stdout)
 printlnRepl :: Handler ()
 printlnRepl = printRepl . (<> "\n")
 
-prettyPrintDecl :: Handler ()
-prettyPrintDecl = withParsedDecl $ printlnRepl . prettyFormat
+prettyPrint :: Handler ()
+prettyPrint = withParsedInput $ either pp pp where
+  pp :: Pretty a => a -> Repl ()
+  pp = printlnRepl . prettyFormat
 
-debugDecl :: Handler ()
-debugDecl = withParsedDecl $ \decl -> do
-  printlnRepl "Debug info:"
-  printlnRepl $ "Parsed AST: " <> show decl
-  printlnRepl $ "Pretty printed AST: " <> prettyFormat decl
+debug :: Handler ()
+debug = withParsedInput $ either debug' debug' where
+  debug' ast = do
+    printlnRepl "Debug info:"
+    printlnRepl $ "Parsed AST: " <> show ast
+    printlnRepl $ "Pretty printed AST: " <> prettyFormat ast
 
-withParsedDecl :: (Decl 'Parsed -> Repl ()) -> Text -> Repl ()
-withParsedDecl f input = do
-  let parseResult = parse declParser "<interactive>" input
+withParsedInput :: (Either Expr' Decl' -> Repl ()) -> Text -> Repl ()
+withParsedInput f input = do
+  let parseResult = parse exprOrDeclParser "<interactive>" input
   case parseResult of
     Left err -> handleParseError err
     Right decl -> f decl

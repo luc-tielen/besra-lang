@@ -1,7 +1,7 @@
 
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-module Besra.PrettyPrinter ( prettyFormat ) where
+module Besra.PrettyPrinter ( Pretty, prettyFormat ) where
 
 import Protolude
 import qualified Data.Text as T
