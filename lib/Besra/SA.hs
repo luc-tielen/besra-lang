@@ -16,7 +16,7 @@ import qualified Besra.SA.ConflictingBindingDecls as ConflictingBindingDecls
 import qualified Besra.SA.MissingTopLevelDecls as MissingTopLevelDecls
 
 
-type Module' = Module 'Parsed
+type Module' = Module Parsed
 
 validations :: FilePath -> [Validation [SAError] Module']
 validations path =

@@ -14,11 +14,11 @@ import Besra.Types.IR1.Scheme
 import Besra.Types.IR1.Type
 
 
-type Scheme' = Scheme 'Testing
-type Type' = Type 'Testing
-type Pred' = Pred 'Testing
+type Scheme' = Scheme Testing
+type Type' = Type Testing
+type Pred' = Pred Testing
 
-parser' :: Text -> ParseResult (Scheme 'Parsed)
+parser' :: Text -> ParseResult (Scheme Parsed)
 parser' = mkParser parser
 
 (==>) :: Text -> Scheme' -> IO ()

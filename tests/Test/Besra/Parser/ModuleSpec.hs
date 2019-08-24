@@ -29,21 +29,21 @@ import Test.Hspec.Megaparsec hiding (shouldFailWith)
 import NeatInterpolation
 
 
-type Module' = Module 'Testing
-type Expr' = Expr 'Testing
-type Decl' = Decl 'Testing
-type Type' = Type 'Testing
-type Scheme' = Scheme 'Testing
-type Pred' = Pred 'Testing
+type Module' = Module Testing
+type Expr' = Expr Testing
+type Decl' = Decl Testing
+type Type' = Type Testing
+type Scheme' = Scheme Testing
+type Pred' = Pred Testing
 
-parse :: Text -> ParseResult (Module 'Parsed)
+parse :: Text -> ParseResult (Module Parsed)
 parse = mkParser parser
 
 (==>) :: Text -> Module' -> IO ()
 a ==> b = (stripAnns <$> parse a) `shouldParse` b
 
 
-(~~>) :: Text -> Module 'Parsed -> IO ()
+(~~>) :: Text -> Module Parsed -> IO ()
 a ~~> b = parse a `shouldParse` b
 
 con :: Text -> Type'
@@ -468,7 +468,7 @@ spec = describe "module parser" $ parallel $ do
         (utok 'y' <> elabel "properly indented binding declaration in impl")
 
   describe "location information" $ parallel $ do
-    let binding' :: Span -> Text -> Expr 'Parsed -> Binding 'Parsed
+    let binding' :: Span -> Text -> Expr Parsed -> Binding Parsed
         binding' sp name = Binding sp (Id name)
         num' ann = ELit ann . LNumber . SInt
         lam' ann vars = ELam ann (PVar . Id <$> vars)

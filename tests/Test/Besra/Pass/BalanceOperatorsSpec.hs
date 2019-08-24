@@ -23,12 +23,12 @@ import NeatInterpolation
 import Test.Besra.Helpers
 
 
-type Module' = Module 'Testing
-type Decl' = Decl 'Testing
-type Binding' = Binding 'Testing
-type Expr' = Expr 'Testing
-type Type' = Type 'Testing
-type BalanceError' = BalanceError 'Parsed
+type Module' = Module Testing
+type Decl' = Decl Testing
+type Binding' = Binding Testing
+type Expr' = Expr Testing
+type Type' = Type Testing
+type BalanceError' = BalanceError Parsed
 
 runPass :: Text -> IO (Either BalanceError' Module')
 runPass input =
@@ -59,7 +59,7 @@ instance Testable Binding' where
 instance Testable Expr' where
   a ==> b = a ==> binding "a" b
 
-instance Testable (BalanceError 'Testing) where
+instance Testable (BalanceError Testing) where
   a ==> b = do
     result <- runPass a
     first stripAnn result `shouldBe` Left b

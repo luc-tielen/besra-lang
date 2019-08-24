@@ -183,7 +183,7 @@ singleQuote = char '\''
 -- | Helper function for getting the begin and end offset when parsing something.
 --   Important: use this function before lexeme/lexeme' or the trailing
 --   whitespace will also be counted!
-withSpan :: Parser a -> Parser (Ann 'Parsed, a)
+withSpan :: Parser a -> Parser (Ann Parsed, a)
 withSpan p = do
   begin <- getOffset
   result <- p

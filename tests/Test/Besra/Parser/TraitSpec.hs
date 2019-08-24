@@ -16,13 +16,13 @@ import Besra.Types.IR1.TypeAnn
 import Besra.Parser.Trait (parser)
 
 
-type Trait' = Trait 'Testing
-type Pred' = Pred 'Testing
-type Type' = Type 'Testing
-type Scheme' = Scheme 'Testing
-type TypeAnn' = TypeAnn 'Testing
+type Trait' = Trait Testing
+type Pred' = Pred Testing
+type Type' = Type Testing
+type Scheme' = Scheme Testing
+type TypeAnn' = TypeAnn Testing
 
-parse :: Text -> ParseResult (Trait 'Parsed)
+parse :: Text -> ParseResult (Trait Parsed)
 parse = mkParser parser
 
 con :: Text -> Type'

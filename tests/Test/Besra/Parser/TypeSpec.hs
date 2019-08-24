@@ -12,9 +12,9 @@ import Besra.Types.Id
 import Besra.Types.Ann
 
 
-type Type' = Type 'Testing
+type Type' = Type Testing
 
-parser' :: Text -> ParseResult (Type 'Parsed)
+parser' :: Text -> ParseResult (Type Parsed)
 parser' = mkParser parser
 
 (==>) :: Text -> Type' -> IO ()

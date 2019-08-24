@@ -7,7 +7,7 @@ import Besra.Types.Id
 import Besra.Types.Ann
 
 
-parser :: Parser (Tycon 'Parsed)
+parser :: Parser (Tycon Parsed)
 parser = uncurry Tycon <$> withSpan con
   where con = Id <$> capitalIdentifier <?> "concrete type"
 

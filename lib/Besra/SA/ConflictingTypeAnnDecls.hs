@@ -9,8 +9,8 @@ import Besra.Types.IR1.TypeAnn
 import Besra.Types.Id
 import Besra.Types.Ann
 
-type Module' = Module 'Parsed
-type Decl' = Decl 'Parsed
+type Module' = Module Parsed
+type Decl' = Decl Parsed
 
 
 validate :: FilePath -> Validation [SAError] Module'

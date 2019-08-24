@@ -13,12 +13,12 @@ import qualified Besra.Parser.Tyvar as Tyvar
 import Besra.Parser.Helpers
 
 
-type ADTHead' = ADTHead 'Parsed
-type ADTBody' = ADTBody 'Parsed
-type ConDecl' = ConDecl 'Parsed
-type Type' = Type 'Parsed
+type ADTHead' = ADTHead Parsed
+type ADTBody' = ADTBody Parsed
+type ConDecl' = ConDecl Parsed
+type Type' = Type Parsed
 
-parser :: Parser (ADT 'Parsed)
+parser :: Parser (ADT Parsed)
 parser = do
   startPos <- getOffset
   keyword "data"

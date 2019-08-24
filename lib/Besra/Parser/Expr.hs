@@ -18,9 +18,9 @@ import qualified Besra.Parser.Scheme as Scheme
 import qualified Besra.Parser.Pattern as Pattern
 
 
-type Expr' = Expr 'Parsed
-type ExprDecl' = ExprDecl 'Parsed
-type Ann' = Ann 'Parsed
+type Expr' = Expr Parsed
+type ExprDecl' = ExprDecl Parsed
+type Ann' = Ann Parsed
 
 parser :: Parser Expr'
 parser = expr

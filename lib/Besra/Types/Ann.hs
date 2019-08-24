@@ -1,5 +1,13 @@
 
-module Besra.Types.Ann ( Phase(..), Ann, AnnTy, AnnHas ) where
+module Besra.Types.Ann
+  ( Phase
+  , Parsed
+  , KindInferred
+  , Testing
+  , Ann
+  , AnnTy
+  , AnnHas
+  ) where
 
 import Protolude
 import Besra.Types.Span
@@ -13,16 +21,19 @@ data Phase = Parsed        -- ^ Phase right after AST is parsed
            | KindInferred  -- ^ Phase right after kind inference
            | Testing       -- ^ Phase only used in the testsuite (for stripping out annotations)
 
+type Parsed = 'Parsed
+type KindInferred = 'KindInferred
+type Testing = 'Testing
 
 type family Ann (a :: Phase) where
-  Ann 'Parsed = Span
-  Ann 'KindInferred = Span
-  Ann 'Testing = ()
+  Ann Parsed = Span
+  Ann KindInferred = Span
+  Ann Testing = ()
 
 type family AnnTy (a :: Phase) where
-  AnnTy 'Parsed = Span
-  AnnTy 'KindInferred = (Span, Kind)
-  AnnTy 'Testing = ()
+  AnnTy Parsed = Span
+  AnnTy KindInferred = (Span, Kind)
+  AnnTy Testing = ()
 
 type AnnHas (f :: Type -> Constraint) (ph :: Phase)
   = (f (Ann ph), f (AnnTy ph))

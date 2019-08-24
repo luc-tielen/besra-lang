@@ -20,21 +20,21 @@ import Besra.Types.Id
 import NeatInterpolation
 
 
-type Ann' = Ann 'KindInferred
-type AnnTy' = AnnTy 'KindInferred
-type ADTHead' = ADTHead 'KindInferred
-type ADTBody' = ADTBody 'KindInferred
-type ADT' = ADT 'KindInferred
-type Trait' = Trait 'KindInferred
-type Impl' = Impl 'KindInferred
-type Module' = Module 'KindInferred
-type Binding' = Binding 'KindInferred
-type Expr' = Expr 'KindInferred
-type TypeAnn' = TypeAnn 'KindInferred
-type Scheme' = Scheme 'KindInferred
-type Pred' = Pred 'KindInferred
-type Type' = Type 'KindInferred
-type CompilerState' = IK.CompilerState 'KindInferred
+type Ann' = Ann KindInferred
+type AnnTy' = AnnTy KindInferred
+type ADTHead' = ADTHead KindInferred
+type ADTBody' = ADTBody KindInferred
+type ADT' = ADT KindInferred
+type Trait' = Trait KindInferred
+type Impl' = Impl KindInferred
+type Module' = Module KindInferred
+type Binding' = Binding KindInferred
+type Expr' = Expr KindInferred
+type TypeAnn' = TypeAnn KindInferred
+type Scheme' = Scheme KindInferred
+type Pred' = Pred KindInferred
+type Type' = Type KindInferred
+type CompilerState' = IK.CompilerState KindInferred
 
 runPass :: Text -> Either KindError (Module', CompilerState')
 runPass input =
@@ -76,7 +76,7 @@ instance Testable [(Id, Kind)] where
             TVar (Tyvar (_, k) _) -> k
             TApp t1 _ -> getKind t1
 
-instance Testable [ADT 'KindInferred] where
+instance Testable [ADT KindInferred] where
   input ==> adts = do
     let result = runPass input
     case result of
@@ -84,7 +84,7 @@ instance Testable [ADT 'KindInferred] where
       Right (_, IK.CompilerState adts' _ _ _) ->
         adts' `shouldBe` adts
 
-instance Testable [Trait 'KindInferred] where
+instance Testable [Trait KindInferred] where
   input ==> traits = do
     let result = runPass input
     case result of
@@ -92,7 +92,7 @@ instance Testable [Trait 'KindInferred] where
       Right (_, IK.CompilerState _ traits' _ _) ->
         traits' `shouldBe` traits
 
-instance Testable [Impl 'KindInferred] where
+instance Testable [Impl KindInferred] where
   input ==> impls = do
     let result = runPass input
     case result of
@@ -108,7 +108,7 @@ instance Testable PredEnv where
       Right (_, IK.CompilerState _ _ _ (Env _ predKindEnv')) ->
         predKindEnv' `shouldBe` predKindEnv
 
-instance Testable (Module 'KindInferred) where
+instance Testable (Module KindInferred) where
   input ==> ast = do
     let result = runPass input
     case result of
@@ -141,7 +141,7 @@ binding ann x = Binding ann (Id x)
 typeAnn :: Span -> Id -> Scheme' -> TypeAnn'
 typeAnn = TypeAnn
 
-scheme :: Span -> [Pred 'KindInferred] -> Type' -> Scheme'
+scheme :: Span -> [Pred KindInferred] -> Type' -> Scheme'
 scheme = Scheme
 
 arrow :: Span -> Type' -> Type' -> Type'

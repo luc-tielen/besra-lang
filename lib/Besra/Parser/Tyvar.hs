@@ -7,7 +7,7 @@ import Besra.Types.Id
 import Besra.Types.Ann
 
 
-parser :: Parser (Tyvar 'Parsed)
+parser :: Parser (Tyvar Parsed)
 parser = uncurry Tyvar <$> withSpan var
   where
     var = Id <$> identifier <?> "type variable"

@@ -11,8 +11,8 @@ import Besra.Types.Ann
 import Besra.Types.Span
 
 
-type Scheme' = Scheme 'Parsed
-type Pred' = Pred 'Parsed
+type Scheme' = Scheme Parsed
+type Pred' = Pred Parsed
 
 parser :: Parser Scheme'
 parser = parser' <?> "typescheme" where

@@ -19,8 +19,8 @@ import Besra.Parser
 import Test.Hspec
 
 
-type Module' = Module 'Parsed
-type Type' = Type 'Parsed
+type Module' = Module Parsed
+type Type' = Type Parsed
 
 file :: FilePath
 file = "Test"

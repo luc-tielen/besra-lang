@@ -20,7 +20,7 @@ import qualified Text.Megaparsec as P
 import qualified Data.Text as T
 
 
-type Module' = Module 'Parsed
+type Module' = Module Parsed
 
 parse :: Parser a -> FilePath -> Text -> ParseResult a
 parse p path txt =
