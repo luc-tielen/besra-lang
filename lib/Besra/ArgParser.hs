@@ -64,12 +64,14 @@ fmtParser = Fmt <$> fmtParser' where
   stdInput = flag' FromStdIn
     (long "stdin" <> help "Whether input should be read from standard input.")
   outputMode = checkMode' <|> writeMode
-  checkMode' = CheckMode <$ checkMode
-  checkMode = flag' DoCheck
-    (long "check"
+
+  checkModeConfig =
+    long "check"
     <> help ("Whether check for already formatted file needs to be performed?"
           <> "If checking, exits with 0 if already formatted, otherwise 1.")
-    )
+
+  checkMode' = flag' CheckMode checkModeConfig
+  checkMode = flag NoCheck DoCheck checkModeConfig
   writeMode = WriteMode <$> flag Inplace Stdout
     (long "stdout"
     <> help ("Whether formatted output should be written to standard output "
