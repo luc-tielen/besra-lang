@@ -1,5 +1,10 @@
 
-module Besra ( compile ) where
+module Besra
+  ( compile
+  , compileFile
+  , wrapErr
+  , BesraError(..)
+  ) where
 
 import Protolude
 import Control.Monad.Except
@@ -22,6 +27,7 @@ import Besra.TypeSystem.KindSolver ( Env(..), IKind(..), KindError(..) )
 type Module1' = IR1.Module Parsed
 type BalanceError' = BalanceOperators.BalanceError Parsed
 
+-- TODO pretty print error
 data BesraError
   = ParseErr ParseError
   | BalanceErr BalanceError'
@@ -54,7 +60,7 @@ parse path = do
   content <- liftIO $ TIO.readFile path
   liftEither $ parseFile path content
 
-semanticAnalysis :: FilePath -> Module1' -> ExceptT SemanticError IO Module1'
+semanticAnalysis :: MonadIO m => FilePath -> Module1' -> ExceptT SemanticError m Module1'
 semanticAnalysis path decls =
   case runSA path decls of
     Ok -> pure decls
@@ -69,17 +75,27 @@ ir1To2 x =
       kEnv = Env kindEnv Map.empty
   in (ast, CompilerState adts traits impls kEnv)
 
-wrapErr :: ToError e => ExceptT e IO a -> ExceptT BesraError IO a
+wrapErr :: (MonadIO m, ToError e) => ExceptT e m a -> ExceptT BesraError m a
 wrapErr = withExceptT toError
 
-compile :: FilePath
-        -> IO (Either BesraError
-                      ( IR2.Module KindInferred
-                      , CompilerState KindInferred))
-compile path = runExceptT pipeline where
-  pipeline = runPipeline
-  runPipeline = do
+compileFile
+  :: FilePath
+  -> IO (Either BesraError
+                ( IR2.Module KindInferred
+                , CompilerState KindInferred))
+compileFile path = runExceptT pipeline where
+  pipeline = do
     parsed <- wrapErr $ parse path
+    compile path parsed
+
+compile
+  :: MonadIO m
+  => FilePath
+  -> IR1.Module Parsed
+  -> ExceptT BesraError m
+            ( IR2.Module KindInferred
+            , CompilerState KindInferred)
+compile path parsed = do
     balanced <- wrapErr $ BalanceOperators.pass parsed
     analyzed <- wrapErr $ semanticAnalysis path balanced
     let (ir2, compState) = ir1To2 analyzed

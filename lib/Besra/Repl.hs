@@ -1,14 +1,20 @@
 
 module Besra.Repl ( run ) where
 
-import Protolude hiding ( StateT, evalStateT )
-import Control.Monad.State.Strict
+import Protolude hiding ( StateT, evalStateT, mod )
+import Control.Monad.State.Strict hiding ( runState )
 import System.IO (hFlush, stdout)
 import Besra.Repl.Internal
 import Besra.Repl.Parser
 import Besra.PrettyPrinter
 import Besra.Types.IR1 ( Module(..), Decl, Expr )
 import Besra.Types.Ann
+import qualified Besra
+import qualified Besra.Pass.IR1To2 as IR1To2
+import qualified Besra.Pass.InferKinds as IK
+import qualified Besra.TypeSystem.KindSolver as K
+import Besra.Types.CompilerState
+import Besra.Types.Kind
 
 
 type Expr' = Expr Parsed
@@ -31,17 +37,19 @@ type Handler a = Text -> Repl a
 run :: IO ()
 run = flip evalStateT initialState
     $ evalRepl banner handleInput (toReplOptions options) cmdPrefix initializer
-  where initialState = ReplState 1 (Module [])
-        cmdPrefix = Just ':'
-        options = [ (["q", "quit"], const quit)
-                  , (["p", "prettyprint"], prettyPrint)
-                  , (["d", "debug"], debug)
-                  -- TODO "k" / "kind" and "t" / "type" commands
-                  ]
-        initializer = pure ()
-        banner = do
-          lineNr <- gets lineNum
-          pure $ "λ " <> show lineNr <> "> "
+  where
+    initialState = ReplState 1 (Module [])
+    cmdPrefix = Just ':'
+    options = [ (["q", "quit"], const quit)
+              , (["p", "prettyprint"], prettyPrint)
+              , (["d", "debug"], debug)
+              , (["k", "kind"], kindInfo)
+              -- TODO "t" / "type" commands
+              ]
+    initializer = pure ()
+    banner = do
+      lineNr <- gets lineNum
+      pure $ "λ " <> show lineNr <> "> "
 
 toReplOptions :: [([Text], Handler ())] -> [(Text, Handler ())]
 toReplOptions = concatMap toReplOption where
@@ -80,6 +88,21 @@ debug = withParsedInput $ either debug' debug' where
     printlnRepl "Debug info:"
     printlnRepl $ "Parsed AST: " <> show ast
     printlnRepl $ "Pretty printed AST: " <> prettyFormat ast
+
+-- TODO refactor/cleanup
+kindInfo :: Handler ()
+kindInfo input = do
+  let parseResult = parse typeParser "<interactive>" input
+  case parseResult of
+    Left err -> handleParseError err
+    Right ty -> do
+      mod <- gets decls
+      runExceptT (Besra.compile "<interactive>" mod) >>= \case
+        Left err -> printlnRepl $ show err
+        Right (_, CompilerState _ _ _ (K.Env kEnv _)) -> do
+          let (ty2, _) = runState (IR1To2.desugar ty) (IR1To2.PassState [] [] [])
+          printlnRepl $ prettyFormat $ kind $ runReader (IK.enrich ty2) kEnv
+
 
 withParsedInput :: (Either Expr' Decl' -> Repl ()) -> Handler ()
 withParsedInput f input = do
