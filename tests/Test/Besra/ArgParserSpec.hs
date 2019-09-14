@@ -31,8 +31,8 @@ toArgs = map T.unpack . T.split (== ' ')
 
 spec :: Spec
 spec = describe "argument parser" $ parallel $ do
-  --it "parses 'besra fmt FILE' correctly" $
-  --  "fmt /path/to/file" ==> Fmt (FromFile "/path/to/file" (WriteMode Inplace))
+  it "parses 'besra fmt FILE' correctly" $
+    "fmt /path/to/file" ==> Fmt (FromFile "/path/to/file" (WriteMode Inplace))
 
   it "parses 'besra fmt FILE --check' correctly" $
     "fmt /path/to/file --check" ==> Fmt (FromFile "/path/to/file" CheckMode)
@@ -51,7 +51,6 @@ spec = describe "argument parser" $ parallel $ do
 
   it "fails to parse trailing args after 'besra repl'" $
     shouldFail "repl some more args --flag"
-
 
   it "fails to parse empty input" $
     shouldFail ""
