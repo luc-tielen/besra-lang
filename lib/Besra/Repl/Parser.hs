@@ -8,6 +8,7 @@ module Besra.Repl.Parser
   , exprOrDeclParser
   , typeParser
   , ParseError
+  , Parser
   ) where
 
 -- This module is needed since the REPL behaves slightly different
