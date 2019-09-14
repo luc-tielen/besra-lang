@@ -9,6 +9,7 @@ import Test.Besra.Helpers
 import Besra.Parser
 import NeatInterpolation
 import Besra.PrettyPrinter
+import Besra.Types.Kind
 import qualified Data.Text as T
 
 
@@ -382,3 +383,11 @@ spec = describe "prettyprinter" $ parallel $ do
           innerLet = "let\n        z = 1 + 2\n      in\n        z"
           output = "x = \n  let\n    y = \n      " <> innerLet <> "\n  in\n    \\a b -> y"
       input ==> output
+
+    describe "typesystem" $ parallel $ do
+      it "can print kinds" $ do
+        let fmt input output = prettyFormat input `shouldBe` T.strip output
+        fmt Star "Type"
+        fmt (KArr Star Star) "Type -> Type"
+        fmt (KArr Star (KArr Star Star)) "Type -> Type -> Type"
+        fmt (KArr (KArr Star Star) Star) "(Type -> Type) -> Type"

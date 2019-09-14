@@ -21,7 +21,9 @@ data Decl (ph :: Phase)
   | FixityDecl (FixityInfo ph)
 
 newtype Module (ph :: Phase)
-  = Module [Decl ph]
+  = Module
+  { unModule :: [Decl ph]
+  }
 
 deriving instance AnnHas Eq ph => Eq (Decl ph)
 deriving instance AnnHas Show ph => Show (Decl ph)

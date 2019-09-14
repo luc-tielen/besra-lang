@@ -12,6 +12,7 @@ import qualified Besra.Pass.IR1To2 as IR1To2
 import qualified Besra.Pass.InferKinds as IK
 import Besra.Parser
 import Besra.TypeSystem.KindSolver
+import Besra.Types.CompilerState
 import Besra.Types.IR2
 import Besra.Types.Kind
 import Besra.Types.Ann
@@ -34,7 +35,7 @@ type TypeAnn' = TypeAnn KindInferred
 type Scheme' = Scheme KindInferred
 type Pred' = Pred KindInferred
 type Type' = Type KindInferred
-type CompilerState' = IK.CompilerState KindInferred
+type CompilerState' = CompilerState KindInferred
 
 runPass :: Text -> Either KindError (Module', CompilerState')
 runPass input =
@@ -46,7 +47,7 @@ runPass input =
         let (ast, IR1To2.PassState{..}) = IR1To2.pass result
             kindEnv = Map.fromList [(Id "->", arrowK)]
             kEnv = Env kindEnv Map.empty
-            compState = IK.CompilerState adts traits impls kEnv
+            compState = CompilerState adts traits impls kEnv
          in runExcept $ IK.pass compState ast
   in
     passResult
@@ -68,7 +69,7 @@ instance Testable [(Id, Kind)] where
     let result = runPass input
     case result of
       Left err -> panic $ show err
-      Right (_, IK.CompilerState adts _ _ _) ->
+      Right (_, CompilerState adts _ _ _) ->
         getAdtKind <$> adts `shouldBe` adtHeads
     where getAdtKind (ADT _ (ADTHead name ty) _) = (name, getKind ty)
           getKind = \case
@@ -81,7 +82,7 @@ instance Testable [ADT KindInferred] where
     let result = runPass input
     case result of
       Left err -> panic $ show err
-      Right (_, IK.CompilerState adts' _ _ _) ->
+      Right (_, CompilerState adts' _ _ _) ->
         adts' `shouldBe` adts
 
 instance Testable [Trait KindInferred] where
@@ -89,7 +90,7 @@ instance Testable [Trait KindInferred] where
     let result = runPass input
     case result of
       Left err -> panic $ show err
-      Right (_, IK.CompilerState _ traits' _ _) ->
+      Right (_, CompilerState _ traits' _ _) ->
         traits' `shouldBe` traits
 
 instance Testable [Impl KindInferred] where
@@ -97,7 +98,7 @@ instance Testable [Impl KindInferred] where
     let result = runPass input
     case result of
       Left err -> panic $ show err
-      Right (_, IK.CompilerState _ _ impls' _) ->
+      Right (_, CompilerState _ _ impls' _) ->
         impls' `shouldBe` impls
 
 instance Testable PredEnv where
@@ -105,7 +106,7 @@ instance Testable PredEnv where
     let result = runPass input
     case result of
       Left err -> panic $ show err
-      Right (_, IK.CompilerState _ _ _ (Env _ predKindEnv')) ->
+      Right (_, CompilerState _ _ _ (Env _ predKindEnv')) ->
         predKindEnv' `shouldBe` predKindEnv
 
 instance Testable (Module KindInferred) where
@@ -113,7 +114,7 @@ instance Testable (Module KindInferred) where
     let result = runPass input
     case result of
       Left err -> panic $ show err
-      Right (ast', IK.CompilerState {}) ->
+      Right (ast', CompilerState {}) ->
         ast' `shouldBe` ast
 
 instance Testable TypeAnn' where

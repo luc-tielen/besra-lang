@@ -46,5 +46,11 @@ spec = describe "argument parser" $ parallel $ do
   it "parses 'besra fmt --stdin --check' correctly" $
     "fmt --stdin --check" ==> Fmt (FromStdIn DoCheck)
 
+  it "parses 'besra repl' correctly" $
+    "repl" ==> Repl
+
+  it "fails to parse trailing args after 'besra repl'" $
+    shouldFail "repl some more args --flag"
+
   it "fails to parse empty input" $
     shouldFail ""

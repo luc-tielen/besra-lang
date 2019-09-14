@@ -1,7 +1,7 @@
 
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-module Besra.PrettyPrinter ( prettyFormat ) where
+module Besra.PrettyPrinter ( Pretty, prettyFormat ) where
 
 import Protolude
 import qualified Data.Text as T
@@ -10,6 +10,7 @@ import Data.Text.Prettyprint.Doc.Render.Text
 import qualified Besra.Types.IR1 as IR1
 import Besra.Types.Fixity
 import Besra.Types.Id
+import Besra.Types.Kind
 import Besra.Parser.Helpers ( isOperatorChar )
 
 
@@ -227,6 +228,14 @@ instance Pretty IR1.String where
 
 instance Pretty Id where
   pretty (Id x) = pretty x
+
+instance Pretty Kind where
+  pretty Star = "Type"
+  pretty (KArr k1 k2) =
+    let wrapper = case k1 of
+          Star -> identity
+          KArr _ _ -> parens
+    in wrapper (pretty k1) <+> "->" <+> pretty k2
 
 isOperatorId :: Text -> Bool
 isOperatorId = isOperatorChar . T.head

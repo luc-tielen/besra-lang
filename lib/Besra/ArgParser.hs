@@ -13,7 +13,9 @@ import Prelude ( String )
 import Options.Applicative
 
 
-newtype Args = Fmt FmtArgs
+data Args
+  = Fmt FmtArgs
+  | Repl
   deriving (Eq, Show)
 
 -- | Data type representing how formatter should behave.
@@ -47,11 +49,15 @@ parse = handleParseResult . execParserPure defaultPrefs parserInfo
         parserInfo = info parser desc
 
 parser :: Parser Args
-parser = subparser fmtCommand
+parser = subparser fmtCommand <|> subparser replCommand
   where fmtCommand = command "fmt" $ info fmtParser fmtDesc
         fmtDesc = fullDesc
                 <> header "besra fmt - a pretty printer/formatter for Besra files"
                 <> progDesc "Formats input files."
+        replCommand = command "repl" $ info replParser replDesc
+        replDesc = fullDesc
+                 <> header "besra repl - REPL for the Besra language"
+                 <> progDesc "Opens up a Read Eval Print Loop."
 
 fmtParser :: Parser Args
 fmtParser = Fmt <$> fmtParser' where
@@ -77,4 +83,7 @@ fmtParser = Fmt <$> fmtParser' where
     <> help ("Whether formatted output should be written to standard output "
           <> "or modified inplace. Defaults to inplace modification.")
     )
+
+replParser :: Parser Args
+replParser = pure Repl
 

@@ -1,6 +1,7 @@
 
 module Besra.Pass.IR1To2
   ( pass
+  , desugar
   , PassState(..)
   ) where
 

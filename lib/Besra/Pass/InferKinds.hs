@@ -1,8 +1,5 @@
 
-module Besra.Pass.InferKinds
-  ( pass
-  , CompilerState(..)
-  ) where
+module Besra.Pass.InferKinds ( pass, enrich ) where
 
 import Protolude hiding ( Type, pass, show )
 import Unsafe ( unsafeFromJust )
