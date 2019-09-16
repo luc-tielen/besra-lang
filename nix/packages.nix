@@ -1,9 +1,9 @@
 let
-  commit = "454eea84a757ca5f733c4ec0f234eba2281c74eb";
+  commit = "c90199e913c78918cb2e7fb825c75b1c69ee7464";
   nixpkgs = builtins.fetchTarball {
-    name = "nixpkgs-19.03";
-    url = "https://github.com/nixos/nixpkgs/archive/${commit}.tar.gz";
-    sha256 = "1k9jbix4w43brqlfmvwy218pf5fbmzsnc08shaww9qfdl1rdlaxy";
+    name = "nixpkgs-19.09";
+    url = "https://github.com/luc-tielen/nixpkgs/archive/${commit}.tar.gz";
+    sha256 = "06l03v11603fp7zxaq6bl07s91iigqc4g1lqnxk2gz05cf21xd9y";
   };
   pkgs = import nixpkgs;
 in
