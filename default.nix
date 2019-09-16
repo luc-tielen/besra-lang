@@ -3,11 +3,11 @@
 with pkgs;
 
 let
-  hspec-megaparsec = import ./nix/hspec-megaparsec.nix;
+  hpack = import ./nix/hpack.nix;
   haskellPackages = haskell.packages.${compiler};
   haskellPkgs = haskellPackages.override {
     overrides = self: super: {
-      #hspec-megaparsec = self.callCabal2nix "hspec-megaparsec" hspec-megaparsec {};
+      hpack = self.callCabal2nix "hpack" hpack {};
     };
   };
   source = nix-gitignore.gitignoreSource [] ./.;
@@ -19,11 +19,11 @@ in
       #packages = p: [ drv ];
       packages = p: [];
       buildInputs = with haskellPkgs; [
-        #cabal-install
-        #hpack
-        #hlint
-        #ghcid
+        cabal-install
+        hpack
+        hlint
+        ghcid
       ];
-      #withHoogle = true;
+      withHoogle = true;
     };
   }
