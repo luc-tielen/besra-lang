@@ -3,8 +3,8 @@
 with pkgs;
 
 let
-  hpack = import ./nix/hpack.nix;
   haskellPackages = haskell.packages.${compiler};
+  hpack = haskellPackages.callPackage ./nix/hpack.nix {};
   haskellPkgs = haskellPackages.override {
     overrides = self: super: {
       hpack = self.callCabal2nix "hpack" hpack {};

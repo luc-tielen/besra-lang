@@ -1,9 +1,9 @@
 let
-  commit = "10c7d9666378b514c20ec481ad2ccc6289543606";
+  commit = "6f120bbe8427e374f17dcc361be231c9da85f51b";
   nixpkgs = builtins.fetchTarball {
     name = "nixpkgs-19.09";
     url = "https://github.com/luc-tielen/nixpkgs/archive/${commit}.tar.gz";
-    sha256 = "0zyfn7qayn2xh47p0qbw523mjm96qyk7416y7jrn3s14wdxskl01";
+    sha256 = "19c38dk9g0a80pbnkd96lw9d68k3dmakib7gwby5ik1wd31vm2i2";
   };
   pkgs = import nixpkgs;
 in
