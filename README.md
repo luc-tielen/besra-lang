@@ -22,12 +22,12 @@ The easiest way to get started is as follows
 $ git clone git@github.com:luc-tielen/besra-lang.git
 $ cd besra-lang
 $ nix-shell
-$ cabal new-configure # done inside the nix-shell
-$ cabal new-build     # done inside the nix-shell
+$ cabal configure # done inside the nix-shell
+$ cabal build     # done inside the nix-shell
 ```
 
 The most often used commands are provided by a Makefile, so instead of
-`cabal new-build` it is possible to also to use `make build`. For other
+`cabal build` it is possible to also to use `make build`. For other
 interesting commands, take a look at the
 [Makefile](https://github.com/luc-tielen/besra-lang/blob/master/Makefile).
 
@@ -42,11 +42,11 @@ Some of the useful things you can do with ghcid are as follows:
 
 ```bash
 # Monitor all files inside the lib folder for changes:
-$ ghcid --command="cabal new-repl lib:besra"
+$ ghcid --command="cabal repl lib:besra"
 # Monitor all files inside the src & lib folder for changes:
-$ ghcid --command="cabal new-repl exe:besra"
+$ ghcid --command="cabal repl exe:besra"
 # Monitor all files inside the src & tests folder for changes:
-$ ghcid --command="cabal new-repl besra-test"
+$ ghcid --command="cabal repl besra-test"
 ```
 
 There are ofcourse many more possibilities when using ghcid. For a full guide

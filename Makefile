@@ -1,24 +1,24 @@
 
 build:
-		@cabal new-build
+		@cabal build
 
 configure:
-		@hpack --force && cabal new-configure --enable-tests
+		@hpack --force && cabal configure --enable-tests
 
 repl:
-		@cabal new-repl lib:besra
+		@cabal repl lib:besra
 
 lint:
 		@hlint .
 
 tests:
-		@cabal new-test
+		@cabal test
 
 hoogle:
 		hoogle server --local -p 8080
 
 continuous_tests:
-		@ghcid --command="cabal new-repl besra-test"
+		@ghcid --command="cabal repl besra-test"
 
 focus_check:
 		@grep -Ern "(fit|fdescribe|fcontext|focus)" tests || exit 0 && exit 1

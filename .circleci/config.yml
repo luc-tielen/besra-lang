@@ -14,5 +14,5 @@ jobs:
           command: nix-shell --option sandbox false --run "make configure tests focus_check"
       - run:
           name: Build executable
-          command: nix-shell --option sandbox false --run "cabal new-build exe:besra"
+          command: nix-shell --option sandbox false --run "cabal build exe:besra"
 
