@@ -31,7 +31,6 @@ import Besra.Types.Ann
 import Besra.Types.Id
 import qualified Data.List as List
 import qualified Data.Map as Map
-import Data.Map ( Map )
 import qualified Data.Text as T
 
 

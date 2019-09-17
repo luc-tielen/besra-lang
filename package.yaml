@@ -57,6 +57,7 @@ ghc-options:
   - -Wno-type-defaults
   - -Wno-missing-local-signatures
   - -Wno-monomorphism-restriction
+  - -Wno-missing-deriving-strategies
   - -optP-Wno-nonportable-include-path
   - -fhide-source-paths
   - -fmax-valid-hole-fits=0

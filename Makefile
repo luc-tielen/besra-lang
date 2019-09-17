@@ -12,7 +12,7 @@ lint:
 		@hlint .
 
 tests:
-		@cabal test
+		@cabal new-run besra-test
 
 hoogle:
 		hoogle server --local -p 8080

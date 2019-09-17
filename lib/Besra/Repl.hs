@@ -3,7 +3,7 @@ module Besra.Repl ( run ) where
 
 import Protolude hiding ( Type, StateT, evalStateT, mod )
 import Control.Monad.State.Strict hiding ( runState )
-import System.IO (hFlush, stdout)
+import System.IO (hFlush)
 import Besra.Repl.Internal
 import Besra.Repl.Parser
 import Besra.PrettyPrinter
