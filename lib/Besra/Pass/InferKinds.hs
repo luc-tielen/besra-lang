@@ -16,7 +16,6 @@ import Besra.Types.Id
 import qualified Data.Vector.Unboxed as VU
 import qualified Data.Text as T
 import qualified Data.Map as Map
-import Data.Map ( Map )
 
 
 -- The complete documentation for this algorithm can be found here:

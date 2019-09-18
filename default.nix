@@ -1,17 +1,26 @@
-{ compiler ? "ghc864", pkgs ? import ./nix/packages.nix {} }:
+{ compiler ? "ghc881", pkgs ? import ./nix/packages.nix {} }:
 
 with pkgs;
 
 let
-  hspec-megaparsec = import ./nix/hspec-megaparsec.nix;
+  inherit (haskell.lib) doJailbreak dontCheck;
   haskellPackages = haskell.packages.${compiler};
+  hpack = haskellPackages.callPackage ./nix/hpack.nix {};
   haskellPkgs = haskellPackages.override {
     overrides = self: super: {
-      hspec-megaparsec = self.callCabal2nix "hspec-megaparsec" hspec-megaparsec {};
+      hpack = self.callCabal2nix "hpack" hpack {};
+      prettyprinter = self.prettyprinter_1_3_0;
+      protolude = doJailbreak super.protolude;
+      neat-interpolation = dontCheck super.neat-interpolation;
     };
   };
+  # We have to call hpack now ourselves since current hpack is broken
+  hpack2cabal = name: src: pkgs.runCommand "hpack2cabal-${name}" {} ''
+    ${hpack}/bin/hpack '${src}' - > "$out"
+  '';
   source = nix-gitignore.gitignoreSource [] ./.;
-  drv = haskellPkgs.callCabal2nix "besra" source {};
+  processedSource = hpack2cabal "besra" source;
+  drv = haskellPkgs.callCabal2nix "besra" processedSource {};
 in
   {
     besra = drv;
