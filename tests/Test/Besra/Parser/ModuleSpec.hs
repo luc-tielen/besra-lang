@@ -11,19 +11,11 @@ import Besra.Types.Id
 import Besra.Types.Ann
 import Besra.Types.Span
 import Besra.Types.Fixity
-import Besra.Types.IR1.Module
-import Besra.Types.IR1.Expr
-import Besra.Types.IR1.ADT
-import Besra.Types.IR1.Lit
-import Besra.Types.IR1.Pred
-import Besra.Types.IR1.Type
-import Besra.Types.IR1.Number
-import Besra.Types.IR1.String
-import Besra.Types.IR1.Scheme
-import Besra.Types.IR1.Pattern
-import Besra.Types.IR1.TypeAnn
-import Besra.Types.IR1.Trait
-import Besra.Types.IR1.Impl
+import Besra.Types.IR1 ( Module(..), Decl(..), Expr(..), Binding(..)
+                       , ADT(..), ADTHead(..), ConDecl(..), Pred(..)
+                       , Type(..), Tycon(..), Tyvar(..), Number(..)
+                       , String(..), Scheme(..), Pattern(..), TypeAnn(..)
+                       , Trait(..), Impl(..), Lit(..), FixityInfo(..) )
 import Besra.Parser.Module (parser)
 import Test.Hspec.Megaparsec hiding (shouldFailWith)
 import NeatInterpolation

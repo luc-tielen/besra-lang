@@ -69,7 +69,7 @@ semanticAnalysis path decls =
 ir1To2 :: Module1' -> (IR2.Module Parsed, CompilerState Parsed)
 ir1To2 x =
   let (ast, IR1To2.PassState adts traits impls) = IR1To2.pass x
-      sp = Span  0 0
+      sp = Span 0 0
       arrowK = IKArr sp (IStar sp) (IKArr sp (IStar sp) (IStar sp))
       kindEnv = Map.fromList [(Id "->", arrowK)]
       kEnv = Env kindEnv Map.empty

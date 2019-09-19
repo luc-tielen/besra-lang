@@ -3,7 +3,7 @@ module Besra.Parser.Pattern ( parser ) where
 
 import Protolude
 import Besra.Parser.Helpers
-import Besra.Types.IR1.Pattern
+import Besra.Types.IR1 ( Pattern(..) )
 import Besra.Types.Id
 import qualified Besra.Parser.Lit as Lit
 

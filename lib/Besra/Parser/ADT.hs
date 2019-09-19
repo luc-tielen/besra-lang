@@ -5,8 +5,7 @@ import Protolude hiding ( Type )
 import Besra.Types.Id
 import Besra.Types.Ann
 import Besra.Types.Span
-import Besra.Types.IR1.ADT
-import Besra.Types.IR1.Type
+import Besra.Types.IR1 ( ADT(..), ADTHead(..), ADTBody, ConDecl(..), Type(..) )
 import qualified Besra.Parser.Type as Type
 import qualified Besra.Parser.Tycon as Tycon
 import qualified Besra.Parser.Tyvar as Tyvar

@@ -11,10 +11,8 @@ import Besra.SA.Types
 import Besra.Types.Id
 import Besra.Types.Ann
 import Besra.Types.Span
-import Besra.Types.IR1.Module
-import Besra.Types.IR1.Type
-import Besra.Types.IR1.Scheme
-import Besra.Types.IR1.TypeAnn
+import Besra.Types.IR1 ( Module(..), Decl(..), Type(..), Tycon(..), Tyvar(..)
+                       , Scheme(..), TypeAnn(..) )
 import Besra.Parser
 import Test.Hspec
 

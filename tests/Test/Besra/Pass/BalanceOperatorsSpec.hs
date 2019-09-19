@@ -6,14 +6,9 @@ module Test.Besra.Pass.BalanceOperatorsSpec ( module Test.Besra.Pass.BalanceOper
 import Protolude hiding ( pass, Type, Fixity )
 import qualified Data.Text as T
 import Besra.Pass.BalanceOperators
-import Besra.Types.IR1.Module
-import Besra.Types.IR1.Impl
-import Besra.Types.IR1.Expr
-import Besra.Types.IR1.Pred
-import Besra.Types.IR1.Lit
-import Besra.Types.IR1.Number
-import Besra.Types.IR1.Type
-import Besra.Types.IR1.Pattern
+import Besra.Types.IR1 ( Module(..), Decl(..), Impl(..), Expr(..), ExprDecl(..)
+                       , Binding(..), Pred(..), Lit(..), Number(..), FixityInfo(..)
+                       , Type(..), Tycon(..), Pattern(..) )
 import Besra.Types.Id
 import Besra.Types.Fixity
 import Besra.Types.Ann

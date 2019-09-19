@@ -8,14 +8,9 @@ import Test.Besra.Helpers
 import Besra.Types.Id
 import Besra.Types.Ann
 import Besra.Types.Span
-import Besra.Types.IR1.Lit
-import Besra.Types.IR1.Number
-import Besra.Types.IR1.String
-import Besra.Types.IR1.Pattern
-import Besra.Types.IR1.Pred
-import Besra.Types.IR1.Type
-import Besra.Types.IR1.Impl
-import Besra.Types.IR1.Expr
+import Besra.Types.IR1 ( Lit(..), Number(..), String(..), Pattern(..)
+                       , Pred(..), Type(..), Tycon(..), Tyvar(..), Impl(..)
+                       , Expr(..), Binding(..) )
 import Besra.Parser.Impl (parser)
 import Test.Hspec.Megaparsec hiding (shouldFailWith, succeedsLeaving)
 

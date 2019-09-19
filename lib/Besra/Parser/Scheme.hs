@@ -5,8 +5,7 @@ import Protolude hiding ( try, pred )
 import Besra.Parser.Helpers
 import qualified Besra.Parser.Pred as Pred
 import qualified Besra.Parser.Type as Type
-import Besra.Types.IR1.Scheme
-import Besra.Types.IR1.Pred
+import Besra.Types.IR1 ( Scheme(..), Pred(..) )
 import Besra.Types.Ann
 import Besra.Types.Span
 

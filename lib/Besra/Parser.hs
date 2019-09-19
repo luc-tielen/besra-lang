@@ -14,7 +14,7 @@ import Protolude
 import Besra.Parser.Helpers ( Parser, ParseErr, ParseError
                             , ParseResult, ParseState(..), ParseMode(..) )
 import qualified Besra.Parser.Module as Module
-import Besra.Types.IR1.Module
+import Besra.Types.IR1 ( Module(..) )
 import Besra.Types.Ann
 import qualified Text.Megaparsec as P
 import qualified Data.Text as T

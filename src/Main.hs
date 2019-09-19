@@ -6,11 +6,11 @@ import Besra.ArgParser hiding ( parse )
 import qualified Besra.Repl as Repl
 import Besra.Parser
 import Besra.PrettyPrinter
-import Besra.Types.IR1.Module
+import qualified Besra.Types.IR1 as IR1
 import Besra.Types.Ann
 
 
-type Module' = Module Parsed
+type Module' = IR1.Module Parsed
 
 main :: IO ()
 main = do

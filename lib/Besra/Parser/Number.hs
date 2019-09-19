@@ -2,7 +2,7 @@
 module Besra.Parser.Number ( parser ) where
 
 import Protolude
-import Besra.Types.IR1.Number
+import Besra.Types.IR1 ( Number(..) )
 import Besra.Parser.Helpers
 import qualified Data.Vector as V
 import qualified Data.Text as T

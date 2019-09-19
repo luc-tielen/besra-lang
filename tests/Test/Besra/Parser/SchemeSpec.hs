@@ -9,9 +9,7 @@ import Test.Besra.Helpers
 import Besra.Parser.Scheme (parser)
 import Besra.Types.Id
 import Besra.Types.Ann
-import Besra.Types.IR1.Pred
-import Besra.Types.IR1.Scheme
-import Besra.Types.IR1.Type
+import Besra.Types.IR1 ( Scheme(..), Pred(..), Type(..), Tyvar(..), Tycon(..) )
 
 
 type Scheme' = Scheme Testing

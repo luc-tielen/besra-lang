@@ -2,15 +2,11 @@
 module Test.Besra.Helpers ( module Test.Besra.Helpers ) where
 
 import Protolude hiding ( Type )
-import Besra.Types.IR1.Module
-import Besra.Types.IR1.Trait
-import Besra.Types.IR1.Impl
-import Besra.Types.IR1.TypeAnn
-import Besra.Types.IR1.Expr
-import Besra.Types.IR1.ADT
-import Besra.Types.IR1.Scheme
-import Besra.Types.IR1.Pred
-import Besra.Types.IR1.Type
+import Besra.Types.IR1 ( Module(..), Decl(..), Trait(..), Impl(..)
+                       , TypeAnn(..), Expr(..), ExprDecl(..), ADT(..)
+                       , ADTHead(..), ConDecl(..), Scheme(..)
+                       , Pred(..), Type(..), Tyvar(..), Tycon(..)
+                       , FixityInfo(..), Binding(..) )
 import Besra.Types.Ann
 
 

@@ -1,13 +1,14 @@
-module Besra.SA ( runSA
-             , analyze
-             , Validation
-             , ValidationResult(..)
-             , SAError(..)
-             , SemanticError(..)
-             ) where
+module Besra.SA
+  ( runSA
+  , analyze
+  , Validation
+  , ValidationResult(..)
+  , SAError(..)
+  , SemanticError(..)
+  ) where
 
 import Protolude
-import Besra.Types.IR1.Module
+import qualified Besra.Types.IR1 as IR1
 import Besra.SA.Helpers
 import Besra.SA.Types
 import Besra.Types.Ann
@@ -16,7 +17,7 @@ import qualified Besra.SA.ConflictingBindingDecls as ConflictingBindingDecls
 import qualified Besra.SA.MissingTopLevelDecls as MissingTopLevelDecls
 
 
-type Module' = Module Parsed
+type Module' = IR1.Module Parsed
 
 validations :: FilePath -> [Validation [SAError] Module']
 validations path =

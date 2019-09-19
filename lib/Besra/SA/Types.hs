@@ -10,10 +10,10 @@ module Besra.SA.Types ( ConflictingTypeAnnDecl(..)
                    ) where
 
 import Protolude
-import Besra.Types.IR1.Module
+import qualified Besra.Types.IR1 as IR1
 import Besra.Types.Ann
 
-type Decl' = Decl Parsed
+type Decl' = IR1.Decl Parsed
 
 data ConflictingTypeAnnDecl = ConflictingTypeAnnDecl FilePath [Decl']
 
@@ -30,17 +30,17 @@ data SAError = ConflictingTypeAnnDeclErr ConflictingTypeAnnDecl
 
 newtype SemanticError = SemanticError [SAError]
 
-deriving instance Eq (Decl Parsed) => Eq ConflictingTypeAnnDecl
-deriving instance Eq (Decl Parsed) => Eq ConflictingBindingDecl
-deriving instance Eq (Decl Parsed) => Eq MissingTopLevelTypeAnnDecl
-deriving instance Eq (Decl Parsed) => Eq MissingTopLevelBindingDecl
-deriving instance Eq (Decl Parsed) => Eq SAError
-deriving instance Eq (Decl Parsed) => Eq SemanticError
+deriving instance Eq (IR1.Decl Parsed) => Eq ConflictingTypeAnnDecl
+deriving instance Eq (IR1.Decl Parsed) => Eq ConflictingBindingDecl
+deriving instance Eq (IR1.Decl Parsed) => Eq MissingTopLevelTypeAnnDecl
+deriving instance Eq (IR1.Decl Parsed) => Eq MissingTopLevelBindingDecl
+deriving instance Eq (IR1.Decl Parsed) => Eq SAError
+deriving instance Eq (IR1.Decl Parsed) => Eq SemanticError
 
-deriving instance Show (Decl Parsed) => Show ConflictingTypeAnnDecl
-deriving instance Show (Decl Parsed) => Show ConflictingBindingDecl
-deriving instance Show (Decl Parsed) => Show MissingTopLevelTypeAnnDecl
-deriving instance Show (Decl Parsed) => Show MissingTopLevelBindingDecl
-deriving instance Show (Decl Parsed) => Show SAError
-deriving instance Show (Decl Parsed) => Show SemanticError
+deriving instance Show (IR1.Decl Parsed) => Show ConflictingTypeAnnDecl
+deriving instance Show (IR1.Decl Parsed) => Show ConflictingBindingDecl
+deriving instance Show (IR1.Decl Parsed) => Show MissingTopLevelTypeAnnDecl
+deriving instance Show (IR1.Decl Parsed) => Show MissingTopLevelBindingDecl
+deriving instance Show (IR1.Decl Parsed) => Show SAError
+deriving instance Show (IR1.Decl Parsed) => Show SemanticError
 

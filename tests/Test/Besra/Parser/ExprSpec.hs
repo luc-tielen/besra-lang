@@ -9,14 +9,9 @@ import Besra.Types.Id
 import Besra.Types.Ann
 import Besra.Types.Span
 import Besra.Types.Fixity
-import Besra.Types.IR1.Expr
-import Besra.Types.IR1.Lit
-import Besra.Types.IR1.Type
-import Besra.Types.IR1.String
-import Besra.Types.IR1.Scheme
-import Besra.Types.IR1.Number
-import Besra.Types.IR1.Pattern
-import Besra.Types.IR1.TypeAnn
+import Besra.Types.IR1 ( Expr(..), ExprDecl(..), Binding(..), Lit(..)
+                       , Type(..), Tycon(..), String(..), FixityInfo(..)
+                       , Scheme(..), Number(..), Pattern(..), TypeAnn(..) )
 import Test.Hspec.Megaparsec hiding (shouldFailWith, succeedsLeaving)
 import Test.Besra.Helpers
 

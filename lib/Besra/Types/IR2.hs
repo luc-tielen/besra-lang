@@ -1,6 +1,4 @@
 
-{-# LANGUAGE UndecidableInstances #-}
-
 module Besra.Types.IR2
   ( module Besra.Types.IR2.Module
   , module Besra.Types.IR2.Expr

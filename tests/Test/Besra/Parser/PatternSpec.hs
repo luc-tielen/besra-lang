@@ -6,10 +6,7 @@ import Test.Hspec
 import Test.Besra.Parser.Helpers
 import Besra.Parser.Pattern ( parser )
 import Besra.Types.Id
-import Besra.Types.IR1.Lit
-import Besra.Types.IR1.String
-import Besra.Types.IR1.Number
-import Besra.Types.IR1.Pattern
+import Besra.Types.IR1 ( Pattern(..), Lit(..), Number(..), String(..) )
 import Test.Hspec.Megaparsec hiding (shouldFailWith, succeedsLeaving)
 
 

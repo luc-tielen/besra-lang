@@ -469,6 +469,16 @@ spec = describe "kind inference algorithm" $ parallel $ do
             in 1
         |] ==>  binding (Span 32 60) "x" expr
 
+    -- TODO
+    it "enriches constructor functions in expressions" $ do
+      let expr = EApp (Span 36 42) justCon (num (Span 41 42) 1)
+          justCon = ECon (Span 36 40) (Id "Just")
+          num ann = ELit ann . LNumber . Number
+      [text|
+        data Maybe a = Just a | Nothing
+        x = Just 1
+        |] ==>  binding (Span 32 42) "x" expr
+
     it "does not keep track of previous kind vars when inferring kinds" $ do
       let schA = scheme (Span 15 16) [] (mkA (Span 15 16))
           schAx = scheme (Span 21 24) [] tyAx
