@@ -7,9 +7,7 @@ module Besra.Types.CompilerState
 
 import Protolude
 import Besra.Types.Ann
-import Besra.Types.IR2.ADT
-import Besra.Types.IR2.Trait
-import Besra.Types.IR2.Impl
+import Besra.Types.IR2 ( ADT, Trait, Impl )
 import Besra.TypeSystem.KindSolver as K
 
 
