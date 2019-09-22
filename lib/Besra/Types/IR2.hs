@@ -18,10 +18,8 @@ module Besra.Types.IR2
   , Type(..)
   , Tyvar(..)
   , Tycon(..)
-  , Lit(..)
-  , String(..)
-  , Number(..)
   , Pattern(..)
+  , module Besra.Types.Lit
   , adtName
   , adtRefersTo
   , traitName
@@ -36,6 +34,7 @@ import Besra.Types.Span
 import Besra.Types.Kind
 import Besra.Types.Tycon
 import Besra.Types.Tyvar
+import Besra.Types.Lit
 
 
 newtype Module (ph :: Phase)
@@ -77,12 +76,13 @@ data Binding (ph :: Phase)
 data TypeAnn (ph :: Phase)
   = TypeAnn (Ann ph) Id (Scheme ph)
 
-data Pattern = PWildcard
-             | PLit Lit
-             | PVar Id
-             | PCon Id [Pattern]
-             | PAs Id Pattern
-             deriving (Eq, Show)
+data Pattern
+  = PWildcard
+  | PLit Lit
+  | PVar Id
+  | PCon Id [Pattern]
+  | PAs Id Pattern
+  deriving (Eq, Show)
 
 data Scheme (ph :: Phase)
   = Scheme (Ann ph) [Pred ph] (Type ph)
@@ -94,17 +94,6 @@ data Type (ph :: Phase)
   = TCon (Tycon ph)
   | TVar (Tyvar ph)
   | TApp (Type ph) (Type ph)
-
-data Lit = LChar Char
-         | LString String
-         | LNumber Number
-         deriving (Eq, Show)
-
-newtype String = String Text
-  deriving (Eq, Show)
-
-newtype Number = Number Int
-  deriving (Eq, Show)
 
 
 instance HasSpan (Ann ph) => HasSpan (Pred ph) where
