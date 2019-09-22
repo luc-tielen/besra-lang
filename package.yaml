@@ -60,7 +60,8 @@ ghc-options:
   - -Wno-missing-deriving-strategies
   - -optP-Wno-nonportable-include-path
   - -fhide-source-paths
-  - -fmax-valid-hole-fits=0
+  - -fno-show-valid-hole-fits
+  - -fno-sort-valid-hole-fits
   - -O0
 
 library:
