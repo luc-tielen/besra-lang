@@ -42,23 +42,9 @@ prepareConInfo =
       extractScheme (IR2.ConDecl ann name ty) = (name, toScheme ann ty)
    in foldMap f
 
--- TODO rename
 toScheme :: Ann KI -> IR2.Type KI -> IR3.Scheme KI
-toScheme ann ty = IR3.Forall ann [] ([] :=> toType ty)
+toScheme ann ty = IR3.ForAll ann [] ([] :=> desugarType ty)
 
--- TODO rename
-toType :: IR2.Type KI -> IR3.Type KI
-toType = \case
-  IR2.TCon tycon -> IR3.TCon tycon
-  IR2.TVar tyvar -> IR3.TVar tyvar
-  IR2.TApp t1 t2 -> IR3.TApp (toType t1) (toType t2)
-
--- TODO rename
-toPred :: IR2.Pred KI -> IR3.Pred KI
-toPred (IR2.IsIn ann name tys) =
-  IR3.IsIn ann name $ map toType tys
-
--- TODO remove typeclass?
 class Desugar a where
   type Result a
 
@@ -72,7 +58,7 @@ instance Desugar a => Desugar [a] where
 instance Desugar (IR2.Module KI) where
   type Result (IR2.Module KI) = IR3.Module KI
 
-  desugar (IR2.Module decls) = do
+  desugar (IR2.Module decls) =
     IR3.Module <$> toBG decls
 
 instance Desugar (IR2.Expr KI) where
@@ -85,8 +71,10 @@ instance Desugar (IR2.Expr KI) where
       sch <- unsafeFromJust <$> asks (Map.lookup name)
       pure $ IR3.ECon ann name sch
     IR2.ELam ann pats body ->
-      -- NOTE: this only applies to anonymous lambdas
-      IR3.ELam ann <$> desugar pats <*> desugar body
+      -- NOTE: this only applies to anonymous lambdas,
+      -- named functions are already handled with toBG
+      let alt = (,) <$> desugar pats <*> desugar body
+       in IR3.ELam ann <$> alt
     IR2.EApp ann f arg ->
       IR3.EApp ann <$> desugar f <*> desugar arg
     IR2.EIf ann c t f ->
@@ -109,6 +97,15 @@ instance Desugar IR2.Pattern where
       IR3.PCon name sch <$> desugar pats
     IR2.PAs name pat -> IR3.PAs name <$> desugar pat
 
+desugarType :: IR2.Type KI -> IR3.Type KI
+desugarType = \case
+  IR2.TCon tycon -> IR3.TCon tycon
+  IR2.TVar tyvar -> IR3.TVar tyvar
+  IR2.TApp t1 t2 -> IR3.TApp (desugarType t1) (desugarType t2)
+
+desugarPred :: IR2.Pred KI -> IR3.Pred KI
+desugarPred (IR2.IsIn ann name tys) =
+  IR3.IsIn ann name $ map desugarType tys
 
 toBG :: [IR2.Decl KI] -> PassM (IR3.BindGroup KI)
 toBG decls = do
@@ -119,8 +116,7 @@ toBG decls = do
   imps <- toImplicits impDecls
   pure (exps, imps)
 
-groupDecls :: [IR2.Decl KI]
-           -> [(Id, (Maybe (IR2.Scheme KI), [IR2.Binding KI]))]
+groupDecls :: [IR2.Decl KI] -> [(Id, (Maybe (IR2.Scheme KI), [IR2.Binding KI]))]
 groupDecls decls = map reverseBindings $ Map.toList results
   where
     results = foldl' (flip f) Map.empty decls
@@ -139,7 +135,9 @@ toExplicit :: (Id, (Maybe (IR2.Scheme KI), [IR2.Binding KI]))
            -> PassM (IR3.Explicit KI)
 toExplicit (name, (Just (IR2.Scheme ann ps ty), bs)) = do
   bs' <- traverse convertBinding bs
-  pure (name, IR3.Forall ann [] (map toPred ps :=> toType ty), bs')
+  let ps' = map desugarPred ps
+      ty' = desugarType ty
+  pure $ IR3.Explicit name (IR3.ForAll ann [] (ps' :=> ty')) bs'
 toExplicit (Id name, (Nothing, _)) =
   panic $ "Error in 'toExplicit' in IR2->3 pass for id = " <> name
 
@@ -148,17 +146,16 @@ convertBinding (IR2.Binding _ _ e) = case e of
   IR2.ELam _ pats body -> (,) <$> desugar pats <*> desugar body
   _ -> ([], ) <$> desugar e
 
-
 toImplicits :: [(Id, (Maybe (IR2.Scheme KI), [IR2.Binding KI]))]
             -> PassM [[IR3.Implicit KI]]
 toImplicits decls = sortDecls <$> traverse f decls where
+  sortDecls = map g . stronglyConnComp
+  toImplicit name bs = IR3.Implicit name <$> traverse convertBinding bs
   names = map fst decls
   f (name, (_, bs)) = do
     implicit <- toImplicit name bs
     let referredNames = foldMap refersTo bs
     pure (implicit, name, names `List.intersect` referredNames)
-  toImplicit name bs = (name,) <$> traverse convertBinding bs
-  sortDecls = map g . stronglyConnComp
   g = \case
     AcyclicSCC node -> [node]
     CyclicSCC nodes -> nodes

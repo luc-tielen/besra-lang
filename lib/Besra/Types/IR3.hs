@@ -4,8 +4,8 @@
 module Besra.Types.IR3
   ( Module(..)
   , BindGroup
-  , Explicit
-  , Implicit
+  , Explicit(..)
+  , Implicit(..)
   , Expr(..)
   , Impl(..)
   , Alt
@@ -29,12 +29,8 @@ import Besra.Types.Tyvar
 import Besra.Types.Lit
 
 
--- TODO fix all open TODOs
-
 newtype Module (ph :: Phase)
   = Module (BindGroup ph)
-
--- TODO give explicit and implicit their own types with annotations
 
 -- | A group of bindings, separated into explicitly and implicitly typed bindings.
 --   The implicit bindings are grouped together in such a way that groups later
@@ -43,23 +39,23 @@ newtype Module (ph :: Phase)
 type BindGroup ph = ([Explicit ph], [[Implicit ph]])
 
 -- | An explicitly typed binding for a variable
-type Explicit ph = (Id, Scheme ph, [Alt ph])
+data Explicit ph = Explicit Id (Scheme ph) [Alt ph]
 
 -- | An implicitly typed binding for a variable
-type Implicit ph = (Id, [Alt ph])
+data Implicit ph = Implicit Id [Alt ph]
 
 -- | Type representing a function binding
 --   (left and right part of a function definition)
 type Alt ph = ([Pattern ph], Expr ph)
 
 data Impl (ph :: Phase)
-  = Impl (Ann ph) [Pred ph] (Pred ph) [BindGroup ph]
+  = Impl (Ann ph) [Pred ph] (Pred ph) (BindGroup ph)
 
 data Expr (ph :: Phase)
   = ELit (Ann ph) Lit
   | EVar (Ann ph) Id
   | ECon (Ann ph) Id (Scheme ph)
-  | ELam (Ann ph) [Pattern ph] (Expr ph)  -- TODO use [Alt] here? or remove constructor entirely?
+  | ELam (Ann ph) (Alt ph)
   | EApp (Ann ph) (Expr ph) (Expr ph)
   | EIf (Ann ph) (Expr ph) (Expr ph) (Expr ph)
   | ECase (Ann ph) (Expr ph) [(Pattern ph, Expr ph)]
@@ -75,7 +71,7 @@ data Pattern ph
 data Qual ph a = [Pred ph] :=> a ph
 
 data Scheme (ph :: Phase)
-  = Forall (Ann ph) [Kind] (Qual ph Type)
+  = ForAll (Ann ph) [Kind] (Qual ph Type)
 
 data Pred (ph :: Phase)
   = IsIn (Ann ph) Id [Type ph]
@@ -84,8 +80,7 @@ data Type (ph :: Phase)
   = TCon (Tycon ph)
   | TVar (Tyvar ph)
   | TApp (Type ph) (Type ph)
-  -- | TGen Int  -- TODO type family based on phase that makes this void
-
+  | TGen Int
 
 instance HasSpan (Ann ph) => HasSpan (Pred ph) where
   span (IsIn ann _ _) = span ann
@@ -95,6 +90,7 @@ instance AnnHas HasSpan ph => HasSpan (Type ph) where
     TCon tycon -> span tycon
     TVar tyvar -> span tyvar
     TApp t1 t2 -> span t1 <> span t2
+    TGen _ -> panic "Attempt to call on span on TGen"
 
 instance HasKind (AnnTy ph) => HasKind (Type ph) where
   kind = \case
@@ -102,7 +98,8 @@ instance HasKind (AnnTy ph) => HasKind (Type ph) where
     TVar var -> kind var
     TApp t _ -> case kind t of
       KArr _ k -> k
-      _ -> panic "Unreachable code"
+      k -> panic $ "Unexpected kind on TApp: " <> show k
+    TGen _ -> panic "Attempt to call kind on TGen"
 
 deriving instance AnnHas Eq ph => Eq (Module ph)
 deriving instance AnnHas Show ph => Show (Module ph)
@@ -120,4 +117,8 @@ deriving instance AnnHas Eq ph => Eq (Expr ph)
 deriving instance AnnHas Show ph => Show (Expr ph)
 deriving instance AnnHas Eq ph => Eq (Pattern ph)
 deriving instance AnnHas Show ph => Show (Pattern ph)
+deriving instance AnnHas Eq ph => Eq (Explicit ph)
+deriving instance AnnHas Show ph => Show (Explicit ph)
+deriving instance AnnHas Eq ph => Eq (Implicit ph)
+deriving instance AnnHas Show ph => Show (Implicit ph)
 
