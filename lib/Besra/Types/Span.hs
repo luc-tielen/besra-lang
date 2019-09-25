@@ -24,5 +24,5 @@ instance HasSpan Span where
 instance HasSpan a => HasSpan (NonEmpty a) where
   span = sconcat . map span
 
-instance HasSpan b => HasSpan (a, b) where
-  span (_, b) = span b
+instance HasSpan a => HasSpan (a, b) where
+  span (a, _) = span a

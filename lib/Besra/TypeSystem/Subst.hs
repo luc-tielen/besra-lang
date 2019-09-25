@@ -1,30 +1,34 @@
 module Besra.TypeSystem.Subst
-  ( Subst
-  , FreeTypeVars(..)
+  ( Subst(..)
   , Substitutable(..)
-  , (@@)
-  , (+->)
-  , nullSubst
   , merge
+  , singleton
   ) where
 
 import Protolude hiding (Type)
-import Control.Monad.Fail (MonadFail(..))
-import Data.List (intersect, lookup, nub, union)
+import qualified Data.List as List (intersect, lookup)
 import Besra.Types.IR3 (Scheme(..), Qual(..), Pred(..), Type(..), Tyvar(..))
 import Besra.Types.Ann
+import Besra.TypeSystem.Error
+
 
 type KI = KindInferred
 
 -- | Data type representing a set of substitutions that can be made.
-type Subst = [(Tyvar KI, Type KI)]
+newtype Subst = Subst [(Tyvar KI, Type KI)]
 
+instance Semigroup Subst where
+  subst@(Subst s1) <> (Subst s2) = Subst s
+    where s = [(u, apply subst t) | (u, t) <- s2] ++ s1
+
+instance Monoid Subst where
+  mempty = Subst mempty
 
 class Substitutable a where
   apply :: Subst -> a -> a
 
 instance Substitutable (Type KI) where
-  apply s (TVar u)  = fromMaybe (TVar u) $ lookup u s
+  apply s v@(TVar u)  = fromMaybe v $ lookup u s
   apply s (TApp l r) = TApp (apply s l) (apply s r)
   apply _ t         = t
 
@@ -41,48 +45,18 @@ instance Substitutable (Scheme KI) where
   apply s (ForAll ann ks qt) = ForAll ann ks (apply s qt)
 
 
--- TODO move to separate file?
-class FreeTypeVars a where
-  ftv :: a -> [Tyvar KI]
-
-instance FreeTypeVars (Type KI) where
-  ftv (TVar u)  = [u]
-  ftv (TApp l r) = ftv l `union` ftv r
-  ftv _         = []
-
-instance FreeTypeVars a => FreeTypeVars [a] where
-  ftv = nub . concatMap ftv
-
-instance FreeTypeVars (t KI) => FreeTypeVars (Qual KI t) where
-  ftv (ps :=> t) = ftv ps `union` ftv t
-
-instance FreeTypeVars (Pred KI) where
-  ftv (IsIn _ _ ts) = ftv ts
-
-instance FreeTypeVars (Scheme KI) where
-  ftv (ForAll _ _ qt) = ftv qt
-
-
-
-(@@) :: Subst -> Subst -> Subst
-s1 @@ s2 = [(u, apply s1 t) | (u, t) <- s2] ++ s1
-
-infixr 4 @@
-
--- TODO remove fail
-merge :: MonadFail m => Subst -> Subst -> m Subst
-merge s1 s2 =
+merge :: MonadError Error m => Subst -> Subst -> m Subst
+merge subst1@(Subst s1) subst2@(Subst s2) =
   if agree
-    then pure (s1 ++ s2)
-    else fail "merge fails"
+    then pure (Subst $ s1 ++ s2)
+    else throwError $ MergeFail s1 s2
   where
-    sameSubst v = apply s1 (TVar v) == apply s2 (TVar v)
-    agree = all sameSubst (map fst s1 `intersect` map fst s2)
+    sameSubst v = apply subst1 (TVar v) == apply subst2 (TVar v)
+    agree = all sameSubst (map fst s1 `List.intersect` map fst s2)
 
-nullSubst :: Subst
-nullSubst = []
+lookup :: Tyvar KI -> Subst -> Maybe (Type KI)
+lookup v (Subst s) = List.lookup v s
 
--- TODO remove
-(+->) :: Tyvar KI -> Type KI -> Subst
-u +-> t = [(u, t)]
+singleton :: Tyvar KI -> Type KI -> Subst
+singleton v t = Subst [(v, t)]
 

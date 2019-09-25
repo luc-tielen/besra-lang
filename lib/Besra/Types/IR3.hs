@@ -83,6 +83,20 @@ data Type (ph :: Phase)
   | TApp (Type ph) (Type ph)
   | TGen Int
 
+instance HasSpan (Ann ph) => HasSpan (Expr ph) where
+  span = \case
+    ELit ann _ -> span ann
+    EVar ann _ -> span ann
+    ECon ann _ _ -> span ann
+    ELam ann _ -> span ann
+    EApp ann _ _ -> span ann
+    EIf ann _ _ _ -> span ann
+    ECase ann _ _ -> span ann
+    ELet ann _ _ -> span ann
+
+instance HasSpan (a ph) => HasSpan (Qual ph a) where
+  span (_ :=> a) = span a
+
 instance HasSpan (Ann ph) => HasSpan (Pred ph) where
   span (IsIn ann _ _) = span ann
 

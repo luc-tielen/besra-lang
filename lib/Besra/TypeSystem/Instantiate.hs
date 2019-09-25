@@ -5,13 +5,13 @@ module Besra.TypeSystem.Instantiate
 import Protolude hiding (Type)
 import Besra.Types.IR3 (Type(..), Pred(..), Qual(..))
 import Besra.Types.Ann
-import Data.List ((!!))  -- TODO partial, try removing? or atleast better error message...
+import Data.List ((!!))
 
 
 type KI = KindInferred
 
 class Instantiate t where
-  inst :: [Type KindInferred] -> t -> t
+  inst :: [Type KI] -> t -> t
 
 instance Instantiate (Type KI) where
   inst ts (TApp l r) = TApp (inst ts l) (inst ts r)

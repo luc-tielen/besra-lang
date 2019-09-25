@@ -23,6 +23,7 @@ newtype GenT m a = GenT (StateT Counter m a)
 
 type Gen = GenT Identity
 
+
 class Monad m => MonadGen m where
   fresh :: Span -> Kind -> m (Tyvar KindInferred)
 
@@ -31,12 +32,11 @@ instance Monad m => MonadGen (GenT m) where
     GenT $ do
       ctr <- get
       modify (+ 1)
-      pure $ Tyvar (sp, k) (Id $ "t" <> show ctr)  -- TODO #t?
+      pure $ Tyvar (sp, k) (Id $ "t" <> show ctr)
 
 instance MonadGen m => MonadGen (StateT r m) where
   fresh sp = lift . fresh sp
 
--- TODO remove
 instance MonadGen m => MonadGen (ExceptT e m) where
   fresh sp = lift . fresh sp
 

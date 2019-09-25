@@ -4,8 +4,10 @@ module Besra.TypeSystem.Unify
   ) where
 
 import Protolude hiding ( Type )
-import Control.Monad.Fail ( MonadFail(..) )
-import Besra.TypeSystem.Subst
+import qualified Besra.TypeSystem.Subst as Subst
+import Besra.TypeSystem.Subst ( Subst, Substitutable(..) )
+import Besra.TypeSystem.FreeTypeVars
+import Besra.TypeSystem.Error
 import Besra.Types.IR3 ( Pred(..), Type(..), Tyvar(..) )
 import Besra.Types.Kind
 import Besra.Types.Ann
@@ -16,65 +18,66 @@ type Type' = Type KindInferred
 type Tyvar' = Tyvar KindInferred
 
 class Unify t where
-  -- TODO remove monadfail
-  mgu :: MonadFail m => t -> t -> m Subst
+  mgu :: MonadError Error m => t -> t -> m Subst
 
 instance Unify Type' where
   mgu (TApp l r) (TApp l' r') = do
     s1 <- mgu l l'
     s2 <- mgu (apply s1 r) (apply s1 r')
-    pure (s2 @@ s1)
+    pure (s2 <> s1)
   mgu (TVar u) t = varBind u t
   mgu t (TVar u) = varBind u t
   mgu (TCon tc1) (TCon tc2)
-    | tc1 == tc2 = pure nullSubst
-  mgu _ _ = fail "types do not unify"
+    | tc1 == tc2 = pure mempty
+  mgu t1 t2 = throwError $ UnificationFailure t1 t2
 
 instance (Unify t, Substitutable t) => Unify [t] where
   mgu (x:xs) (y:ys) = do
     s1 <- mgu x y
     s2 <- mgu (apply s1 xs) (apply s1 ys)
-    pure (s2 @@ s1)
-  mgu [] [] = pure nullSubst
-  mgu _ _ = fail "lists do not unify"
+    pure (s2 <> s1)
+  mgu [] [] = pure mempty
+  mgu ts1 ts2 =
+    -- TODO improve error with ann? now hardly anything is known about the type
+    throwError $ ListUnificationFailure (length ts1) (length ts2)
 
 instance Unify Pred' where
   mgu = liftPred mgu
 
--- TODO remove monadfail
-liftPred :: MonadFail m => ([Type'] -> [Type'] -> m a) -> Pred' -> Pred' -> m a
-liftPred m (IsIn _ i ts) (IsIn _ i' ts')
+liftPred :: MonadError Error m
+         => ([Type'] -> [Type'] -> m a)
+         -> Pred' -> Pred' -> m a
+liftPred m c1@(IsIn _ i ts) c2@(IsIn _ i' ts')
   | i == i' = m ts ts'
-  | otherwise = fail "classes differ"
+  | otherwise = throwError $ TraitMismatch c1 c2
 
-
--- TODO remove monadfail
-varBind :: MonadFail m => Tyvar' -> Type' -> m Subst
+varBind :: MonadError Error m => Tyvar' -> Type' -> m Subst
 varBind u t
-  | t == TVar u = pure nullSubst
-  | u `elem` ftv t = fail "occurs check fails"
-  | kind u /= kind t = fail "kinds do not match"
-  | otherwise = pure (u +-> t)
+  | t == TVar u = pure mempty
+  | u `elem` ftv t = throwError $ OccursCheck u t
+  | kind u /= kind t = throwError $ KindMismatch u t (kind u) (kind t)
+  | otherwise = pure $ Subst.singleton u t
+
 
 class Match t where
-  -- TODO remove monadfail
-  match :: MonadFail m => t -> t -> m Subst
+  match :: MonadError Error m => t -> t -> m Subst
 
 instance Match Type' where
   match (TApp l r) (TApp l' r') = do
     sl <- match l l'
     sr <- match r r'
-    merge sl sr
+    Subst.merge sl sr
   match (TVar u) t
-    | kind u == kind t = pure (u +-> t)
+    | kind u == kind t = pure $ Subst.singleton u t
   match (TCon tc1) (TCon tc2)
-    | tc1 == tc2 = pure nullSubst
-  match _ _ = fail "types do not match"
+    | tc1 == tc2 = pure mempty
+  match t1 t2 = throwError $ TypeMismatch t1 t2
 
 instance Match t => Match [t] where
   match ts ts' = do
     ss <- zipWithM match ts ts'
-    foldM merge nullSubst ss
+    foldM Subst.merge mempty ss
 
 instance Match Pred' where
   match = liftPred match
+

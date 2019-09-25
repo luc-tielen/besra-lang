@@ -11,36 +11,32 @@ module Besra.TypeSystem.TI
   ) where
 
 import Protolude hiding (Type, force)
-import Control.Monad.Fail  -- TODO remove
+import Besra.TypeSystem.FreeTypeVars
 import Besra.TypeSystem.Instantiate
 import Besra.TypeSystem.NameGen
 import Besra.TypeSystem.Subst
 import Besra.TypeSystem.Unify
+import Besra.TypeSystem.Error
 import Besra.Types.Kind
 import Besra.Types.Span
 import Besra.Types.Ann
 import Besra.Types.IR3 ( Scheme(..), Qual, Type(..), Tyvar )
-import qualified Data.Text as T
+
 
 type KI = KindInferred
 
-data Err = Err Text  -- TODO remove
-
 newtype TI a
-  = TI (ExceptT Err (StateT Subst Gen) a)
-  deriving (Functor, Applicative, Monad, MonadState Subst, MonadError Err)
+  = TI (ExceptT Error (StateT Subst Gen) a)
+  deriving ( Functor, Applicative, Monad
+           , MonadState Subst, MonadError Error )
 
 instance MonadGen TI where
   fresh sp = TI . fresh sp
 
--- TODO remove
-instance MonadFail TI where
-  fail str = throwError $ Err $ T.pack str
-
 
 -- | Runs the type inference monad.
-runTI :: TI a -> Either Err a
-runTI (TI m) = runGen $ evalStateT (runExceptT m) nullSubst
+runTI :: TI a -> Either Error a
+runTI (TI m) = runGen $ evalStateT (runExceptT m) mempty
 
 -- | Tries to unify 2 types and updates the current substitution set.
 unify :: Type KI -> Type KI -> TI ()
@@ -54,16 +50,16 @@ unify t1 t2 = do
 extSubst :: Subst -> TI ()
 extSubst s' = do
   s <- get
-  modify $ const (s' @@ s)
+  modify $ const (s' <> s)
 
 -- | Trims the current set of substitutions down to only substitutions
 --   for variables in the set `vs`.
 trim :: [Tyvar KI] -> TI ()
 trim vs = do
-  s <- get
+  (Subst s) <- get
   let s' = [(v, t) | (v, t) <- s, v `elem` vs]
       force = length (ftv (map snd s'))
-  force `seq` modify $ const s'
+  force `seq` modify $ const (Subst s')
 
 -- | Returns a fresh type variable with a specific kind.
 newTVar :: Span -> Kind -> TI (Type KI)

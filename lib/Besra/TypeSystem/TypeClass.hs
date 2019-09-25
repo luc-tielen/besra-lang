@@ -1,178 +1,178 @@
 
-module Besra.TypeSystem.TypeClass () where
-
-{-
 module Besra.TypeSystem.TypeClass
-  ( predHead  -- TODO cleanup exports
+  ( TraitEnv
   , (<:>)
-  , addInst
-  , addClass
+  , addImpl
+  , addTrait
+  , reduceContext
   , entail
-  , reduce
   , defaults
-  , mkInst
-  , instances
-  , classes
   , initialEnv
-  , sig
-  , super
-  , insts
-  , overlap
-  , bySuper
-  , byInst
-  , scEntail
-  , simplify
   ) where
 
-import Protolude hiding (Type, reduce)
-import Control.Monad.Fail ( MonadFail(..) )
-import qualified Data.Text as T
+
+import Protolude hiding (Type)
+import Unsafe ( unsafeFromJust )
+import Control.Monad.Loops ( allM )
+import qualified Data.Map as Map
+import qualified Data.List as List
 import Besra.Types.Id
 import Besra.Types.Ann
-import Besra.Types.Kind
-import Besra.TypeSystem.Instantiate
+import Besra.Types.Span
 import Besra.TypeSystem.Subst
 import Besra.TypeSystem.Unify
+import Besra.TypeSystem.Error
 import Besra.Types.IR3 ( Qual(..), Pred(..), Type(..), Tyvar(..) )
 
 
 type KI = KindInferred
 
--- | Type synonym for representing all relevant data of a type class.
-type Class = ([Tyvar KI], [Pred KI], [Inst])
+-- | Type synonym for representing all relevant data of a trait.
+--   This includes the set of variables in a trait,
+--   the supertraits of the trait and the list of impls that implement
+--   the trait.
+type Trait = (Span, [Tyvar KI], [Pred KI], [Impl])
 
--- | Type synonym for an instance declaration of a typeclass.
-type Inst = Qual KI Pred
+-- | Type synonym for an impl declaration of a trait.
+type Impl = Qual KI Pred
 
-data ClassEnv = ClassEnv
-  { classes  :: Id -> Maybe Class
+data TraitEnv = TraitEnv
+  { traits  :: Map Id Trait
   , defaults :: [Type KI]
   }
 
-type EnvTransformer = ClassEnv -> Maybe ClassEnv
+type EnvTransformer = TraitEnv -> Either Error TraitEnv
 
--- TODO name
-predHead :: Pred ph -> Id
-predHead (IsIn _ i _) = i
-
-sig :: ClassEnv -> Id -> [Tyvar KI]
-sig ce i =
-  case classes ce i of
-    Just (vs, _, _) -> vs
-
-super :: ClassEnv -> Id -> [Pred KI]
-super ce i =
-  case classes ce i of
-    Just (_, is, _) -> is
-
-insts :: ClassEnv -> Id -> [Inst]
-insts ce i =
-  case classes ce i of
-    Just (_, _, its) -> its
-
-defined :: Maybe a -> Bool
-defined = isJust
-
-modifyEnv :: ClassEnv -> Id -> Class -> ClassEnv
-modifyEnv ce i c =
-  ce
-    { classes = \j ->
-          if i == j
-            then Just c
-            else classes ce j
-    }
-
-initialEnv :: ClassEnv
+initialEnv :: TraitEnv
 initialEnv =
-  ClassEnv
-    {classes = \_ -> fail "class not defined"}
+  TraitEnv
+  { traits = Map.empty
+  , defaults = []
+  }
 
-infixr 5 <:>
+modifyEnv :: TraitEnv -> Id -> Trait -> TraitEnv
+modifyEnv ce i c =
+  ce { traits = Map.insert i c $ traits ce }
+
+lookupEnv :: TraitEnv -> Id -> Maybe Trait
+lookupEnv ce name =
+  Map.lookup name $ traits ce
+
+sig :: MonadError Error m => TraitEnv -> Span -> Id -> m [Tyvar KI]
+sig ce sp i =
+  case lookupEnv ce i of
+    Just (_, vs, _, _) -> pure vs
+    Nothing -> throwError $ UnknownTrait sp i
+
+super :: MonadError Error m => TraitEnv -> Span -> Id -> m [Pred KI]
+super ce sp i =
+  case lookupEnv ce i of
+    Just (_, _, is, _) -> pure is
+    Nothing -> throwError $ UnknownTrait sp i
+
+impls :: MonadError Error m => TraitEnv -> Span -> Id -> m [Impl]
+impls ce sp i =
+  case lookupEnv ce i of
+    Just (_, _, _, its) -> pure its
+    Nothing -> throwError $ UnknownTrait sp i
+
+
 (<:>) :: EnvTransformer -> EnvTransformer -> EnvTransformer
 (<:>) = (>=>)
+infixr 5 <:>
 
--- | Adds a typeclass to the environment.
-addClass :: Id -> [Tyvar KI] -> [Pred KI] -> EnvTransformer
-addClass i vs ps ce
-  | defined (classes ce i) = fail "class already defined"
-  | any (not . defined . classes ce . predHead) ps =
-    fail "superclass not defined"
-  | otherwise = pure (modifyEnv ce i (vs, ps, []))
 
--- | Adds a type class instance to the environment.
-addInst :: [Pred KI] -> Pred KI -> EnvTransformer
-addInst ps p@(IsIn name i _) ce
-  | not (defined (classes ce i)) = fail "no class for instance"
-  | any (overlap p) qs = fail "overlapping instance"
-  | otherwise = pure (modifyEnv ce i c)
-  where
-    its = insts ce i
-    qs = [q | (_ :=> q) <- its]
-    c = (sig ce i, super ce i, (ps :=> p) : its)
+-- | Adds a trait impl to the environment.
+addImpl :: [Pred KI] -> Pred KI -> EnvTransformer
+addImpl ps p@(IsIn ann i _) ce
+  | not (isTraitDefined (lookupEnv ce i)) =
+    throwError $ NoTraitForImpl ann i
+  | otherwise = do
+      its <- impls ce ann i
+      signature <- sig ce ann i
+      superTraits <- super ce ann i
+      let qs = [q | (_ :=> q) <- its]
+          c = (ann, signature, superTraits, (ps :=> p) : its)
+      if | any (overlap p) qs -> throwError $ OverlappingImpls p qs
+         | otherwise -> pure (modifyEnv ce i c)
 
--- | Helper function to check for overlapping instances.
+-- | Adds a trait to the environment.
+addTrait :: Span -> Id -> [Tyvar KI] -> [Pred KI] -> EnvTransformer
+addTrait sp i vs ps ce
+  | isTraitDefined traitInfo =
+    let (sp', _, _, _) = unsafeFromJust traitInfo
+     in throwError $ TraitAlreadyDefined sp' sp i
+  | any (not . superTraitDefined) ps =
+    let firstNotDefined = unsafeFromJust $ List.find (not . superTraitDefined) ps
+     in throwError $ SuperTraitNotDefined firstNotDefined
+  | otherwise = pure (modifyEnv ce i (sp, vs, ps, []))
+  where traitInfo = lookupEnv ce i
+        superTraitDefined = isTraitDefined . lookupEnv ce . predName
+
+predName :: Pred ph -> Id
+predName (IsIn _ i _) = i
+
+isTraitDefined :: Maybe a -> Bool
+isTraitDefined = isJust
+
+-- | Helper function to check for overlapping impls.
 overlap :: Pred KI -> Pred KI -> Bool
-overlap p q = defined (mgu p q)
+overlap p q = isRight (mgu p q)
 
--- | Get the list of all typeclass constraints that have to be true
---   when a certain typeclass constraint is required, based on superclass information.
-bySuper :: ClassEnv -> Pred KI -> [Pred KI]
-bySuper ce p@(IsIn _ i ts) = p : concatMap (bySuper ce) supers
-  where
-    supers = apply s (super ce i)
-    s = zip (sig ce i) ts
+-- | Get the list of all trait constraints that have to be true
+--   when a certain trait constraint is required, based on supertrait information.
+bySuper :: MonadError Error m => TraitEnv -> Pred KI -> m [Pred KI]
+bySuper ce p@(IsIn ann i ts) = do
+  signature <- sig ce ann i
+  let s = Subst $ zip signature ts
+  supers <- apply s <$> super ce ann i
+  (p :) <$> concatMapM (bySuper ce) supers
 
--- | Get the list of all subgoals for a typeclass constraint that have to be met,
---   based on instance information.
-byInst :: ClassEnv -> Pred KI -> Maybe [Pred KI]
-byInst ce p@(IsIn _ i _) = msum [tryInst it | it <- insts ce i]
+-- | Get the list of all subgoals for a trait constraint that have to be met,
+--   based on impl information.
+byImpl :: TraitEnv -> Pred KI -> Either Error [Pred KI]
+byImpl ce p@(IsIn ann i _) = findSubGoals . map tryImpl =<< impls ce ann i
   where
-    tryInst (ps :=> h) = do
+    tryImpl (ps :=> h) = do
       u <- match h p
       pure (map (apply u) ps)
+    findSubGoals xs = case partitionEithers xs of
+      ([], []) -> Left $ NoImplsForTrait p
+      (x:_, _) -> Left x
+      (_, x:_) -> Right x
 
 -- | Returns True if the predicate will hold when all other predicates also hold.
-entail :: ClassEnv -> [Pred KI] -> Pred KI -> Bool
-entail ce ps p =
-  scEntail ce ps p ||
-  case byInst ce p of
-    Nothing -> False
-    Just qs -> all (entail ce ps) qs
+entail :: MonadError Error m => TraitEnv -> [Pred KI] -> Pred KI -> m Bool
+entail ce ps p = do
+  entails <- stEntail ce ps p
+  if entails
+    then pure True
+    else byImpl ce p & \case
+      Left _ -> pure False
+      Right qs -> allM (entail ce ps) qs
 
--- | Returns True if the predicate will hold when all other predicates also hold (done using only superclass information).
-scEntail :: ClassEnv -> [Pred KI] -> Pred KI -> Bool
-scEntail ce ps p = any (p `elem`) (map (bySuper ce) ps)
-
--- | Simplifies a list of predicates by removing all 'redundant' predicates.
-simplify :: ([Pred KI] -> Pred KI -> Bool) -> [Pred KI] -> [Pred KI]
-simplify ent = loop []
-  where
-    loop rs [] = rs
-    loop rs (p:ps)
-      | ent (rs ++ ps) p = loop rs ps
-      | otherwise = loop (p : rs) ps
+-- | Returns True if the predicate will hold when all other predicates also hold (done using only supertrait information).
+stEntail :: MonadError Error m => TraitEnv -> [Pred KI] -> Pred KI -> m Bool
+stEntail ce ps p =
+  any (p `elem`) <$> traverse (bySuper ce) ps
 
 -- | Performs context reduction for a set of predicates.
---   This will effectively simplify the set of typeclass constraints needed for something.
-reduce :: ClassEnv -> [Pred KI] -> [Pred KI]
-reduce ce = simplify (scEntail ce) . elimTauts ce
+--   This will effectively simplify the set of trait constraints needed for something.
+reduceContext :: MonadError Error m => TraitEnv -> [Pred KI] -> m [Pred KI]
+reduceContext ce ps =
+  simplify (stEntail ce) =<< elimTauts ce ps
+
+-- | Simplifies a list of predicates by removing all 'redundant' predicates.
+simplify :: MonadError Error m
+         => ([Pred KI] -> Pred KI -> m Bool)
+         -> [Pred KI] -> m [Pred KI]
+simplify ent = loop [] where
+  loop rs [] = pure rs
+  loop rs (p:ps) = ent (rs <> ps) p >>= \case
+    True -> loop rs ps
+    False -> loop (p : rs) ps
 
 -- | Filters out predicates that require other predicates to hold (no entailment).
-elimTauts :: ClassEnv -> [Pred KI] -> [Pred KI]
-elimTauts ce ps = [p | p <- ps, not (entail ce [] p)]
+elimTauts :: MonadError Error m => TraitEnv -> [Pred KI] -> m [Pred KI]
+elimTauts ce = filterM $ map not . entail ce []
 
-
-mkInst :: Instantiate a => [Kind] -> a -> a
-mkInst ks = inst ts
-  where
-    ts = zipWith (\v k -> TVar (Tyvar v k)) vars ks
-    vars =
-      map (Id . T.pack) $
-      [[c] | c <- ['a' .. 'z']] ++
-      [c : show n | n <- [0 :: Int ..], c <- ['a' .. 'z']]
-
--- | Adds a list of instances to the typeclass environment.
-instances :: [Inst] -> EnvTransformer
-instances = foldr ((<:>) . (\(ps :=> p) -> addInst ps p)) pure
-
--}

@@ -132,7 +132,7 @@ caseParser = do
   let clauseParser' = withIndent indentation clauseParser <?> "case clause"
   clauses <- some clauseParser'
   notFollowedBy clauseParser <?> "properly indented case clause"
-  let sp = span $ fromJust $ nonEmpty clauses
+  let sp = span $ fromJust $ nonEmpty $ map snd clauses
   pure $ ECase (startPos .> sp) expr' clauses
   where
     clauseParser = withLineFold $ do
