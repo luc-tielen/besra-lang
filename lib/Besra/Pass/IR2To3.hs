@@ -117,9 +117,8 @@ toBG decls = do
   pure (exps, imps)
 
 groupDecls :: [IR2.Decl KI] -> [(Id, (Maybe (IR2.Scheme KI), [IR2.Binding KI]))]
-groupDecls decls = map reverseBindings $ Map.toList results
+groupDecls decls = Map.toList $ foldr' f Map.empty decls
   where
-    results = foldl' (flip f) Map.empty decls
     f = \case
       IR2.TypeAnnDecl ta -> Map.alter (addScheme ta) (typeAnnName ta)
       IR2.BindingDecl b -> Map.alter (addBinding b) (bindingName b)
@@ -129,7 +128,6 @@ groupDecls decls = map reverseBindings $ Map.toList results
     addScheme (IR2.TypeAnn _ _ sch) = \case
       Nothing -> Just (Just sch, [])
       Just (_, bs) -> Just (Just sch, bs)
-    reverseBindings (name, (ta, bs)) = (name, (ta, reverse bs))
 
 toExplicit :: (Id, (Maybe (IR2.Scheme KI), [IR2.Binding KI]))
            -> PassM (IR3.Explicit KI)

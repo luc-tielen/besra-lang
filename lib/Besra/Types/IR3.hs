@@ -68,7 +68,8 @@ data Pattern ph
   | PCon Id (Scheme ph) [Pattern ph]
   | PAs Id (Pattern ph)
 
-data Qual ph a = [Pred ph] :=> a ph
+data Qual (ph :: Phase) a
+  = [Pred ph] :=> a ph
 
 data Scheme (ph :: Phase)
   = ForAll (Ann ph) [Kind] (Qual ph Type)
