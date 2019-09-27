@@ -4,7 +4,6 @@ module Besra.TypeSystem.Infer
   , tiProgram
   ) where
 
-
 import Protolude hiding ( Type, Alt )
 import Unsafe ( unsafeFromJust )
 import Control.Monad.Loops ( allM )

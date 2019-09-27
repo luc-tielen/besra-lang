@@ -22,6 +22,7 @@ import qualified Besra.Pass.BalanceOperators as BalanceOperators
 import qualified Besra.Pass.IR1To2 as IR1To2
 import qualified Besra.Pass.IR2To3 as IR2To3
 import qualified Besra.Pass.InferKinds as InferKinds
+import qualified Besra.Pass.TypeSystem as TypeSystem
 import Besra.Types.CompilerState
 import Besra.TypeSystem.KindSolver ( Env(..), IKind(..), KindError(..) )
 
@@ -35,6 +36,7 @@ data BesraError
   | BalanceErr BalanceError'
   | SemanticErr SemanticError
   | InferKindErr KindError
+  | TypeErr TypeSystem.Error
   deriving (Eq, Show)
 
 
@@ -52,6 +54,9 @@ instance ToError SemanticError where
 
 instance ToError KindError where
   toError = InferKindErr
+
+instance ToError TypeSystem.Error where
+  toError = TypeErr
 
 instance ToError BesraError where
   toError = identity
@@ -103,5 +108,6 @@ compile path parsed = do
     let (ir2, compState) = ir1To2 analyzed
     (mod2, compState') <- wrapErr $ InferKinds.pass compState ir2
     let ir3 = IR2To3.pass compState' mod2
-    pure (ir3, compState')
+    ir3' <- wrapErr $ TypeSystem.pass compState' ir3
+    pure (ir3', compState')
 
