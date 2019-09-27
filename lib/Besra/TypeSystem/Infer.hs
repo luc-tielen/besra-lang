@@ -38,7 +38,7 @@ type Infer e t = TraitEnv -> [Assump] -> e -> TI ([Pred'], t)
 
 
 tArrow :: Span -> Type'
-tArrow sp = TCon (Tycon (sp, KArr Star (KArr Star Star)) (Id "(->)"))
+tArrow sp = TCon (Tycon (sp, KArr Star (KArr Star Star)) (Id "->"))
 
 fn :: Span -> Type' -> Type' -> Type'
 fn sp a = TApp (TApp (tArrow sp) a)
@@ -289,13 +289,12 @@ defaultSubst :: MonadError Error m
 defaultSubst = withDefaults (\vps ts -> Subst $ zip (map fst vps) ts)
 
 tiProgram :: TraitEnv -> [Assump] -> Module' -> Either Error [Assump]
-tiProgram ce as (Module bg) =
-  runTI $ do
-    (ps, as') <- tiBindGroup ce as bg
-    s <- get
-    rs <- reduceContext ce (apply s ps)
-    s' <- defaultSubst ce [] rs
-    pure (apply (s' <> s) as')
+tiProgram ce as (Module bg) = runTI $ do
+  (ps, as') <- tiBindGroup ce as bg
+  s <- get
+  rs <- reduceContext ce (apply s ps)
+  s' <- defaultSubst ce [] rs
+  pure (apply (s' <> s) as')
 
 toScheme :: Ann KI -> Type' -> Scheme'
 toScheme ann ty = ForAll ann [] ([] :=> ty)
