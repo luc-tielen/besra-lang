@@ -59,8 +59,10 @@ instance Desugar a => Desugar [a] where
 instance Desugar (IR2.Module KI) where
   type Result (IR2.Module KI) = IR3.Module KI
 
-  desugar (IR2.Module decls) =
-    IR3.Module <$> toBG decls
+  desugar (IR2.Module decls) = do
+    -- Semantic analysis only allows explicit bindings on top level.
+    (expls, _) <- toBG decls
+    pure $ IR3.Module expls
 
 instance Desugar (IR2.Expr KI) where
   type Result (IR2.Expr KI) = IR3.Expr KI

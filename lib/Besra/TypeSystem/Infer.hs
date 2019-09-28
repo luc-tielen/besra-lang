@@ -25,13 +25,6 @@ type KI = KindInferred
 type Infer e t = TraitEnv -> [Assump] -> e -> TI ([Pred KI], t)
 
 
-tArrow :: Span -> Type KI
-tArrow sp = TCon (Tycon (sp, KArr Star (KArr Star Star)) (Id "->"))
-
-fn :: Span -> Type KI -> Type KI -> Type KI
-fn sp a = TApp (TApp (tArrow sp) a)
-
-
 -- | Performs type inference for literals.
 tiLit :: Span -> Lit -> TI ([Pred KI], Type KI)
 tiLit sp = \case
@@ -234,8 +227,7 @@ stdClasses =
   , "Functor"
   , "Monad"
   , "MonadPlus"
-  ] <>
-  numClasses
+  ] <> numClasses
 
 candidates :: MonadError Error m => TraitEnv -> Ambiguity -> m [Type KI]
 candidates ce (v, qs) = do
@@ -275,13 +267,20 @@ defaultSubst :: MonadError Error m
 defaultSubst = withDefaults (\vps ts -> Subst $ zip (map fst vps) ts)
 
 tiProgram :: TraitEnv -> [Assump] -> Module KI -> Either Error [Assump]
-tiProgram ce as (Module bg) = runTI $ do
-  (ps, as') <- tiBindGroup ce as bg
+tiProgram ce as (Module es) = runTI $ do
+ -- (ps, as') <- tiBindGroup ce as bg
+  ps <- traverse (tiExpl ce as) es
   s <- get
-  rs <- reduceContext ce (apply s ps)
+  rs <- reduceContext ce (apply s $ concat ps)
   s' <- defaultSubst ce [] rs
-  pure (apply (s' <> s) as')
+  pure (apply (s' <> s) as)  -- TODO is this apply still needed now?
 
 toScheme :: Ann KI -> Type KI -> Scheme KI
 toScheme ann ty = ForAll ann [] ([] :=> ty)
+
+tArrow :: Span -> Type KI
+tArrow sp = TCon (Tycon (sp, KArr Star (KArr Star Star)) (Id "->"))
+
+fn :: Span -> Type KI -> Type KI -> Type KI
+fn sp a = TApp (TApp (tArrow sp) a)
 

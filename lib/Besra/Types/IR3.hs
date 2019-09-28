@@ -30,7 +30,7 @@ import Besra.Types.Lit
 
 
 newtype Module (ph :: Phase)
-  = Module (BindGroup ph)
+  = Module [Explicit ph]
 
 -- | A group of bindings, separated into explicitly and implicitly typed bindings.
 --   The implicit bindings are grouped together in such a way that groups later
