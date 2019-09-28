@@ -3,6 +3,7 @@ module Besra.Pass.IR2To3 ( pass ) where
 
 import Protolude hiding ( pass )
 import Unsafe ( unsafeFromJust )
+import Data.Bitraversable ( bitraverse )
 import qualified Data.Map as Map
 import qualified Data.List as List
 import qualified Besra.Types.IR2 as IR2
@@ -80,22 +81,22 @@ instance Desugar (IR2.Expr KI) where
     IR2.EIf ann c t f ->
       IR3.EIf ann <$> desugar c <*> desugar t <*> desugar f
     IR2.ECase ann e clauses ->
-      IR3.ECase ann <$> desugar e <*> traverse f clauses
-      where f (pat, expr) = (,) <$> desugar pat <*> desugar expr
+      IR3.ECase ann <$> desugar e
+                    <*> traverse (bitraverse desugar desugar) clauses
     IR2.ELet ann decls expr ->
       IR3.ELet ann <$> toBG decls <*> desugar expr
 
-instance Desugar IR2.Pattern where
-  type Result IR2.Pattern = IR3.Pattern KI
+instance Desugar (IR2.Pattern KI) where
+  type Result (IR2.Pattern KI) = IR3.Pattern KI
 
   desugar = \case
-    IR2.PWildcard -> pure IR3.PWildcard
-    IR2.PLit lit -> pure $ IR3.PLit lit
-    IR2.PVar var -> pure $ IR3.PVar var
-    IR2.PCon name pats -> do
+    IR2.PWildcard ann -> pure $ IR3.PWildcard ann
+    IR2.PLit ann lit -> pure $ IR3.PLit ann lit
+    IR2.PVar ann var -> pure $ IR3.PVar ann var
+    IR2.PCon ann name pats -> do
       sch <- unsafeFromJust <$> asks (Map.lookup name)
-      IR3.PCon name sch <$> desugar pats
-    IR2.PAs name pat -> IR3.PAs name <$> desugar pat
+      IR3.PCon ann name sch <$> desugar pats
+    IR2.PAs ann name pat -> IR3.PAs ann name <$> desugar pat
 
 desugarType :: IR2.Type KI -> IR3.Type KI
 desugarType = \case

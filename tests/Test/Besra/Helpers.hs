@@ -2,11 +2,7 @@
 module Test.Besra.Helpers ( module Test.Besra.Helpers ) where
 
 import Protolude hiding ( Type )
-import Besra.Types.IR1 ( Module(..), Decl(..), Trait(..), Impl(..)
-                       , TypeAnn(..), Expr(..), ExprDecl(..), ADT(..)
-                       , ADTHead(..), ConDecl(..), Scheme(..)
-                       , Pred(..), Type(..), Tyvar(..), Tycon(..)
-                       , FixityInfo(..), Binding(..) )
+import Besra.Types.IR1
 import Besra.Types.Ann
 
 
@@ -64,10 +60,10 @@ instance StripAnns a => StripAnns [a] where
 
   stripAnns = map stripAnns
 
-instance StripAnns b => StripAnns (a, b) where
-  type Result (a, b) = (a, Result b)
+instance (StripAnns a, StripAnns b) => StripAnns (a, b) where
+  type Result (a, b) = (Result a, Result b)
 
-  stripAnns = map stripAnns
+  stripAnns = bimap stripAnns stripAnns
 
 instance StripAnns (Trait ph) where
   type Result (Trait ph) = Trait Testing
@@ -100,7 +96,7 @@ instance StripAnns (Expr ph) where
     ELit _ lit -> ELit emptyAnn lit
     EVar _ var -> EVar emptyAnn var
     ECon _ con -> ECon emptyAnn con
-    ELam _ pats body -> ELam emptyAnn pats (stripAnns body)
+    ELam _ pats body -> ELam emptyAnn (stripAnns pats) (stripAnns body)
     EApp _ f args -> EApp emptyAnn (stripAnns f) (stripAnns args)
     EBinOp _ op l r -> EBinOp emptyAnn (stripAnns op) (stripAnns l) (stripAnns r)
     ENeg _ e -> ENeg emptyAnn (stripAnns e)
@@ -108,6 +104,16 @@ instance StripAnns (Expr ph) where
     ECase _ e clauses -> ECase emptyAnn (stripAnns e) (stripAnns clauses)
     ELet _ decls body -> ELet emptyAnn (stripAnns decls) (stripAnns body)
     EParens _ e -> EParens emptyAnn (stripAnns e)
+
+instance StripAnns (Pattern ph) where
+  type Result (Pattern ph) = Pattern Testing
+
+  stripAnns = \case
+    PWildcard _ -> PWildcard emptyAnn
+    PLit _ lit -> PLit emptyAnn lit
+    PVar _ var -> PVar emptyAnn var
+    PCon _ con pats -> PCon emptyAnn con $ stripAnns pats
+    PAs _ name pat -> PAs emptyAnn name $ stripAnns pat
 
 instance StripAnns (ExprDecl ph) where
   type Result (ExprDecl ph) = ExprDecl Testing

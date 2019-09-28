@@ -189,7 +189,7 @@ instance Pretty (IR1.Expr ph) where
       where letDoc = "let" <> indentBlock (vcat $ pretty <$> decls) <> hardline
                   <> "in" <> indentBlock (pretty body)
 
-prettyClause :: (IR1.Pattern, IR1.Expr ph) -> Doc ann
+prettyClause :: (IR1.Pattern ph, IR1.Expr ph) -> Doc ann
 prettyClause (pat, expr) =
   pretty pat <+> "->" <> indentBlock (pretty expr)
 
@@ -200,16 +200,16 @@ instance Pretty (IR1.ExprDecl ph) where
     IR1.ExprBindingDecl binding -> pretty binding
     IR1.ExprFixityDecl fixityInfo -> pretty fixityInfo
 
-instance Pretty IR1.Pattern where
+instance Pretty (IR1.Pattern ph) where
   pretty = \case
-    IR1.PWildcard -> "_"
-    IR1.PLit lit -> pretty lit
-    IR1.PVar var -> pretty var
-    IR1.PCon con pats ->
+    IR1.PWildcard _ -> "_"
+    IR1.PLit _ lit -> pretty lit
+    IR1.PVar _ var -> pretty var
+    IR1.PCon _ con pats ->
       if null pats
         then pretty con
         else parens $ pretty con <+> hsep (pretty <$> pats)
-    IR1.PAs var pat -> pretty var <> "@" <> pretty pat
+    IR1.PAs _ var pat -> pretty var <> "@" <> pretty pat
 
 instance Pretty IR1.Lit where
   pretty = \case

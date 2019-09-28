@@ -6,7 +6,8 @@ module Besra.Pass.IR1To2
   ) where
 
 import Protolude hiding ( Type, pass )
-import Data.Maybe ( fromJust )
+import Data.Bitraversable ( bitraverse )
+import Unsafe ( unsafeFromJust )
 import qualified Data.Text as T
 import qualified Besra.Types.IR1 as IR1
 import qualified Besra.Types.IR2 as IR2
@@ -60,7 +61,7 @@ instance Desugarable a => Desugarable [a] where
 instance (Desugarable a, Desugarable b) => Desugarable (a, b) where
   type Desugared (a, b) = (Desugared a, Desugared b)
 
-  desugar (a, b) = (,) <$> desugar a <*> desugar b
+  desugar = bitraverse desugar desugar
 
 instance Desugarable (IR1.Module Parsed) where
   type Desugared (IR1.Module Parsed) = IR2.Module Parsed
@@ -199,15 +200,15 @@ instance Desugarable (IR1.Expr Parsed) where
       IR2.EApp ann (IR2.EVar ann $ Id "negate") <$> desugar e
     IR1.EParens _ e -> desugar e
 
-instance Desugarable IR1.Pattern where
-  type Desugared IR1.Pattern = IR2.Pattern
+instance Desugarable (IR1.Pattern Parsed) where
+  type Desugared (IR1.Pattern Parsed) = IR2.Pattern Parsed
 
   desugar = \case
-    IR1.PWildcard -> pure IR2.PWildcard
-    IR1.PLit lit -> IR2.PLit <$> desugar lit
-    IR1.PVar var -> pure $ IR2.PVar var
-    IR1.PCon con pats -> IR2.PCon con <$> desugar pats
-    IR1.PAs id pat -> IR2.PAs id <$> desugar pat
+    IR1.PWildcard ann -> pure $ IR2.PWildcard ann
+    IR1.PLit ann lit -> IR2.PLit ann <$> desugar lit
+    IR1.PVar ann var -> pure $ IR2.PVar ann var
+    IR1.PCon ann con pats -> IR2.PCon ann con <$> desugar pats
+    IR1.PAs ann id pat -> IR2.PAs ann id <$> desugar pat
 
 instance Desugarable (IR1.ExprDecl Parsed) where
   type Desugared (IR1.ExprDecl Parsed) = Maybe (IR2.Decl Parsed)
@@ -241,7 +242,7 @@ instance Desugarable IR1.Number where
     IR1.SBin bin -> pure . IR2.Number $ binToInt bin
 
 hexToInt :: Text -> Int
-hexToInt = fromJust . readMaybe . T.unpack
+hexToInt = unsafeFromJust . readMaybe . T.unpack
 
 binToInt :: Text -> Int
 binToInt digits = go 0 (T.unpack $ T.drop 2 digits) where

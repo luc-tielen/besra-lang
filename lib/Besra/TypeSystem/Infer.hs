@@ -43,24 +43,24 @@ tiLit sp = \case
 -- | Performs type inference for a single pattern.
 tiPat :: Pattern KI -> TI ([Pred KI], [Assump], Type KI)
 tiPat = \case
-  PVar i -> do  -- TODO add span to pvar and use here 2x
-    v <- newTVar (Span 0 0) Star
-    pure ([], [i :>: toScheme (Span 0 0) v], v)
-  PWildcard -> do
-    v <- newTVar (Span 0 0) Star  -- TODO add span to pwildcard
+  PVar ann i -> do
+    v <- newTVar ann Star
+    pure ([], [i :>: toScheme ann v], v)
+  PWildcard ann -> do
+    v <- newTVar ann Star
     pure ([], [], v)
-  PLit l -> do
-    (ps, t) <- tiLit (Span 0 0) l  -- TODO add span to PLit
+  PLit ann l -> do
+    (ps, t) <- tiLit ann l
     pure (ps, [], t)
-  PCon _ sc pats -> do
+  PCon ann _ sc pats -> do
     (ps, as, ts) <- tiPats pats
-    t' <- newTVar (Span 0 0) Star  -- TODO add span to pcon
+    t' <- newTVar ann Star
     (qs :=> t) <- freshInst sc
-    unify t (foldr (fn (Span 0 0)) t' ts)
+    unify t (foldr (fn ann) t' ts)
     pure (ps <> qs, as, t')
-  PAs i pat -> do
+  PAs ann i pat -> do
     (ps, as, t) <- tiPat pat
-    pure (ps, (i :>: toScheme (span t) t):as, t)
+    pure (ps, (i :>: toScheme ann t):as, t)
 
 -- | Performs type inference for multiple patterns.
 tiPats :: [Pattern KI] -> TI ([Pred KI], [Assump], [Type KI])

@@ -94,22 +94,21 @@ data Expr (ph :: Phase)
   = ELit (Ann ph) Lit
   | EVar (Ann ph) Id
   | ECon (Ann ph) Id
-  | ELam (Ann ph) [Pattern] (Expr ph)
+  | ELam (Ann ph) [Pattern ph] (Expr ph)
   | EApp (Ann ph) (Expr ph) [Expr ph]
   | EBinOp (Ann ph) (Expr ph) (Expr ph) (Expr ph)  -- operator, left side, right side
   | ENeg (Ann ph) (Expr ph)                          -- negation operator
   | EIf (Ann ph) (Expr ph) (Expr ph) (Expr ph)     -- condition, true clause, false clause
-  | ECase (Ann ph) (Expr ph) [(Pattern, Expr ph)]   -- expression to match on, multiple branches
+  | ECase (Ann ph) (Expr ph) [(Pattern ph, Expr ph)]   -- expression to match on, multiple branches
   | ELet (Ann ph) [ExprDecl ph] (Expr ph)            -- bindings end result
   | EParens (Ann ph) (Expr ph)
 
-data Pattern
-  = PWildcard
-  | PLit Lit
-  | PVar Id
-  | PCon Id [Pattern]
-  | PAs Id Pattern
-  deriving (Eq, Show)
+data Pattern (ph :: Phase)
+  = PWildcard (Ann ph)
+  | PLit (Ann ph) Lit
+  | PVar (Ann ph) Id
+  | PCon (Ann ph) Id [Pattern ph]
+  | PAs (Ann ph) Id (Pattern ph)
 
 data Lit
   = LChar Char
@@ -173,6 +172,14 @@ instance HasSpan (Ann ph) => HasSpan (Expr ph) where
     ELet ann _ _ -> span ann
     EParens ann _ -> span ann
 
+instance HasSpan (Ann ph) => HasSpan (Pattern ph) where
+  span = \case
+    PWildcard ann -> span ann
+    PLit ann _ -> span ann
+    PVar ann _ -> span ann
+    PCon ann _ _ -> span ann
+    PAs ann _ _ -> span ann
+
 instance HasSpan (Ann ph) => HasSpan (Binding ph) where
   span (Binding ann _ _) = span ann
 
@@ -186,9 +193,11 @@ deriving instance AnnHas Eq ph => Eq (Trait ph)
 deriving instance AnnHas Show ph => Show (Trait ph)
 deriving instance AnnHas Eq ph => Eq (Expr ph)
 deriving instance AnnHas Eq ph => Eq (ExprDecl ph)
+deriving instance AnnHas Eq ph => Eq (Pattern ph)
 deriving instance AnnHas Eq ph => Eq (Binding ph)
 deriving instance AnnHas Show ph => Show (Expr ph)
 deriving instance AnnHas Show ph => Show (ExprDecl ph)
+deriving instance AnnHas Show ph => Show (Pattern ph)
 deriving instance AnnHas Show ph => Show (Binding ph)
 deriving instance AnnHas Eq ph => Eq (FixityInfo ph)
 deriving instance AnnHas Show ph => Show (FixityInfo ph)

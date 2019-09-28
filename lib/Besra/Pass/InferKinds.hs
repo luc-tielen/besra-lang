@@ -3,6 +3,7 @@ module Besra.Pass.InferKinds ( pass, enrich ) where
 
 import Protolude hiding ( Type, pass, show )
 import Unsafe ( unsafeFromJust )
+import Data.Bitraversable ( bitraverse )
 import Data.Graph
 import qualified Besra.TypeSystem.KindSolver as K
   ( Env(..), PredEnv, Assump, Constraint(..) )
@@ -173,15 +174,26 @@ instance SolveKinds (Expr Parsed) where
     ELit sp lit -> pure $ ELit sp lit
     EVar sp var -> pure $ EVar sp var
     ECon sp con -> pure $ ECon sp con
-    ELam sp args body -> ELam sp args <$> solveKinds body
+    ELam sp args body -> ELam sp <$> solveKinds args <*> solveKinds body
     EApp sp f arg ->
       EApp sp <$> solveKinds f <*> solveKinds arg
     EIf sp cnd tr fl ->
       EIf sp <$> solveKinds cnd <*> solveKinds tr <*> solveKinds fl
     ECase sp expr clauses ->
-      ECase sp <$> solveKinds expr <*> traverse (traverse solveKinds) clauses
+      ECase sp <$> solveKinds expr
+               <*> traverse (bitraverse solveKinds solveKinds) clauses
     ELet sp decls body ->
       ELet sp <$> traverse solveKinds decls <*> solveKinds body
+
+instance SolveKinds (Pattern Parsed) where
+  type Result (Pattern Parsed) = Pattern KindInferred
+
+  solveKinds = \case
+    PWildcard ann -> pure $ PWildcard ann
+    PLit ann lit -> pure $ PLit ann lit
+    PVar ann var -> pure $ PVar ann var
+    PCon ann con pats -> PCon ann con <$> solveKinds pats
+    PAs ann name p -> PAs ann name <$> solveKinds p
 
 instance SolveKinds (TypeAnn Parsed) where
   type Result (TypeAnn Parsed) = TypeAnn KindInferred

@@ -64,10 +64,10 @@ data Expr (ph :: Phase)
   = ELit (Ann ph) Lit
   | EVar (Ann ph) Id
   | ECon (Ann ph) Id
-  | ELam (Ann ph) [Pattern] (Expr ph)
+  | ELam (Ann ph) [Pattern ph] (Expr ph)
   | EApp (Ann ph) (Expr ph) (Expr ph)
   | EIf (Ann ph) (Expr ph) (Expr ph) (Expr ph)
-  | ECase (Ann ph) (Expr ph) [(Pattern, Expr ph)]
+  | ECase (Ann ph) (Expr ph) [(Pattern ph, Expr ph)]
   | ELet (Ann ph) [Decl ph] (Expr ph)
 
 data Binding (ph :: Phase)
@@ -76,13 +76,12 @@ data Binding (ph :: Phase)
 data TypeAnn (ph :: Phase)
   = TypeAnn (Ann ph) Id (Scheme ph)
 
-data Pattern
-  = PWildcard
-  | PLit Lit
-  | PVar Id
-  | PCon Id [Pattern]
-  | PAs Id Pattern
-  deriving (Eq, Show)
+data Pattern ph
+  = PWildcard (Ann ph)
+  | PLit (Ann ph) Lit
+  | PVar (Ann ph) Id
+  | PCon (Ann ph) Id [Pattern ph]
+  | PAs (Ann ph) Id (Pattern ph)
 
 data Scheme (ph :: Phase)
   = Scheme (Ann ph) [Pred ph] (Type ph)
@@ -126,10 +125,12 @@ deriving instance AnnHas Show ph => Show (ConDecl ph)
 deriving instance AnnHas Show ph => Show (ADTHead ph)
 deriving instance AnnHas Show ph => Show (ADT ph)
 deriving instance AnnHas Eq ph => Eq (Expr ph)
+deriving instance AnnHas Eq ph => Eq (Pattern ph)
 deriving instance AnnHas Eq ph => Eq (Decl ph)
 deriving instance AnnHas Eq ph => Eq (TypeAnn ph)
 deriving instance AnnHas Eq ph => Eq (Binding ph)
 deriving instance AnnHas Show ph => Show (Expr ph)
+deriving instance AnnHas Show ph => Show (Pattern ph)
 deriving instance AnnHas Show ph => Show (Decl ph)
 deriving instance AnnHas Show ph => Show (TypeAnn ph)
 deriving instance AnnHas Show ph => Show (Binding ph)

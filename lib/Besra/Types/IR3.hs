@@ -62,11 +62,11 @@ data Expr (ph :: Phase)
   | ELet (Ann ph) (BindGroup ph) (Expr ph)
 
 data Pattern ph
-  = PWildcard
-  | PLit Lit
-  | PVar Id
-  | PCon Id (Scheme ph) [Pattern ph]
-  | PAs Id (Pattern ph)
+  = PWildcard (Ann ph)
+  | PLit (Ann ph) Lit
+  | PVar (Ann ph) Id
+  | PCon (Ann ph) Id (Scheme ph) [Pattern ph]
+  | PAs (Ann ph) Id (Pattern ph)
 
 data Qual (ph :: Phase) a
   = [Pred ph] :=> a ph

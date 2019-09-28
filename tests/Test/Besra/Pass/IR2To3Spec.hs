@@ -138,8 +138,8 @@ spec = describe "IR2 -> IR3 pass" $ parallel $ do
         |] ==> Module ([], [[imp]])
 
     it "converts nested expression in lambda" $ do
-      let imp = Implicit (Id "x") [([PVar (Id "y")], eLam)]
-          eLam = ELam (Span 38 51) ([PVar (Id "z")], body)
+      let imp = Implicit (Id "x") [([PVar (Span 34 35) (Id "y")], eLam)]
+          eLam = ELam (Span 38 51) ([PVar (Span 39 40) (Id "z")], body)
           body = EApp (Span 44 51) (ECon (Span 44 48) (Id "Just") schJust) eLit
           eLit = num (Span 49 51) 42
           schJust = ForAll (Span 15 21) [] ([] :=> tJust)
@@ -176,7 +176,7 @@ spec = describe "IR2 -> IR3 pass" $ parallel $ do
       let imp = Implicit (Id "x") [([], eCase)]
           eCase = ECase (Span 36 76) (ECon (Span 41 48) (Id "Nothing") schNothing)
                                      [(pNothing, eJust42)]
-          pNothing = PCon (Id "Nothing") schNothing []
+          pNothing = PCon (Span 58 66) (Id "Nothing") schNothing []
           eJust42 = EApp (Span 69 76) (ECon (Span 69 73) (Id "Just") schJust) e42
           e42 = num (Span 74 76) 42
           schJust = ForAll (Span 15 21) [] ([] :=> tJust)
@@ -238,11 +238,11 @@ spec = describe "IR2 -> IR3 pass" $ parallel $ do
 
   it "attaches typescheme to pattern constructors" $ do
     let imp = Implicit (Id "isJust") [aJust, aNothing]
-        aJust = ([PCon (Id "Just")
+        aJust = ([PCon (Span 40 46) (Id "Just")
                         (ForAll (Span 15 21) [] ([] :=> tJust))
-                        [PWildcard]]
+                        [PWildcard (Span 45 46)]]
                  , num (Span 50 51) 0)
-        aNothing = ([PCon (Id "Nothing")
+        aNothing = ([PCon (Span 59 67) (Id "Nothing")
                     (ForAll (Span 24 31) [] ([] :=> tMaybe)) []]
                     , num (Span 69 70) 1)
         tMaybe = TApp (c (Span 5 10) (KArr Star Star) "Maybe")
@@ -256,14 +256,14 @@ spec = describe "IR2 -> IR3 pass" $ parallel $ do
 
   it "adds typeschemes to nested pattern constructors" $ do
     let imp = Implicit (Id "isJust") [aJust, aNothing]
-        aJust = ([PCon (Id "Just")
+        aJust = ([PCon (Span 40 52) (Id "Just")
                         (ForAll (Span 15 21) [] ([] :=> tJust))
                         [aJust']]
                  , num (Span 57 58) 0)
-        aJust' = PCon (Id "Just")
+        aJust' = PCon (Span 46 52) (Id "Just")
                       (ForAll (Span 15 21) [] ([] :=> tJust))
-                      [PWildcard]
-        aNothing = ([PCon (Id "Nothing")
+                      [PWildcard (Span 51 52)]
+        aNothing = ([PCon (Span 66 74) (Id "Nothing")
                     (ForAll (Span 24 31) [] ([] :=> tMaybe)) []]
                     , num (Span 76 77) 1)
         tMaybe = TApp (c (Span 5 10) (KArr Star Star) "Maybe")

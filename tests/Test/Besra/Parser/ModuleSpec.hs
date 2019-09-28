@@ -25,6 +25,7 @@ type Module' = Module Testing
 type Expr' = Expr Testing
 type Decl' = Decl Testing
 type Type' = Type Testing
+type Pattern' = Pattern Testing
 type Scheme' = Scheme Testing
 type Pred' = Pred Testing
 
@@ -62,11 +63,11 @@ str = ELit emptyAnn . LString . String
 char :: Char -> Expr'
 char = ELit emptyAnn . LChar
 
-case' :: Expr' -> [(Pattern, Expr')] -> Expr'
+case' :: Expr' -> [(Pattern', Expr')] -> Expr'
 case' = ECase emptyAnn
 
 lam :: [Text] -> Expr' -> Expr'
-lam vars = ELam emptyAnn (PVar . Id <$> vars)
+lam vars = ELam emptyAnn (PVar emptyAnn . Id <$> vars)
 
 typeAnn :: Id -> Scheme' -> Decl'
 typeAnn name sch = TypeAnnDecl (TypeAnn emptyAnn name sch)
@@ -156,11 +157,12 @@ spec = describe "module parser" $ parallel $ do
 
     it "can parse a named function containing patterns" $ do
       "f 1 \"abc\" = 123"
-        ==> Module [binding "f" (ELam emptyAnn [ PLit (LNumber (SInt 1))
-                                                , PLit (LString (String "abc"))] (num 123))]
+        ==> Module [binding "f" (ELam emptyAnn [ PLit emptyAnn (LNumber (SInt 1))
+                                               , PLit emptyAnn (LString (String "abc"))] (num 123))]
       "f a@(X y) = 123"
-        ==> Module [binding "f" (ELam emptyAnn [ PAs (Id "a")
-                                                  (PCon (Id "X") [PVar (Id "y")])] (num 123))]
+        ==> Module [binding "f" (ELam emptyAnn [ PAs emptyAnn (Id "a")
+                                                  (PCon emptyAnn (Id "X")
+                                                    [PVar emptyAnn (Id "y")])] (num 123))]
 
     it "can parse multiple named functions" $
       "f x = 5\ng x y = \"abc123\""
@@ -177,8 +179,8 @@ spec = describe "module parser" $ parallel $ do
           123 -> 456
           _ -> 789
         |] ==> Module [ binding "x" $
-                          case' (num 123) [ (PLit (LNumber (SInt 123)), num 456)
-                                          , (PWildcard, num 789) ]
+          case' (num 123) [ (PLit emptyAnn (LNumber (SInt 123)), num 456)
+                          , (PWildcard emptyAnn, num 789) ]
                       ]
 
     it "fails with readable error message" $ do
@@ -463,7 +465,8 @@ spec = describe "module parser" $ parallel $ do
     let binding' :: Span -> Text -> Expr Parsed -> Binding Parsed
         binding' sp name = Binding sp (Id name)
         num' ann = ELit ann . LNumber . SInt
-        lam' ann vars = ELam ann (PVar . Id <$> vars)
+        lam' = ELam
+        pvar ann = PVar ann . Id
         pred sp clazz = IsIn sp (Id clazz)
         con' sp = TCon . Tycon sp . Id
         var' sp = TVar . Tyvar sp . Id
@@ -477,10 +480,14 @@ spec = describe "module parser" $ parallel $ do
       "abc = 123  " ~~> Module [BindingDecl $ binding' (Span 0 9) "abc" (num' (Span 6 9) 123)]
 
     it "keeps track of location info for named function bindings" $ do
-      "a b c = 1 " ~~> Module [BindingDecl $ binding' (Span 0 9) "a"
-                                          $ lam' (Span 0 9) ["b", "c"] $ num' (Span 8 9) 1]
-      "abc def ghi = 1234 " ~~> Module [BindingDecl $ binding' (Span 0 18) "abc"
-                                        $ lam' (Span 0 18) ["def", "ghi"] $ num' (Span 14 18) 1234]
+      "a b c = 1 "
+        ~~> Module [BindingDecl $ binding' (Span 0 9) "a"
+                   $ lam' (Span 0 9) [pvar (Span 2 3) "b", pvar (Span 4 5) "c"]
+                   $ num' (Span 8 9) 1]
+      "abc def ghi = 1234 "
+        ~~> Module [BindingDecl $ binding' (Span 0 18) "abc"
+                   $ lam' (Span 0 18) [pvar (Span 4 7) "def", pvar (Span 8 11) "ghi"]
+                   $ num' (Span 14 18) 1234]
 
     it "keeps track of location info for fixity declarations" $ do
       "infixl 6 +++ " ~~> Module [FixityDecl $ FixityInfo (Span 0 12) L 6 (Id "+++")]
@@ -495,7 +502,9 @@ spec = describe "module parser" $ parallel $ do
         ~~> Module [ImplDecl
                    $ Impl (Span 0 41) [] (pred (Span 5 16) "MyClass" [con' (Span 13 16) "Int"])
                       [binding' (Span 24 41) "abc" $
-                        lam' (Span 24 41) ["def", "ghi"] $ num' (Span 38 41) 123]
+                        lam' (Span 24 41) [ pvar (Span 28 31) "def"
+                                          , pvar (Span 32 35) "ghi"] $
+                          num' (Span 38 41) 123]
                    ]
 
     it "keeps track of location info for trait declaration" $ do

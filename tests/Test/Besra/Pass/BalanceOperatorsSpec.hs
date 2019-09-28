@@ -75,7 +75,7 @@ app :: Expr' -> [Expr'] -> Expr'
 app = EApp emptyAnn
 
 lam :: [Text] -> Expr' -> Expr'
-lam vars = ELam emptyAnn (PVar . Id <$> vars)
+lam vars = ELam emptyAnn (PVar emptyAnn . Id <$> vars)
 
 var :: Text -> Expr'
 var = EVar emptyAnn . Id
@@ -291,14 +291,14 @@ spec = describe "balance operators pass" $ parallel $ do
         a = case 1 + 2 * 3 of
               x -> x
         |] ==> ECase emptyAnn (op "+" (num 1) (op "*" (num 2) (num 3)))
-                                [ (PVar (Id "x"), var "x")]
+                                [ (PVar emptyAnn (Id "x"), var "x")]
       [text|
         infixl 4 +
         infixl 5 *
         a = case 1 of
               x -> 1 + 2 * 3
         |] ==> ECase emptyAnn (num 1)
-                [ (PVar (Id "x"), op "+" (num 1) (op "*" (num 2) (num 3)))]
+                [ (PVar emptyAnn (Id "x"), op "+" (num 1) (op "*" (num 2) (num 3)))]
 
     it "rebalances operators in parenthesized expression" $
       [text|
