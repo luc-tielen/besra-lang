@@ -262,18 +262,22 @@ defaultedPreds :: MonadError Error m
                => TraitEnv -> [Tyvar KI] -> [Pred KI] -> m [Pred KI]
 defaultedPreds = withDefaults (\vps _ -> concatMap snd vps)
 
+{- TODO remove
 defaultSubst :: MonadError Error m
              => TraitEnv -> [Tyvar KI] -> [Pred KI] -> m Subst
 defaultSubst = withDefaults (\vps ts -> Subst $ zip (map fst vps) ts)
+-}
 
-tiProgram :: TraitEnv -> [Assump] -> Module KI -> Either Error [Assump]
+tiProgram :: TraitEnv -> [Assump] -> Module KI -> Either Error Subst
 tiProgram ce as (Module es) = runTI $ do
  -- (ps, as') <- tiBindGroup ce as bg
-  ps <- traverse (tiExpl ce as) es
-  s <- get
-  rs <- reduceContext ce (apply s $ concat ps)
-  s' <- defaultSubst ce [] rs
-  pure (apply (s' <> s) as)  -- TODO is this apply still needed now?
+  traverse_ (tiExpl ce as) es
+  get
+  -- TODO is rest still needed since no more impl bindings on top level
+  --s <- get
+  --rs <- reduceContext ce (apply s $ concat ps)
+  --s' <- defaultSubst ce [] rs
+  --pure (apply (s' <> s) as)
 
 toScheme :: Ann KI -> Type KI -> Scheme KI
 toScheme ann ty = ForAll ann [] ([] :=> ty)

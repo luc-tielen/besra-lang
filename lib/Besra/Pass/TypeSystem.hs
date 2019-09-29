@@ -25,5 +25,6 @@ pass :: Monad m
 pass _ m =
   let traitEnv = initialEnv
       initialAssumps = []
-      assumps = tiProgram traitEnv initialAssumps m
-   in traceShow assumps $ pure m
+      subst = tiProgram traitEnv initialAssumps m
+   in traceShow subst $ pure m  -- TODO use subst to fill in types in expr
+

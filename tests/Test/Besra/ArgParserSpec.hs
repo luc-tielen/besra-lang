@@ -49,6 +49,12 @@ spec = describe "argument parser" $ parallel $ do
   it "parses 'besra repl' correctly" $
     "repl" ==> Repl
 
+  it "parses 'besra typecheck FILE' correctly" $
+    "typecheck /path/to/file" ==> TypeCheck "/path/to/file"
+
+  it "fails parses missing file after 'besra typecheck'" $
+    shouldFail "typecheck"
+
   it "fails to parse trailing args after 'besra repl'" $
     shouldFail "repl some more args --flag"
 

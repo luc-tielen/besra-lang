@@ -16,6 +16,7 @@ type KI = KindInferred
 
 -- | Data type representing a set of substitutions that can be made.
 newtype Subst = Subst [(Tyvar KI, Type KI)]
+  deriving (Eq, Show)
 
 instance Semigroup Subst where
   subst@(Subst s1) <> (Subst s2) = Subst s

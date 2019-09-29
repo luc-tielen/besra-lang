@@ -15,6 +15,7 @@ import Options.Applicative
 
 data Args
   = Fmt FmtArgs
+  | TypeCheck TypeCheckArgs
   | Repl
   deriving (Eq, Show)
 
@@ -25,6 +26,8 @@ data FmtArgs
   | FromFile FilePath FmtOutputMode  -- TODO support directories
   -- ^ Reads from file, can modify inplace or output to stdout
   deriving (Eq, Show)
+
+type TypeCheckArgs = FilePath  -- ^ Typechecks a specific file.
 
 -- | Data type describing in which output mode the formatter should be configured.
 data FmtOutputMode
@@ -49,7 +52,9 @@ parse = handleParseResult . execParserPure defaultPrefs parserInfo
         parserInfo = info parser desc
 
 parser :: Parser Args
-parser = subparser fmtCommand <|> subparser replCommand
+parser = subparser fmtCommand
+      <|> subparser tcCommand
+      <|> subparser replCommand
   where fmtCommand = command "fmt" $ info fmtParser fmtDesc
         fmtDesc = fullDesc
                 <> header "besra fmt - a pretty printer/formatter for Besra files"
@@ -58,6 +63,10 @@ parser = subparser fmtCommand <|> subparser replCommand
         replDesc = fullDesc
                  <> header "besra repl - REPL for the Besra language"
                  <> progDesc "Opens up a Read Eval Print Loop."
+        tcCommand = command "typecheck" $ info tcParser tcDesc
+        tcDesc = fullDesc
+               <> header "besra typecheck - typecheck a file."
+               <> progDesc "Checks and outputs any type errors in the file if present."
 
 fmtParser :: Parser Args
 fmtParser = Fmt <$> fmtParser' where
@@ -83,6 +92,10 @@ fmtParser = Fmt <$> fmtParser' where
     <> help ("Whether formatted output should be written to standard output "
           <> "or modified inplace. Defaults to inplace modification.")
     )
+
+tcParser :: Parser Args
+tcParser = TypeCheck <$> inputFile where
+  inputFile = argument str (metavar "FILE" <> help "Which FILE to typecheck.")
 
 replParser :: Parser Args
 replParser = pure Repl

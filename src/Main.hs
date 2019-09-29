@@ -4,10 +4,11 @@ import Protolude hiding ( WriteMode )
 import qualified Besra.ArgParser as ArgParser
 import Besra.ArgParser hiding ( parse )
 import qualified Besra.Repl as Repl
-import Besra.Parser
-import Besra.PrettyPrinter
 import qualified Besra.Types.IR1 as IR1
+import Besra.PrettyPrinter
 import Besra.Types.Ann
+import Besra.Parser
+import Besra
 
 
 type Module' = IR1.Module Parsed
@@ -17,6 +18,7 @@ main = do
   args <- getArgs
   ArgParser.parse args >>= \case
     Fmt fmtArgs -> fmt fmtArgs
+    TypeCheck path -> typeCheck path
     Repl -> Repl.run
 
 fmt :: FmtArgs -> IO ()
@@ -36,6 +38,14 @@ fmt = \case
         WriteMode Inplace -> writeFile path formatted
         WriteMode Stdout -> putStrLn formatted
 
+typeCheck :: FilePath -> IO ()
+typeCheck path = typeCheckFile path >>= \case
+  Right _ -> disp "OK." *> exitSuccess
+  Left err -> do
+    disp "Found errors during typechecking:"
+    disp $ show err
+    exitFailure
+
 withAST :: FilePath -> Text -> (ParseResult Module' -> Text -> IO ()) -> IO ()
 withAST path contents f = do
   let parsed = parseFile path contents
@@ -51,4 +61,7 @@ checkFormatting path parsed formatted = do
   if parsed == reparsed
     then exitSuccess
     else exitFailure
+
+disp :: Text -> IO ()
+disp = putStrLn
 
