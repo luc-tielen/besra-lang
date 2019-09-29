@@ -8,22 +8,17 @@ import qualified Besra.TypeSystem.Subst as Subst
 import Besra.TypeSystem.Subst ( Subst, Substitutable(..) )
 import Besra.TypeSystem.FreeTypeVars
 import Besra.TypeSystem.Error
-import Besra.Types.IR3 ( Pred(..), Type(..), Tyvar(..), Tycon(..) )
+import Besra.Types.IR3 ( Pred(..), Type(..), Tyvar(..) )
 import Besra.Types.Kind
 import Besra.Types.Ann
 
 
-type Pred' = Pred KindInferred
-type Type' = Type KindInferred
-type Tyvar' = Tyvar KindInferred
+type Pred' = Pred PreTC
+type Type' = Type PreTC
+type Tyvar' = Tyvar PreTC
 
 class Unify t where
   mgu :: MonadError Error m => t -> t -> m Subst
-
--- | Helper function for comparing types (doesn't take span into account)
-(===) :: Tycon KindInferred -> Tycon KindInferred -> Bool
-(Tycon ann1 c1) === (Tycon ann2 c2) =
-  kind ann1 == kind ann2 && c1 == c2
 
 instance Unify Type' where
   mgu (TApp l r) (TApp l' r') = do
@@ -33,7 +28,7 @@ instance Unify Type' where
   mgu (TVar u) t = varBind u t
   mgu t (TVar u) = varBind u t
   mgu (TCon tc1) (TCon tc2)
-    | tc1 === tc2 = pure mempty
+    | tc1 == tc2 = pure mempty
   mgu t1 t2 = throwError $ UnificationFailure t1 t2
 
 instance (Unify t, Substitutable t) => Unify [t] where
@@ -75,7 +70,7 @@ instance Match Type' where
   match (TVar u) t
     | kind u == kind t = pure $ Subst.singleton u t
   match (TCon tc1) (TCon tc2)
-    | tc1 === tc2 = pure mempty
+    | tc1 == tc2 = pure mempty
   match t1 t2 = throwError $ TypeMismatch t1 t2
 
 instance Match t => Match [t] where

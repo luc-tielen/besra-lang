@@ -25,7 +25,7 @@ type Gen = GenT Identity
 
 
 class Monad m => MonadGen m where
-  fresh :: Span -> Kind -> m (Tyvar KindInferred)
+  fresh :: Span -> Kind -> m (Tyvar PreTC)
 
 instance Monad m => MonadGen (GenT m) where
   fresh sp k =

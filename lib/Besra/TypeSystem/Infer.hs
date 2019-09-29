@@ -20,13 +20,11 @@ import Besra.Types.Ann
 import Besra.Types.Id
 import Data.List (intersect, partition, union, (\\))
 
-type KI = KindInferred
-
-type Infer e t = TraitEnv -> [Assump] -> e -> TI ([Pred KI], t)
+type Infer e t = TraitEnv -> [Assump] -> e -> TI ([Pred PreTC], t)
 
 
 -- | Performs type inference for literals.
-tiLit :: Span -> Lit -> TI ([Pred KI], Type KI)
+tiLit :: Span -> Lit -> TI ([Pred PreTC], Type PreTC)
 tiLit sp = \case
   LNumber _ -> pure ([], mkLitType "Int")
   LString _ -> pure ([], mkLitType "String")
@@ -34,7 +32,7 @@ tiLit sp = \case
   where mkLitType typeName = TCon (Tycon (sp, Star) (Id typeName))
 
 -- | Performs type inference for a single pattern.
-tiPat :: Pattern KI -> TI ([Pred KI], [Assump], Type KI)
+tiPat :: Pattern PreTC -> TI ([Pred PreTC], [Assump], Type PreTC)
 tiPat = \case
   PVar ann i -> do
     v <- newTVar ann Star
@@ -56,7 +54,7 @@ tiPat = \case
     pure (ps, (i :>: toScheme ann t):as, t)
 
 -- | Performs type inference for multiple patterns.
-tiPats :: [Pattern KI] -> TI ([Pred KI], [Assump], [Type KI])
+tiPats :: [Pattern PreTC] -> TI ([Pred PreTC], [Assump], [Type PreTC])
 tiPats pats = do
   psasts <- traverse tiPat pats
   let ps = concat [ps' | (ps', _, _) <- psasts]
@@ -65,7 +63,7 @@ tiPats pats = do
   pure (ps, as, ts)
 
 -- | Performs type inference for a single expression.
-tiExpr :: Infer (Expr KI) (Type KI)
+tiExpr :: Infer (Expr PreTC) (Type PreTC)
 tiExpr ce as = \case
   EVar sp i -> do
     sc <- findScheme sp i as
@@ -111,21 +109,21 @@ tiExpr ce as = \case
     pure (ps <> qs <> rs, v)
 
 -- Performs type inference for function binding.
-tiAlt :: Infer (Alt KI) (Type KI)
+tiAlt :: Infer (Alt PreTC) (Type PreTC)
 tiAlt ce as (pats, e) = do
   (ps, as', ts) <- tiPats pats
   (qs, t) <- tiExpr ce (as' <> as) e
   pure (ps <> qs, foldr (fn (span e)) t ts)
 
 -- Performs type inference for multiple function binding.
-tiAlts :: TraitEnv -> [Assump] -> [Alt KI] -> Type KI -> TI [Pred KI]
+tiAlts :: TraitEnv -> [Assump] -> [Alt PreTC] -> Type PreTC -> TI [Pred PreTC]
 tiAlts ce as alts t = do
   psts <- traverse (tiAlt ce as) alts
   traverse_ (unify t . snd) psts
   pure (concatMap fst psts)
 
 -- | Performs type inference for a binding group.
-tiBindGroup :: Infer (BindGroup KI) [Assump]
+tiBindGroup :: Infer (BindGroup PreTC) [Assump]
 tiBindGroup ce as (es, ims) = do
   let as' = [v :>: sc | Explicit v sc _ <- es]
   (ps, as'') <- tiSeq tiImpls ce (as' <> as) ims
@@ -142,13 +140,13 @@ tiSeq ti ce as = \case
     (qs, as'') <- tiSeq ti ce (as' <> as) bss
     pure (ps <> qs, as'' <> as')
 
-restricted :: [Implicit KI] -> Bool
+restricted :: [Implicit PreTC] -> Bool
 restricted = any simple
   where simple (Implicit _ alts) = any (null . fst) alts
 
 -- | Performs type inference for groups of mutually recursive,
 --   implicitly typed bindings
-tiImpls :: Infer [Implicit KI] [Assump]
+tiImpls :: Infer [Implicit PreTC] [Assump]
 tiImpls ce as bs = do
   ts <- traverse (\_ -> newTVar (Span 0 0) Star) bs  -- TODO where to get span from?
   let (names, altss) = unzip [(name, alts) | Implicit name alts <- bs]
@@ -171,7 +169,7 @@ tiImpls ce as bs = do
 
 -- | Performs type inference for groups of mutually recursive,
 --   explicitly typed bindings
-tiExpl :: TraitEnv -> [Assump] -> Explicit KI -> TI [Pred KI]
+tiExpl :: TraitEnv -> [Assump] -> Explicit PreTC -> TI [Pred PreTC]
 tiExpl ce as expl@(Explicit _ sc alts) = do
   (qs :=> t) <- freshInst sc
   ps <- tiAlts ce as alts t
@@ -184,11 +182,17 @@ tiExpl ce as expl@(Explicit _ sc alts) = do
       ps' = apply s ps
   ps'' <- filterM (map not . entail ce qs') ps'
   (ds, rs) <- split ce fs gs ps''
-  if | sc /= sc' -> throwError $ TooGeneralSignatureGiven sc' sc
+  if | not (sameScheme sc sc') -> throwError $ TooGeneralSignatureGiven sc' sc
      | not (null rs) -> throwError $ ContextTooWeak expl rs
      | otherwise -> pure ds
 
-quantify :: [Tyvar KI] -> Qual KI Type -> Scheme KI
+-- | Helper function to compare type schemes, doesn't take spans and variables
+--   of different names into account.
+sameScheme :: Scheme PreTC -> Scheme PreTC -> Bool
+sameScheme (ForAll _ ks1 (ps1 :=> t1)) (ForAll _ ks2 (ps2 :=> t2)) =
+  ks1 == ks2 && ps1 == ps2 && t1 == t2
+
+quantify :: [Tyvar PreTC] -> Qual PreTC Type -> Scheme PreTC
 quantify vs qt = ForAll (span qt) ks (apply s qt)
   where
     vs' = [v | v <- ftv qt, v `elem` vs]
@@ -196,17 +200,17 @@ quantify vs qt = ForAll (span qt) ks (apply s qt)
     s = Subst $ zip vs' (map TGen [0 ..])
 
 split :: MonadError Error m
-      => TraitEnv -> [Tyvar KI] -> [Tyvar KI] -> [Pred KI]
-      -> m ([Pred KI], [Pred KI])
+      => TraitEnv -> [Tyvar PreTC] -> [Tyvar PreTC] -> [Pred PreTC]
+      -> m ([Pred PreTC], [Pred PreTC])
 split ce fs gs ps = do
   ps' <- reduceContext ce ps
   let (ds, rs) = partition (all (`elem` fs) . ftv) ps'
   rs' <- defaultedPreds ce (fs <> gs) rs
   pure (ds, rs \\ rs')
 
-type Ambiguity = (Tyvar KI, [Pred KI])
+type Ambiguity = (Tyvar PreTC, [Pred PreTC])
 
-ambiguities :: [Tyvar KI] -> [Pred KI] -> [Ambiguity]
+ambiguities :: [Tyvar PreTC] -> [Pred PreTC] -> [Ambiguity]
 ambiguities vs ps = [(v, filter (elem v . ftv) ps) | v <- ftv ps \\ vs]
 
 -- TODO simplify
@@ -229,7 +233,7 @@ stdClasses =
   , "MonadPlus"
   ] <> numClasses
 
-candidates :: MonadError Error m => TraitEnv -> Ambiguity -> m [Type KI]
+candidates :: MonadError Error m => TraitEnv -> Ambiguity -> m [Type PreTC]
 candidates ce (v, qs) = do
   let is' = concat
         [ is
@@ -245,10 +249,10 @@ candidates ce (v, qs) = do
 
 withDefaults ::
      MonadError Error m
-  => ([Ambiguity] -> [Type KI] -> a)
+  => ([Ambiguity] -> [Type PreTC] -> a)
   -> TraitEnv
-  -> [Tyvar KI]
-  -> [Pred KI]
+  -> [Tyvar PreTC]
+  -> [Pred PreTC]
   -> m a
 withDefaults f ce vs ps = do
   tss <- traverse (candidates ce) vps
@@ -259,32 +263,21 @@ withDefaults f ce vs ps = do
     vps = ambiguities vs ps
 
 defaultedPreds :: MonadError Error m
-               => TraitEnv -> [Tyvar KI] -> [Pred KI] -> m [Pred KI]
+               => TraitEnv -> [Tyvar PreTC] -> [Pred PreTC] -> m [Pred PreTC]
 defaultedPreds = withDefaults (\vps _ -> concatMap snd vps)
 
-{- TODO remove
-defaultSubst :: MonadError Error m
-             => TraitEnv -> [Tyvar KI] -> [Pred KI] -> m Subst
-defaultSubst = withDefaults (\vps ts -> Subst $ zip (map fst vps) ts)
--}
-
-tiProgram :: TraitEnv -> [Assump] -> Module KI -> Either Error Subst
+tiProgram :: TraitEnv -> [Assump] -> Module PreTC -> Either Error Subst
 tiProgram ce as (Module es) = runTI $ do
- -- (ps, as') <- tiBindGroup ce as bg
-  traverse_ (tiExpl ce as) es
+  let as' = [v :>: sc | Explicit v sc _ <- es]
+  traverse_ (tiExpl ce (as' <> as)) es
   get
-  -- TODO is rest still needed since no more impl bindings on top level
-  --s <- get
-  --rs <- reduceContext ce (apply s $ concat ps)
-  --s' <- defaultSubst ce [] rs
-  --pure (apply (s' <> s) as)
 
-toScheme :: Ann KI -> Type KI -> Scheme KI
+toScheme :: Ann PreTC -> Type PreTC -> Scheme PreTC
 toScheme ann ty = ForAll ann [] ([] :=> ty)
 
-tArrow :: Span -> Type KI
+tArrow :: Span -> Type PreTC
 tArrow sp = TCon (Tycon (sp, KArr Star (KArr Star Star)) (Id "->"))
 
-fn :: Span -> Type KI -> Type KI -> Type KI
+fn :: Span -> Type PreTC -> Type PreTC -> Type PreTC
 fn sp a = TApp (TApp (tArrow sp) a)
 

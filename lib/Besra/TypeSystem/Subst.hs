@@ -12,10 +12,8 @@ import Besra.Types.Ann
 import Besra.TypeSystem.Error
 
 
-type KI = KindInferred
-
 -- | Data type representing a set of substitutions that can be made.
-newtype Subst = Subst [(Tyvar KI, Type KI)]
+newtype Subst = Subst [(Tyvar PreTC, Type PreTC)]
   deriving (Eq, Show)
 
 instance Semigroup Subst where
@@ -28,21 +26,21 @@ instance Monoid Subst where
 class Substitutable a where
   apply :: Subst -> a -> a
 
-instance Substitutable (Type KI) where
-  apply s v@(TVar u)  = fromMaybe v $ lookup u s
+instance Substitutable (Type PreTC) where
+  apply s v@(TVar u) = fromMaybe v $ lookup u s
   apply s (TApp l r) = TApp (apply s l) (apply s r)
-  apply _ t         = t
+  apply _ t = t
 
 instance Substitutable a => Substitutable [a] where
   apply s = map (apply s)
 
-instance Substitutable (t KI) => Substitutable (Qual KI t) where
+instance Substitutable (t PreTC) => Substitutable (Qual PreTC t) where
   apply s (ps :=> t) = apply s ps :=> apply s t
 
-instance Substitutable (Pred KI) where
+instance Substitutable (Pred PreTC) where
   apply s (IsIn ann i ts) = IsIn ann i (apply s ts)
 
-instance Substitutable (Scheme KI) where
+instance Substitutable (Scheme PreTC) where
   apply s (ForAll ann ks qt) = ForAll ann ks (apply s qt)
 
 
@@ -55,9 +53,9 @@ merge subst1@(Subst s1) subst2@(Subst s2) =
     sameSubst v = apply subst1 (TVar v) == apply subst2 (TVar v)
     agree = all sameSubst (map fst s1 `List.intersect` map fst s2)
 
-lookup :: Tyvar KI -> Subst -> Maybe (Type KI)
+lookup :: Tyvar PreTC -> Subst -> Maybe (Type PreTC)
 lookup v (Subst s) = List.lookup v s
 
-singleton :: Tyvar KI -> Type KI -> Subst
+singleton :: Tyvar PreTC -> Type PreTC -> Subst
 singleton v t = Subst [(v, t)]
 

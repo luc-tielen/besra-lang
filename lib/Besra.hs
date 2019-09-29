@@ -89,7 +89,7 @@ wrapErr = withExceptT toError
 compileFile
   :: FilePath
   -> IO (Either BesraError
-                ( IR3.Module KindInferred
+                ( IR3.Module PostTC
                 , CompilerState KindInferred))
 compileFile path = runExceptT $ do
   parsed <- wrapErr $ parse path
@@ -100,7 +100,7 @@ compile
   => FilePath
   -> IR1.Module Parsed
   -> ExceptT BesraError m
-            ( IR3.Module KindInferred
+            ( IR3.Module PostTC
             , CompilerState KindInferred)
 compile path parsed = do
   balanced <- wrapErr $ BalanceOperators.pass parsed
