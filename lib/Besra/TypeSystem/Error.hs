@@ -21,6 +21,7 @@ data Error
   | TraitMismatch (Pred PreTC) (Pred PreTC)
   | KindMismatch (Tyvar PreTC) (Type PreTC) Kind Kind
   | TypeMismatch (Type PreTC) (Type PreTC)
+  | ExplicitTypeMismatch (Scheme PreTC) (Scheme PreTC)
   | UnboundIdentifier Span Id
   | UnknownTrait Span Id
   | NoTraitForImpl Span Id
@@ -28,7 +29,6 @@ data Error
   | OverlappingImpls (Pred PreTC) [Pred PreTC]
   | TraitAlreadyDefined Span Span Id
   | SuperTraitNotDefined (Pred PreTC)
-  | TooGeneralSignatureGiven (Scheme PreTC) (Scheme PreTC)
   | ContextTooWeak (Explicit PreTC) [Pred PreTC]
   | AmbiguousDefaults [Tyvar PreTC] [Pred PreTC]
   deriving (Eq, Show)

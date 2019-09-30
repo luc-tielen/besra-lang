@@ -94,6 +94,9 @@ instance HasSpan (Ann ph) => HasSpan (Expr ph) where
     ECase ann _ _ -> span ann
     ELet ann _ _ -> span ann
 
+instance HasSpan (Ann ph) => HasSpan (Scheme ph) where
+  span (ForAll ann _ _) = span ann
+
 instance HasSpan (a ph) => HasSpan (Qual ph a) where
   span (_ :=> a) = span a
 

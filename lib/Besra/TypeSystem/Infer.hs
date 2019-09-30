@@ -6,6 +6,7 @@ module Besra.TypeSystem.Infer
 
 import Protolude hiding ( Type, Alt )
 import Unsafe ( unsafeFromJust )
+import qualified Data.Map as Map
 import Control.Monad.Loops ( allM )
 import Besra.Types.IR3
 import Besra.TypeSystem.FreeTypeVars
@@ -182,15 +183,34 @@ tiExpl ce as expl@(Explicit _ sc alts) = do
       ps' = apply s ps
   ps'' <- filterM (map not . entail ce qs') ps'
   (ds, rs) <- split ce fs gs ps''
-  if | not (sameScheme sc sc') -> throwError $ TooGeneralSignatureGiven sc' sc
+  if | not (alphaEquivScheme sc sc') -> throwError $ ExplicitTypeMismatch sc' sc
      | not (null rs) -> throwError $ ContextTooWeak expl rs
      | otherwise -> pure ds
 
--- | Helper function to compare type schemes, doesn't take spans and variables
---   of different names into account.
-sameScheme :: Scheme PreTC -> Scheme PreTC -> Bool
-sameScheme (ForAll _ ks1 (ps1 :=> t1)) (ForAll _ ks2 (ps2 :=> t2)) =
-  ks1 == ks2 && ps1 == ps2 && t1 == t2
+-- | Helper function to check if type schemes are alpha equivalent.
+alphaEquivScheme :: Scheme PreTC -> Scheme PreTC -> Bool
+alphaEquivScheme (ForAll _ ks1 qt1) (ForAll _ ks2 qt2) =
+  length ks1 == length ks2 && evalState (go qt1 qt2) (mempty, mempty)
+  where
+    go (ps1 :=> t1) (ps2 :=> t2) =
+      (&&) <$> (and <$> zipWithM goPred ps1 ps2) <*> goType t1 t2
+    goPred (IsIn _ name1 ts1) (IsIn _ name2 ts2) =
+      (name1 == name2 &&) <$> (and <$> zipWithM goType ts1 ts2)
+    goType (TVar (Tyvar _ v1)) (TVar (Tyvar _ v2)) = do
+      i <- bind fst first v1
+      j <- bind snd second v2
+      pure (i == j)
+    goType (TCon c1) (TCon c2) = pure $ c1 == c2
+    goType (TApp t11 t12) (TApp t21 t22) =
+      (&&) <$> goType t11 t21 <*> goType t12 t22
+    goType _ _ = pure False
+    bind f g v = gets f >>= \ctx ->
+      case Map.lookup v ctx of
+        Nothing -> do
+          let num = Map.size ctx
+          modify . g $ Map.insert v num
+          pure num
+        Just num -> pure num
 
 quantify :: [Tyvar PreTC] -> Qual PreTC Type -> Scheme PreTC
 quantify vs qt = ForAll (span qt) ks (apply s qt)

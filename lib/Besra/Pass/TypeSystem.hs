@@ -1,7 +1,4 @@
 
--- TODO remove
-{-# OPTIONS_GHC -Wno-deprecations #-}
-
 module Besra.Pass.TypeSystem
   ( pass
   , Error(..)

@@ -42,8 +42,7 @@ typeCheck :: FilePath -> IO ()
 typeCheck path = typeCheckFile path >>= \case
   Right _ -> disp "OK." *> exitSuccess
   Left err -> do
-    disp "Found errors during typechecking:"
-    disp $ show err
+    disp $ prettyFormat err
     exitFailure
 
 withAST :: FilePath -> Text -> (ParseResult Module' -> Text -> IO ()) -> IO ()

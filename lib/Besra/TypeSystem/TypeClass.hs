@@ -2,12 +2,12 @@
 module Besra.TypeSystem.TypeClass
   ( TraitEnv
   , (<:>)
+  , initialEnv
   , addImpl
   , addTrait
   , reduceContext
   , entail
   , defaults
-  , initialEnv
   ) where
 
 

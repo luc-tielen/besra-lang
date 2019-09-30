@@ -31,7 +31,6 @@ import Besra.TypeSystem.KindSolver ( Env(..), IKind(..), KindError(..) )
 type Module1' = IR1.Module Parsed
 type BalanceError' = BalanceOperators.BalanceError Parsed
 
--- TODO pretty print error
 data BesraError
   = ParseErr ParseError
   | BalanceErr BalanceError'
