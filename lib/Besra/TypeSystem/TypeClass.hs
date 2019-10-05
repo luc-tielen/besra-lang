@@ -7,7 +7,6 @@ module Besra.TypeSystem.TypeClass
   , addTrait
   , reduceContext
   , entail
-  , defaults
   ) where
 
 
@@ -22,7 +21,7 @@ import Besra.Types.Span
 import Besra.TypeSystem.Subst
 import Besra.TypeSystem.Unify
 import Besra.TypeSystem.Error
-import Besra.Types.IR3 ( Qual(..), Pred(..), Type(..), Tyvar(..), samePred )
+import Besra.Types.IR3 ( Qual(..), Pred(..), Tyvar(..), samePred )
 
 
 type KI = KindInferred
@@ -38,7 +37,6 @@ type Impl = Qual KI Pred
 
 data TraitEnv = TraitEnv
   { traits  :: Map Id Trait
-  , defaults :: [Type KI]
   }
 
 type EnvTransformer = TraitEnv -> Either Error TraitEnv
@@ -47,7 +45,6 @@ initialEnv :: TraitEnv
 initialEnv =
   TraitEnv
   { traits = Map.empty
-  , defaults = []
   }
 
 modifyEnv :: TraitEnv -> Id -> Trait -> TraitEnv

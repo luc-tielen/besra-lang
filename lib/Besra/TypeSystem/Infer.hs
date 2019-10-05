@@ -5,10 +5,8 @@ module Besra.TypeSystem.Infer
   ) where
 
 import Protolude hiding ( Type, Alt )
-import Unsafe ( unsafeFromJust )
 import qualified Data.List as List
 import qualified Data.Map as Map
-import Control.Monad.Loops ( allM )
 import Besra.Types.IR3
 import Besra.TypeSystem.FreeTypeVars
 import Besra.TypeSystem.TypeClass
@@ -225,72 +223,10 @@ quantify vs qt = ForAll (span qt) ks (apply s qt)
 split :: MonadError Error m
       => TraitEnv -> [Tyvar KI] -> [Tyvar KI] -> [Pred KI]
       -> m ([Pred KI], [Pred KI])
-split ce fs gs ps = do
+split ce fs _gs ps = do
   ps' <- reduceContext ce ps
   let (ds, rs) = partition (all (`contains` fs) . ftv) ps'
-  rs' <- defaultedPreds ce (fs <> gs) rs
-  pure (ds, List.deleteFirstsBy samePred rs rs')
-
-type Ambiguity = (Tyvar KI, [Pred KI])
-
-ambiguities :: [Tyvar KI] -> [Pred KI] -> [Ambiguity]
-ambiguities vs ps = [(v, filter (contains v . ftv) ps) | v <- vars] where
-  vars = List.deleteFirstsBy sameTyvar (ftv ps) vs
-
--- TODO simplify
-numClasses :: [Id]
-numClasses =
-  Id <$> ["Num", "Integral", "Floating", "Fractional", "Real", "RealFloat", "RealFrac"]
-
--- TODO simplify
-stdClasses :: [Id]
-stdClasses =
-  map Id [ "Eq"
-  , "Ord"
-  , "Show"
-  , "Read"
-  , "Bounded"
-  , "Enum"
-  , "Ix"
-  , "Functor"
-  , "Monad"
-  , "MonadPlus"
-  ] <> numClasses
-
-candidates :: MonadError Error m => TraitEnv -> Ambiguity -> m [Type KI]
-candidates ce (v, qs) = do
-  let is' = concat
-        [ is
-        | let (is, ts) = unzip [(i, t)| IsIn _ i t <- qs]
-        , all f ts
-        , any (`elem` numClasses) is
-        , all (`elem` stdClasses) is
-        ]
-      f [TVar tyvar] = sameTyvar v tyvar
-      f _ = False
-      ts' = defaults ce
-  flip filterM ts' $ \t -> do
-    let ps = [IsIn (span t) i [t] | i <- is']
-    allM (entail ce []) ps
-
-withDefaults ::
-     MonadError Error m
-  => ([Ambiguity] -> [Type KI] -> a)
-  -> TraitEnv
-  -> [Tyvar KI]
-  -> [Pred KI]
-  -> m a
-withDefaults f ce vs ps = do
-  tss <- traverse (candidates ce) vps
-  if any null tss
-    then throwError $ AmbiguousDefaults vs ps  -- TODO improve error
-    else traceShow vps $ pure (f vps (map (unsafeFromJust . head) tss))
-  where
-    vps = ambiguities vs ps
-
-defaultedPreds :: MonadError Error m
-               => TraitEnv -> [Tyvar KI] -> [Pred KI] -> m [Pred KI]
-defaultedPreds = withDefaults (\vps _ -> concatMap snd vps)
+  pure (ds, rs)
 
 tiProgram :: TraitEnv -> [Assump] -> Module KI -> Either Error Subst
 tiProgram ce as (Module es) = runTI $ do
