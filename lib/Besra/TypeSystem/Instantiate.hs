@@ -8,10 +8,12 @@ import Besra.Types.Ann
 import Data.List ((!!))
 
 
-class Instantiate t where
-  inst :: [Type PreTC] -> t -> t
+type KI = KindInferred
 
-instance Instantiate (Type PreTC) where
+class Instantiate t where
+  inst :: [Type KI] -> t -> t
+
+instance Instantiate (Type KI) where
   inst ts (TApp l r) = TApp (inst ts l) (inst ts r)
   inst ts (TGen n)  = ts !! n
   inst _ t          = t
@@ -19,9 +21,9 @@ instance Instantiate (Type PreTC) where
 instance Instantiate a => Instantiate [a] where
   inst ts = map (inst ts)
 
-instance Instantiate (t PreTC) => Instantiate (Qual PreTC t) where
+instance Instantiate (t KI) => Instantiate (Qual KI t) where
   inst ts (ps :=> t) = inst ts ps :=> inst ts t
 
-instance Instantiate (Pred PreTC) where
+instance Instantiate (Pred KI) where
   inst ts (IsIn ann c t) = IsIn ann c (inst ts t)
 

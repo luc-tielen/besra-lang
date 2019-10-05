@@ -141,7 +141,6 @@ deriving instance AnnHas Show ph => Show (Impl ph)
 deriving instance AnnHas Eq ph => Eq (Scheme ph)
 deriving instance AnnHas Show ph => Show (Scheme ph)
 
-
 adtName :: ADT ph -> Id
 adtName (ADT _ (ADTHead name _) _) = name
 

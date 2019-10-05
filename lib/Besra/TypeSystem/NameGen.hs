@@ -16,6 +16,8 @@ import Besra.Types.Kind
 import Besra.Types.Tyvar
 
 
+type KI = KindInferred
+
 type Counter = Int
 
 newtype GenT m a = GenT (StateT Counter m a)
@@ -25,7 +27,7 @@ type Gen = GenT Identity
 
 
 class Monad m => MonadGen m where
-  fresh :: Span -> Kind -> m (Tyvar PreTC)
+  fresh :: Span -> Kind -> m (Tyvar KI)
 
 instance Monad m => MonadGen (GenT m) where
   fresh sp k =

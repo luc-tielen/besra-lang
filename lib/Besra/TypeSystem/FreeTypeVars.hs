@@ -10,10 +10,12 @@ import Besra.Types.Ann
 import Data.List (nubBy, unionBy)
 
 
-class FreeTypeVars a where
-  ftv :: a -> [Tyvar PreTC]
+type KI = KindInferred
 
-instance FreeTypeVars (Type PreTC) where
+class FreeTypeVars a where
+  ftv :: a -> [Tyvar KI]
+
+instance FreeTypeVars (Type KI) where
   ftv (TVar u) = [u]
   ftv (TApp l r) =
     let vs1 = ftv l
@@ -24,15 +26,15 @@ instance FreeTypeVars (Type PreTC) where
 instance FreeTypeVars a => FreeTypeVars [a] where
   ftv = nubBy sameTyvar . concatMap ftv
 
-instance FreeTypeVars (t PreTC) => FreeTypeVars (Qual PreTC t) where
+instance FreeTypeVars (t KI) => FreeTypeVars (Qual KI t) where
   ftv (ps :=> t) =
     let vs1 = ftv ps
         vs2 = ftv t
      in unionBy sameTyvar vs1 vs2
 
-instance FreeTypeVars (Pred PreTC) where
+instance FreeTypeVars (Pred KI) where
   ftv (IsIn _ _ ts) = ftv ts
 
-instance FreeTypeVars (Scheme PreTC) where
+instance FreeTypeVars (Scheme KI) where
   ftv (ForAll _ _ qt) = ftv qt
 

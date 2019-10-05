@@ -13,8 +13,10 @@ import Besra.TypeSystem.Subst
 import Besra.TypeSystem.Error
 
 
+type KI = KindInferred
+
 -- | Assumption about the type of a variable.
-data Assump = Id :>: Scheme PreTC
+data Assump = Id :>: Scheme KI
   deriving (Eq, Show)
 
 instance Substitutable Assump where
@@ -25,7 +27,7 @@ instance FreeTypeVars Assump where
   ftv (_ :>: sc) = ftv sc
 
 
-findScheme :: MonadError Error m => Span -> Id -> [Assump] -> m (Scheme PreTC)
+findScheme :: MonadError Error m => Span -> Id -> [Assump] -> m (Scheme KI)
 findScheme sp i = \case
   [] -> throwError $ UnboundIdentifier sp i
   ((i' :>: sc):as) ->

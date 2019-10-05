@@ -11,25 +11,26 @@ import Besra.Types.Ann
 import Besra.Types.Id
 
 
-type Substitution = [(Tyvar PreTC, Type PreTC)]
+type KI = KindInferred
+type Substitution = [(Tyvar KI, Type KI)]
 
 data Error
   = MergeFail Substitution Substitution
-  | UnificationFailure (Type PreTC) (Type PreTC)
+  | UnificationFailure (Type KI) (Type KI)
   | ListUnificationFailure Int Int
-  | OccursCheck (Tyvar PreTC) (Type PreTC)
-  | TraitMismatch (Pred PreTC) (Pred PreTC)
-  | KindMismatch (Tyvar PreTC) (Type PreTC) Kind Kind
-  | TypeMismatch (Type PreTC) (Type PreTC)
-  | ExplicitTypeMismatch (Scheme PreTC) (Scheme PreTC)
+  | OccursCheck (Tyvar KI) (Type KI)
+  | TraitMismatch (Pred KI) (Pred KI)
+  | KindMismatch (Tyvar KI) (Type KI) Kind Kind
+  | TypeMismatch (Type KI) (Type KI)
+  | ExplicitTypeMismatch (Scheme KI) (Scheme KI)
   | UnboundIdentifier Span Id
   | UnknownTrait Span Id
   | NoTraitForImpl Span Id
-  | NoImplsForTrait (Pred PreTC)
-  | OverlappingImpls (Pred PreTC) [Pred PreTC]
+  | NoImplsForTrait (Pred KI)
+  | OverlappingImpls (Pred KI) [Pred KI]
   | TraitAlreadyDefined Span Span Id
-  | SuperTraitNotDefined (Pred PreTC)
-  | ContextTooWeak (Explicit PreTC) [Pred PreTC]
-  | AmbiguousDefaults [Tyvar PreTC] [Pred PreTC]
+  | SuperTraitNotDefined (Pred KI)
+  | ContextTooWeak (Explicit KI) [Pred KI]
+  | AmbiguousDefaults [Tyvar KI] [Pred KI]
   deriving (Eq, Show)
 

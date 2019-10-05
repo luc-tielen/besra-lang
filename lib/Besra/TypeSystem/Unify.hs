@@ -15,9 +15,10 @@ import Besra.Types.Kind
 import Besra.Types.Ann
 
 
-type Pred' = Pred PreTC
-type Type' = Type PreTC
-type Tyvar' = Tyvar PreTC
+type KI = KindInferred
+type Pred' = Pred KI
+type Type' = Type KI
+type Tyvar' = Tyvar KI
 
 class Unify t where
   mgu :: MonadError Error m => t -> t -> m Subst
