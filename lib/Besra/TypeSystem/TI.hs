@@ -11,6 +11,7 @@ module Besra.TypeSystem.TI
   ) where
 
 import Protolude hiding (Type, force)
+import qualified Data.List as List
 import Besra.TypeSystem.FreeTypeVars
 import Besra.TypeSystem.Instantiate
 import Besra.TypeSystem.NameGen
@@ -20,7 +21,7 @@ import Besra.TypeSystem.Error
 import Besra.Types.Kind
 import Besra.Types.Span
 import Besra.Types.Ann
-import Besra.Types.IR3 ( Scheme(..), Qual, Type(..), Tyvar )
+import Besra.Types.IR3 ( Scheme(..), Qual, Type(..), Tyvar, sameTyvar )
 
 
 newtype TI a
@@ -55,9 +56,10 @@ extSubst s' = do
 trim :: [Tyvar PreTC] -> TI ()
 trim vs = do
   (Subst s) <- get
-  let s' = [(v, t) | (v, t) <- s, v `elem` vs]
+  let s' = [(v, t) | (v, t) <- s, contains v vs]
       force = length (ftv (map snd s'))
   force `seq` modify $ const (Subst s')
+  where contains v = isJust . List.find (sameTyvar v)
 
 -- | Returns a fresh type variable with a specific kind.
 newTVar :: Span -> Kind -> TI (Type PreTC)

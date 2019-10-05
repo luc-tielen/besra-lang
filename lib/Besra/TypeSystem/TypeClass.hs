@@ -22,7 +22,7 @@ import Besra.Types.Span
 import Besra.TypeSystem.Subst
 import Besra.TypeSystem.Unify
 import Besra.TypeSystem.Error
-import Besra.Types.IR3 ( Qual(..), Pred(..), Type(..), Tyvar(..) )
+import Besra.Types.IR3 ( Qual(..), Pred(..), Type(..), Tyvar(..), samePred )
 
 
 -- | Type synonym for representing all relevant data of a trait.
@@ -151,8 +151,8 @@ entail ce ps p = do
 
 -- | Returns True if the predicate will hold when all other predicates also hold (done using only supertrait information).
 stEntail :: MonadError Error m => TraitEnv -> [Pred PreTC] -> Pred PreTC -> m Bool
-stEntail ce ps p =
-  any (p `elem`) <$> traverse (bySuper ce) ps
+stEntail ce ps p = any (contains p) <$> traverse (bySuper ce) ps
+  where contains p' ps' = isJust $ List.find (samePred p') ps'
 
 -- | Performs context reduction for a set of predicates.
 --   This will effectively simplify the set of trait constraints needed for something.

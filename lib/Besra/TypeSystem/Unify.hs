@@ -4,11 +4,13 @@ module Besra.TypeSystem.Unify
   ) where
 
 import Protolude hiding ( Type )
+import qualified Data.List as List
 import qualified Besra.TypeSystem.Subst as Subst
 import Besra.TypeSystem.Subst ( Subst, Substitutable(..) )
 import Besra.TypeSystem.FreeTypeVars
 import Besra.TypeSystem.Error
-import Besra.Types.IR3 ( Pred(..), Type(..), Tyvar(..) )
+import Besra.Types.IR3 ( Pred(..), Type(..), Tyvar(..)
+                       , sameType, sameTycon, sameTyvar )
 import Besra.Types.Kind
 import Besra.Types.Ann
 
@@ -28,7 +30,7 @@ instance Unify Type' where
   mgu (TVar u) t = varBind u t
   mgu t (TVar u) = varBind u t
   mgu (TCon tc1) (TCon tc2)
-    | tc1 == tc2 = pure mempty
+    | sameTycon tc1 tc2 = pure mempty
   mgu t1 t2 = throwError $ UnificationFailure t1 t2
 
 instance (Unify t, Substitutable t) => Unify [t] where
@@ -53,10 +55,13 @@ liftPred m c1@(IsIn _ i ts) c2@(IsIn _ i' ts')
 
 varBind :: MonadError Error m => Tyvar' -> Type' -> m Subst
 varBind u t
-  | t == TVar u = pure mempty
-  | u `elem` ftv t = throwError $ OccursCheck u t
+  | sameType t (TVar u) = pure mempty
+  | occursCheck u (ftv t) = throwError $ OccursCheck u t
   | kind u /= kind t = throwError $ KindMismatch u t (kind u) (kind t)
   | otherwise = pure $ Subst.singleton u t
+
+occursCheck :: Tyvar' -> [Tyvar'] -> Bool
+occursCheck u vs = isJust $ List.find (sameTyvar u) vs
 
 
 class Match t where
@@ -70,7 +75,7 @@ instance Match Type' where
   match (TVar u) t
     | kind u == kind t = pure $ Subst.singleton u t
   match (TCon tc1) (TCon tc2)
-    | tc1 == tc2 = pure mempty
+    | sameTycon tc1 tc2 = pure mempty
   match t1 t2 = throwError $ TypeMismatch t1 t2
 
 instance Match t => Match [t] where

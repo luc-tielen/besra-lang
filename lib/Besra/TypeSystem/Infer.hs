@@ -6,6 +6,7 @@ module Besra.TypeSystem.Infer
 
 import Protolude hiding ( Type, Alt )
 import Unsafe ( unsafeFromJust )
+import qualified Data.List as List
 import qualified Data.Map as Map
 import Control.Monad.Loops ( allM )
 import Besra.Types.IR3
@@ -19,7 +20,7 @@ import Besra.Types.Kind
 import Besra.Types.Span
 import Besra.Types.Ann
 import Besra.Types.Id
-import Data.List (intersect, partition, union, (\\))
+import Data.List (intersectBy, partition, unionBy )
 
 type Infer e t = TraitEnv -> [Assump] -> e -> TI ([Pred PreTC], t)
 
@@ -159,10 +160,10 @@ tiImpls ce as bs = do
       ts' = apply s ts
       fs = ftv (apply s as)
       vss = map ftv ts'
-      gs = foldr union [] vss \\ fs
-  (ds, rs) <- split ce fs (foldr intersect [] vss) ps'
+      gs = List.deleteFirstsBy sameTyvar (foldr (unionBy sameTyvar) [] vss) fs
+  (ds, rs) <- split ce fs (foldr (intersectBy sameTyvar) [] vss) ps'
   if restricted bs
-    then let gs' = gs \\ ftv rs
+    then let gs' = List.deleteFirstsBy sameTyvar gs (ftv rs)
              scs' = map (quantify gs' . ([] :=>)) ts'
           in pure (ds <> rs, zipWith (:>:) names scs')
     else let scs' = map (quantify gs . (rs :=>)) ts'
@@ -178,7 +179,7 @@ tiExpl ce as expl@(Explicit _ sc alts) = do
   let qs' = apply s qs
       t' = apply s t
       fs = ftv (apply s as)
-      gs = ftv t' \\ fs
+      gs = List.deleteFirstsBy sameTyvar (ftv t') fs
       sc' = quantify gs (qs' :=> t')
       ps' = apply s ps
   ps'' <- filterM (map not . entail ce qs') ps'
@@ -200,7 +201,7 @@ alphaEquivScheme (ForAll _ ks1 qt1) (ForAll _ ks2 qt2) =
       i <- bind fst first v1
       j <- bind snd second v2
       pure (i == j)
-    goType (TCon c1) (TCon c2) = pure $ c1 == c2
+    goType (TCon c1) (TCon c2) = pure $ sameTycon c1 c2
     goType (TApp t11 t12) (TApp t21 t22) =
       (&&) <$> goType t11 t21 <*> goType t12 t22
     goType _ _ = pure False
@@ -215,7 +216,7 @@ alphaEquivScheme (ForAll _ ks1 qt1) (ForAll _ ks2 qt2) =
 quantify :: [Tyvar PreTC] -> Qual PreTC Type -> Scheme PreTC
 quantify vs qt = ForAll (span qt) ks (apply s qt)
   where
-    vs' = [v | v <- ftv qt, v `elem` vs]
+    vs' = [v | v <- ftv qt, contains v vs]
     ks = map kind vs'
     s = Subst $ zip vs' (map TGen [0 ..])
 
@@ -224,14 +225,15 @@ split :: MonadError Error m
       -> m ([Pred PreTC], [Pred PreTC])
 split ce fs gs ps = do
   ps' <- reduceContext ce ps
-  let (ds, rs) = partition (all (`elem` fs) . ftv) ps'
+  let (ds, rs) = partition (all (`contains` fs) . ftv) ps'
   rs' <- defaultedPreds ce (fs <> gs) rs
-  pure (ds, rs \\ rs')
+  pure (ds, List.deleteFirstsBy samePred rs rs')
 
 type Ambiguity = (Tyvar PreTC, [Pred PreTC])
 
 ambiguities :: [Tyvar PreTC] -> [Pred PreTC] -> [Ambiguity]
-ambiguities vs ps = [(v, filter (elem v . ftv) ps) | v <- ftv ps \\ vs]
+ambiguities vs ps = [(v, filter (contains v . ftv) ps) | v <- vars] where
+  vars = List.deleteFirstsBy sameTyvar (ftv ps) vs
 
 -- TODO simplify
 numClasses :: [Id]
@@ -258,10 +260,12 @@ candidates ce (v, qs) = do
   let is' = concat
         [ is
         | let (is, ts) = unzip [(i, t)| IsIn _ i t <- qs]
-        , all ([TVar v] ==) ts
+        , all f ts
         , any (`elem` numClasses) is
         , all (`elem` stdClasses) is
         ]
+      f [TVar tyvar] = sameTyvar v tyvar
+      f _ = False
       ts' = defaults ce
   flip filterM ts' $ \t -> do
     let ps = [IsIn (span t) i [t] | i <- is']
@@ -300,4 +304,7 @@ tArrow sp = TCon (Tycon (sp, KArr Star (KArr Star Star)) (Id "->"))
 
 fn :: Span -> Type PreTC -> Type PreTC -> Type PreTC
 fn sp a = TApp (TApp (tArrow sp) a)
+
+contains :: Tyvar PreTC -> [Tyvar PreTC] -> Bool
+contains x xs = isJust $ List.find (sameTyvar x) xs
 

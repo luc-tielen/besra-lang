@@ -17,6 +17,10 @@ module Besra.Types.IR3
   , Tycon(..)
   , Pattern(..)
   , module Besra.Types.Lit
+  , sameType
+  , sameTyvar
+  , sameTycon
+  , samePred
   ) where
 
 import Protolude hiding ( Type, Alt )
@@ -118,6 +122,30 @@ instance HasKind (AnnTy ph) => HasKind (Type ph) where
       KArr _ k -> k
       k -> panic $ "Unexpected kind on TApp: " <> show k
     TGen _ -> panic "Attempt to call kind on TGen"
+
+-- | Compares 2 types, but doesn't take spans into account
+sameType :: HasKind (AnnTy ph) => Type ph -> Type ph -> Bool
+sameType (TCon c1) (TCon c2) = sameTycon c1 c2
+sameType (TVar v1) (TVar v2) = sameTyvar v1 v2
+sameType (TApp t11 t12) (TApp t21 t22) =
+  sameType t11 t21 && sameType t12 t22
+sameType (TGen x1) (TGen x2) = x1 == x2
+sameType _ _ = False
+
+-- | Compares 2 type variables, but doesn't take spans into account
+sameTyvar :: HasKind (AnnTy ph) => Tyvar ph -> Tyvar ph -> Bool
+sameTyvar (Tyvar ann1 v1) (Tyvar ann2 v2) =
+  kind ann1 == kind ann2 && v1 == v2
+
+-- | Compares 2 type constructors, but doesn't take spans into account
+sameTycon :: HasKind (AnnTy ph) => Tycon ph -> Tycon ph -> Bool
+sameTycon (Tycon ann1 c1) (Tycon ann2 c2) =
+  kind ann1 == kind ann2 && c1 == c2
+
+-- | Compares 2 predicates, but doesn't take spans into account
+samePred :: HasKind (AnnTy ph) => Pred ph -> Pred ph -> Bool
+samePred (IsIn _ name1 ts1) (IsIn _ name2 ts2) =
+  name1 == name2 && and (zipWith sameType ts1 ts2)
 
 deriving instance AnnHas Eq ph => Eq (Module ph)
 deriving instance AnnHas Show ph => Show (Module ph)
