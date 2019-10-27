@@ -34,7 +34,9 @@ default-extensions:
   - MultiParamTypeClasses
   - FlexibleContexts
   - FlexibleInstances
+  - BangPatterns
   - LambdaCase
+  - MultiWayIf
   - TupleSections
   - MultiWayIf
   - RankNTypes
