@@ -5,7 +5,10 @@ module Besra.Pass.TypeSystem
   ) where
 
 import Protolude hiding ( pass)
+import Unsafe ( unsafeHead )
 import Data.Bitraversable ( bitraverse )
+import Data.Graph
+import Besra.Types.Id
 import Besra.Types.Ann
 import Besra.TypeSystem.Error
 import Besra.TypeSystem.Subst
@@ -14,21 +17,55 @@ import Besra.TypeSystem.TypeClass
 import Besra.Types.CompilerState
 import qualified Besra.Types.IR3 as IR3
 
+
 type KI = KindInferred
 
 pass :: Monad m
-     => CompilerState KI
+     => CompilerState3 KI
      -> IR3.Module KI
      -> ExceptT Error m (IR3.Module PostTC)
-pass _ m =
-  let traitEnv = initialEnv
-      initialAssumps = []
-      result = tiProgram traitEnv initialAssumps m
-   in case result of
+pass (CompilerState3 _ traits impls _) (IR3.Module decls) =
+  let initialAssumps = []
+      -- TODO typecheck impls separately? (with another helper like tiProgram?)
+      getDecls (IR3.Impl _ _ _ implDecls) = implDecls
+      m' = IR3.Module (decls ++ concatMap getDecls impls)
+      result = do
+        traitEnv <- traitHierarchy traits impls
+        tiProgram traitEnv initialAssumps m'
+  in case result of
      Left err -> throwError err
      Right solution ->
        -- TODO add types to expr nodes in AST
-       pure $ runReader (solveTypes m) solution
+       pure $ runReader (solveTypes m') solution
+
+traitHierarchy :: [IR3.Trait KI] -> [IR3.Impl KI] -> Either Error TraitEnv
+traitHierarchy traits impls = do
+  sortedTraits <- sortTraits traitsGraph
+  envTransform sortedTraits initialEnv
+  where
+    traitsGraph = map (\t -> (t, traitName t, traitRefersTo t)) traits
+    mkTransform f = foldl' (>=>) pure . map f
+    implsTransform = mkTransform addImpl impls
+    traitsTransform = mkTransform addTrait
+    envTransform sortedTraits = traitsTransform sortedTraits >=> implsTransform
+
+sortTraits :: Ord key => [(IR3.Trait KI, key, [key])] -> Either Error [IR3.Trait KI]
+sortTraits = traverse f . stronglyConnComp
+  where
+    f = \case
+      AcyclicSCC node -> pure node
+      CyclicSCC nodes -> throwError $ CyclicalSuperTraits nodes
+
+traitName :: IR3.Trait ph -> Id
+traitName (IR3.Trait _ _ (IR3.IsIn _ name _) _) = name
+
+traitRefersTo :: IR3.Trait ph -> [Id]
+traitRefersTo t@(IR3.Trait _ ps _ _) =
+  uniq $ filter (/= name) $ map getRefs ps
+  where
+    name = traitName t
+    uniq = map unsafeHead . group . sort
+    getRefs (IR3.IsIn _ id _) = id
 
 
 -- TODO remove this once bidirectional typechecking is implemented
@@ -116,3 +153,4 @@ instance SolveTypes (IR3.Pattern KI) where
     IR3.PVar ann var -> pure $ IR3.PVar ann var
     IR3.PCon ann name sch pats -> IR3.PCon ann name <$> solveTypes sch <*> solveTypes pats
     IR3.PAs ann name pat -> IR3.PAs ann name <$> solveTypes pat
+

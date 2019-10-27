@@ -271,6 +271,11 @@ instance Pretty TS.Error where
       errorAt (span v) <>
       "Occurs check triggered, failed to construct the infinite type:" <> hardline <>
       pretty v <+> "~" <+> pretty t
+    TS.CyclicalSuperTraits traits ->
+      "Detected cycle in the following traits:" <> hardline <>
+        mconcat (intersperse hardline (map formatTraitName traits))
+        where formatTraitName (IR3.Trait ann _ (IR3.IsIn _ name _) _) =
+                "- At" <+> pretty ann <> ": trait" <+> pretty name
     TS.TraitMismatch (IR3.IsIn sp name1 _) (IR3.IsIn _ name2 _) ->
       errorAt (span sp) <>
       "Failed to unify 2 different traits:" <+> pretty name1 <+> "~" <+> pretty name2

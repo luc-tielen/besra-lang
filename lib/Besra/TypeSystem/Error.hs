@@ -4,7 +4,7 @@ module Besra.TypeSystem.Error
   ) where
 
 import Protolude hiding ( Type )
-import Besra.Types.IR3 ( Tyvar, Type, Pred, Scheme, Explicit )
+import Besra.Types.IR3 ( Tyvar, Type, Pred, Scheme, Explicit, Trait )
 import Besra.Types.Kind
 import Besra.Types.Span
 import Besra.Types.Ann
@@ -19,6 +19,7 @@ data Error
   | UnificationFailure (Type KI) (Type KI)
   | ListUnificationFailure Int Int
   | OccursCheck (Tyvar KI) (Type KI)
+  | CyclicalSuperTraits [Trait KI]
   | TraitMismatch (Pred KI) (Pred KI)
   | KindMismatch (Tyvar KI) (Type KI) Kind Kind
   | TypeMismatch (Type KI) (Type KI)

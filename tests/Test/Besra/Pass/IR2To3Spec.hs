@@ -34,11 +34,11 @@ runPass :: Text -> Module KI
 runPass input =
   let
     parseResult = parseFile "balance_operators.test" input
-    passResult = case parseResult of
+    (passResult, _) = case parseResult of
       Left err -> panic $ formatError err
       Right result -> do
         let (ir2, IR1To2.PassState adts traits impls) = IR1To2.pass result
-            compState = CompilerState adts traits impls testKindEnv
+            compState = CompilerState2 adts traits impls testKindEnv
         case InferKinds.pass compState ir2 of
           Left err -> panic $ show err
           Right result' -> uncurry (flip IR2To3.pass) result'

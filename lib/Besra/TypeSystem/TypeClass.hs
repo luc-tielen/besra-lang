@@ -1,7 +1,7 @@
 
 module Besra.TypeSystem.TypeClass
   ( TraitEnv
-  , (<:>)
+  , EnvTransformer
   , initialEnv
   , addImpl
   , addTrait
@@ -21,7 +21,8 @@ import Besra.Types.Span
 import Besra.TypeSystem.Subst
 import Besra.TypeSystem.Unify
 import Besra.TypeSystem.Error
-import Besra.Types.IR3 ( Qual(..), Pred(..), Tyvar(..), samePred )
+import Besra.TypeSystem.FreeTypeVars
+import Besra.Types.IR3 ( Trait(..), Impl(..), Qual(..), Pred(..), Tyvar(..), samePred )
 
 
 type KI = KindInferred
@@ -30,28 +31,24 @@ type KI = KindInferred
 --   This includes the set of variables in a trait,
 --   the supertraits of the trait and the list of impls that implement
 --   the trait.
-type Trait = (Span, [Tyvar KI], [Pred KI], [Impl])
+type TraitInfo = (Span, [Tyvar KI], [Pred KI], [ImplInfo])
 
 -- | Type synonym for an impl declaration of a trait.
-type Impl = Qual KI Pred
+type ImplInfo = Qual KI Pred
 
-data TraitEnv = TraitEnv
-  { traits  :: Map Id Trait
-  }
+newtype TraitEnv = TraitEnv { traits :: Map Id TraitInfo }
+  deriving (Eq, Show)
 
 type EnvTransformer = TraitEnv -> Either Error TraitEnv
 
+
 initialEnv :: TraitEnv
-initialEnv =
-  TraitEnv
-  { traits = Map.empty
-  }
+initialEnv = TraitEnv Map.empty
 
-modifyEnv :: TraitEnv -> Id -> Trait -> TraitEnv
-modifyEnv ce i c =
-  ce { traits = Map.insert i c $ traits ce }
+modifyEnv :: TraitEnv -> Id -> TraitInfo -> TraitEnv
+modifyEnv ce i c = ce { traits = Map.insert i c $ traits ce }
 
-lookupEnv :: TraitEnv -> Id -> Maybe Trait
+lookupEnv :: TraitEnv -> Id -> Maybe TraitInfo
 lookupEnv ce name =
   Map.lookup name $ traits ce
 
@@ -67,21 +64,16 @@ super ce sp i =
     Just (_, _, is, _) -> pure is
     Nothing -> throwError $ UnknownTrait sp i
 
-impls :: MonadError Error m => TraitEnv -> Span -> Id -> m [Impl]
+impls :: MonadError Error m => TraitEnv -> Span -> Id -> m [ImplInfo]
 impls ce sp i =
   case lookupEnv ce i of
     Just (_, _, _, its) -> pure its
     Nothing -> throwError $ UnknownTrait sp i
 
 
-(<:>) :: EnvTransformer -> EnvTransformer -> EnvTransformer
-(<:>) = (>=>)
-infixr 5 <:>
-
-
 -- | Adds a trait impl to the environment.
-addImpl :: [Pred KI] -> Pred KI -> EnvTransformer
-addImpl ps p@(IsIn ann i _) ce
+addImpl :: Impl KI -> EnvTransformer
+addImpl (Impl ann ps p@(IsIn _ i _) _) ce
   | not (isTraitDefined (lookupEnv ce i)) =
     throwError $ NoTraitForImpl ann i
   | otherwise = do
@@ -94,8 +86,8 @@ addImpl ps p@(IsIn ann i _) ce
          | otherwise -> pure (modifyEnv ce i c)
 
 -- | Adds a trait to the environment.
-addTrait :: Span -> Id -> [Tyvar KI] -> [Pred KI] -> EnvTransformer
-addTrait sp i vs ps ce
+addTrait :: Trait KI -> EnvTransformer
+addTrait (Trait sp ps (IsIn _ i ts) _) ce
   | isTraitDefined traitInfo =
     let (sp', _, _, _) = unsafeFromJust traitInfo
      in throwError $ TraitAlreadyDefined sp' sp i
@@ -105,6 +97,7 @@ addTrait sp i vs ps ce
   | otherwise = pure (modifyEnv ce i (sp, vs, ps, []))
   where traitInfo = lookupEnv ce i
         superTraitDefined = isTraitDefined . lookupEnv ce . predName
+        vs = ftv ts
 
 predName :: Pred ph -> Id
 predName (IsIn _ i _) = i

@@ -3,11 +3,12 @@
 
 module Besra.Types.IR3
   ( Module(..)
+  , Trait(..)
+  , Impl(..)
   , BindGroup
   , Explicit(..)
   , Implicit(..)
   , Expr(..)
-  , Impl(..)
   , Alt
   , Scheme(..)
   , Qual(..)
@@ -52,8 +53,11 @@ data Implicit ph = Implicit Id [Alt ph]
 --   (left and right part of a function definition)
 type Alt ph = ([Pattern ph], Expr ph)
 
+data Trait (ph :: Phase)
+  = Trait (Ann ph) [Pred ph] (Pred ph) (Map Id (Scheme ph))
+
 data Impl (ph :: Phase)
-  = Impl (Ann ph) [Pred ph] (Pred ph) (BindGroup ph)
+  = Impl (Ann ph) [Pred ph] (Pred ph) [Explicit ph]
 
 data Expr (ph :: Phase)
   = ELit (Ann ph) Lit
@@ -149,6 +153,8 @@ samePred (IsIn _ name1 ts1) (IsIn _ name2 ts2) =
 
 deriving instance AnnHas Eq ph => Eq (Module ph)
 deriving instance AnnHas Show ph => Show (Module ph)
+deriving instance AnnHas Eq ph => Eq (Trait ph)
+deriving instance AnnHas Show ph => Show (Trait ph)
 deriving instance AnnHas Eq ph => Eq (Impl ph)
 deriving instance AnnHas Show ph => Show (Impl ph)
 deriving instance AnnHas Eq ph => Eq (Scheme ph)

@@ -73,14 +73,14 @@ semanticAnalysis path decls =
     Ok -> pure decls
     Err e -> throwError e
 
-ir1To2 :: Module1' -> (IR2.Module Parsed, CompilerState Parsed)
+ir1To2 :: Module1' -> (IR2.Module Parsed, CompilerState2 Parsed)
 ir1To2 x =
   let (ast, IR1To2.PassState adts traits impls) = IR1To2.pass x
       sp = Span 0 0
       arrowK = IKArr sp (IStar sp) (IKArr sp (IStar sp) (IStar sp))
       kindEnv = Map.fromList [(Id "->", arrowK)]
       kEnv = Env kindEnv Map.empty
-  in (ast, CompilerState adts traits impls kEnv)
+  in (ast, CompilerState2 adts traits impls kEnv)
 
 wrapErr :: (Monad m, ToError e) => ExceptT e m a -> ExceptT BesraError m a
 wrapErr = withExceptT toError
@@ -89,7 +89,7 @@ compileFile
   :: FilePath
   -> IO (Either BesraError
                 ( IR3.Module PostTC
-                , CompilerState KindInferred))
+                , CompilerState3 KindInferred))
 compileFile path = runExceptT $ do
   parsed <- wrapErr $ parse path
   compile path parsed
@@ -100,15 +100,15 @@ compile
   -> IR1.Module Parsed
   -> ExceptT BesraError m
             ( IR3.Module PostTC
-            , CompilerState KindInferred)
+            , CompilerState3 KindInferred)
 compile path parsed = do
   balanced <- wrapErr $ BalanceOperators.pass parsed
   analyzed <- wrapErr $ semanticAnalysis path balanced
   let (ir2, compState) = ir1To2 analyzed
   (mod2, compState') <- wrapErr $ InferKinds.pass compState ir2
-  let ir3 = IR2To3.pass compState' mod2
-  ir3' <- wrapErr $ TypeSystem.pass compState' ir3
-  pure (ir3', compState')
+  let (ir3, compState'') = IR2To3.pass compState' mod2
+  ir3' <- wrapErr $ TypeSystem.pass compState'' ir3
+  pure (ir3', compState'')
 
 typeCheckFile :: FilePath -> IO (Either BesraError ())
 typeCheckFile path = runExceptT $ do
@@ -117,6 +117,5 @@ typeCheckFile path = runExceptT $ do
   analyzed <- wrapErr $ semanticAnalysis path balanced
   let (ir2, compState) = ir1To2 analyzed
   (mod2, compState') <- wrapErr $ InferKinds.pass compState ir2
-  let ir3 = IR2To3.pass compState' mod2
-  void $ wrapErr $ TypeSystem.pass compState' ir3
-
+  let (ir3, compState'') = IR2To3.pass compState' mod2
+  void $ wrapErr $ TypeSystem.pass compState'' ir3

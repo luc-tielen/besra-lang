@@ -2,7 +2,7 @@
 module Besra.Pass.InferKinds ( pass, enrich ) where
 
 import Protolude hiding ( Type, pass, show )
-import Unsafe ( unsafeFromJust )
+import Unsafe ( unsafeFromJust, unsafeHead )
 import Data.Bitraversable ( bitraverse )
 import Data.Graph
 import qualified Besra.TypeSystem.KindSolver as K
@@ -24,10 +24,10 @@ import qualified Data.Map as Map
 
 
 pass :: MonadError KindError m
-     => CompilerState Parsed
+     => CompilerState2 Parsed
      -> Module Parsed
-     -> m (Module KindInferred, CompilerState KindInferred)
-pass (CompilerState adts traits impls kEnv) ast =
+     -> m (Module KindInferred, CompilerState2 KindInferred)
+pass (CompilerState2 adts traits impls kEnv) ast =
   flip evalStateT kEnv $ do
     adts' <- inferADTs adts
     traits' <- inferTraits traits
@@ -39,7 +39,7 @@ pass (CompilerState adts traits impls kEnv) ast =
     case result of
       Left err -> throwError err
       Right (impls', ast') ->
-        pure (ast', CompilerState adts' traits' impls' kEnv')
+        pure (ast', CompilerState2 adts' traits' impls' kEnv')
 
 inferADTs :: (MonadError KindError m, MonadState K.Env m)
           => [ADT Parsed]
@@ -322,4 +322,16 @@ instance GatherResults [([K.Assump], [K.Constraint], IKind)] where
   gatherResults xs = (foldMap f xs, foldMap g xs) where
     f (x, _, _) = x
     g (_, x, _) = x
+
+traitName :: Trait ph -> Id
+traitName (Trait _ _ (IsIn _ name _) _) = name
+
+traitRefersTo :: Trait ph -> [Id]
+traitRefersTo t@(Trait _ ps _ tys) =
+  uniq $ filter (/= name) $ map getRefs ps <> concatMap getRefsTy tys
+  where
+    name = traitName t
+    uniq = map unsafeHead . group . sort
+    getRefs (IsIn _ id _) = id
+    getRefsTy (TypeAnn _ _ (Scheme _ ps' _)) = map getRefs ps'
 

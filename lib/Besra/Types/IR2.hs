@@ -22,8 +22,6 @@ module Besra.Types.IR2
   , module Besra.Types.Lit
   , adtName
   , adtRefersTo
-  , traitName
-  , traitRefersTo
   ) where
 
 import Protolude hiding ( Type )
@@ -155,16 +153,4 @@ adtRefersTo adt@(ADT _ _ conDecls) =
       TCon (Tycon _ con) -> [con]
       TVar _ -> mempty
       TApp t1 t2 -> getRefsTy t1 <> getRefsTy t2
-
-traitName :: Trait ph -> Id
-traitName (Trait _ _ (IsIn _ name _) _) = name
-
-traitRefersTo :: Trait ph -> [Id]
-traitRefersTo t@(Trait _ ps _ tys) =
-  uniq $ filter (/= name) $ map getRefs ps <> concatMap getRefsTy tys
-  where
-    name = traitName t
-    uniq = map unsafeHead . group . sort
-    getRefs (IsIn _ id _) = id
-    getRefsTy (TypeAnn _ _ (Scheme _ ps' _)) = map getRefs ps'
 

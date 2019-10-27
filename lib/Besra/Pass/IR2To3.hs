@@ -8,6 +8,7 @@ import qualified Data.Map as Map
 import qualified Data.List as List
 import qualified Besra.Types.IR2 as IR2
 import qualified Besra.Types.IR3 as IR3
+import Besra.TypeSystem.Subst
 import Besra.Types.IR3 ( Qual(..) )
 import Besra.Types.CompilerState
 import Besra.Types.Ann
@@ -23,6 +24,7 @@ to prepare for typechecking:
 2. Adds the scheme to each constructor in a pattern match.
 3. Groups all bindings/type annotations on top level and in let expressions
    together and orders them according to what the typechecker expects.
+4. Adds type annotations to all bindings in impls.
 -}
 
 type KI = KindInferred
@@ -30,12 +32,20 @@ type KI = KindInferred
 -- | Mapping from constructor names to type schemes.
 type SchemeMap = Map Id (IR3.Scheme KI)
 
-type PassM = Reader SchemeMap
+data DesugarState = DesugarState { schemeMap :: SchemeMap, traits :: Map Id (IR2.Trait KI) }
 
-pass :: CompilerState KI -> IR2.Module KI -> IR3.Module KI
-pass (CompilerState adts _ _ _) m =
+type PassM = Reader DesugarState
+
+pass :: CompilerState2 KI -> IR2.Module KI -> (IR3.Module KI, CompilerState3 KI)
+pass (CompilerState2 adts traits impls kEnv) m =
   let conInfo = prepareConInfo adts
-   in runReader (desugar m) conInfo
+      passState = DesugarState conInfo (mkTraitMap traits)
+      mkTraitMap = Map.fromList . map toTraitTuple
+      toTraitTuple t@(IR2.Trait _ _ (IR2.IsIn _ name _) _) = (name, t)
+      m' = runReader (desugar m) passState
+      traits' = map desugarTrait traits
+      impls' = map (flip runReader passState . desugar) impls
+   in (m', CompilerState3 adts traits' impls' kEnv)
 
 prepareConInfo :: [IR2.ADT KI] -> SchemeMap
 prepareConInfo =
@@ -71,7 +81,7 @@ instance Desugar (IR2.Expr KI) where
     IR2.ELit ann lit -> pure $ IR3.ELit ann lit
     IR2.EVar ann var -> pure $ IR3.EVar ann var
     IR2.ECon ann name -> do
-      sch <- unsafeFromJust <$> asks (Map.lookup name)
+      sch <- unsafeFromJust <$> asks (Map.lookup name . schemeMap)
       pure $ IR3.ECon ann name sch
     IR2.ELam ann pats body ->
       -- NOTE: this only applies to anonymous lambdas,
@@ -96,19 +106,59 @@ instance Desugar (IR2.Pattern KI) where
     IR2.PLit ann lit -> pure $ IR3.PLit ann lit
     IR2.PVar ann var -> pure $ IR3.PVar ann var
     IR2.PCon ann name pats -> do
-      sch <- unsafeFromJust <$> asks (Map.lookup name)
+      sch <- unsafeFromJust <$> asks (Map.lookup name . schemeMap)
       IR3.PCon ann name sch <$> desugar pats
     IR2.PAs ann name pat -> IR3.PAs ann name <$> desugar pat
 
-desugarType :: IR2.Type KI -> IR3.Type KI
+instance Desugar (IR2.Impl KI) where
+  type Result (IR2.Impl KI) = IR3.Impl KI
+
+  desugar (IR2.Impl ann ps p@(IR2.IsIn _ traitName _) bs) = do
+    -- TODO maybe -> signal error
+    (IR2.Trait _ _ traitPred typeAnns) <- asks (unsafeFromJust . Map.lookup traitName . traits)
+    let subst = mkSubstForImpl traitPred p
+        decls = map IR2.TypeAnnDecl typeAnns <> map IR2.BindingDecl bs
+        ps' = map desugarPred ps
+        p' = desugarPred p
+    (expls, _) <- toBG decls  -- TODO Only explicits are possible here => signal error
+    pure $ IR3.Impl ann ps' p' (applyToScheme subst ps' expls)
+
+mkSubstForImpl :: IR2.Pred KI -> IR2.Pred KI -> Subst
+mkSubstForImpl (IR2.IsIn _ _ traitTypes) (IR2.IsIn _ _ implTypes) =
+  let traitVars = mapMaybe getTyvar traitTypes
+      implTypes' = map desugarType implTypes
+   in Subst $ zip traitVars implTypes'
+  where
+    getTyvar = \case
+      IR2.TVar var -> Just var
+      _ -> Nothing
+
+applyToScheme :: Subst -> [IR3.Pred KI] -> [IR3.Explicit KI] -> [IR3.Explicit KI]
+applyToScheme subst implPs = map f where
+  f (IR3.Explicit name (IR3.ForAll ann ks (ps :=> ty)) alts) =
+    let sch' = IR3.ForAll ann ks ((implPs <> ps) :=> ty)
+     in IR3.Explicit name (apply subst sch') alts
+
+desugarType :: IR2.Type ph -> IR3.Type ph
 desugarType = \case
   IR2.TCon tycon -> IR3.TCon tycon
   IR2.TVar tyvar -> IR3.TVar tyvar
   IR2.TApp t1 t2 -> IR3.TApp (desugarType t1) (desugarType t2)
 
-desugarPred :: IR2.Pred KI -> IR3.Pred KI
+desugarPred :: IR2.Pred ph -> IR3.Pred ph
 desugarPred (IR2.IsIn ann name tys) =
   IR3.IsIn ann name $ map desugarType tys
+
+desugarTrait :: IR2.Trait ph -> IR3.Trait ph
+desugarTrait (IR2.Trait ann ps p ts) =
+  let ps' = map desugarPred ps
+      p' = desugarPred p
+      ts' = Map.fromList $ map desugarTypeAnn ts
+   in IR3.Trait ann ps' p' ts'
+
+desugarTypeAnn :: IR2.TypeAnn ph -> (Id, IR3.Scheme ph)
+desugarTypeAnn (IR2.TypeAnn _ name (IR2.Scheme ann ps ty)) =
+  (name, IR3.ForAll ann [] (map desugarPred ps :=> desugarType ty))
 
 toBG :: [IR2.Decl KI] -> PassM (IR3.BindGroup KI)
 toBG decls = do
