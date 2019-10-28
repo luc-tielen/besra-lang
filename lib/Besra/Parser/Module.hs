@@ -2,8 +2,7 @@
 module Besra.Parser.Module ( parser, declParser ) where
 
 import Protolude
-import Besra.Types.IR1.Module
-import Besra.Types.IR1.Expr
+import Besra.Types.IR1 ( Module(..), Decl(..), ExprDecl(..) )
 import qualified Besra.Parser.Expr as Expr
 import qualified Besra.Parser.ADT as ADT
 import qualified Besra.Parser.Trait as Trait

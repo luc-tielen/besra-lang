@@ -5,8 +5,7 @@ import Protolude
 import Besra.Types.Id
 import Besra.Types.Ann
 import Besra.Types.Span
-import Besra.Types.IR1.TypeAnn
-import Besra.Types.IR1.Trait
+import Besra.Types.IR1 ( TypeAnn(..), Trait(..) )
 import Besra.Parser.Helpers
 import qualified Besra.Parser.Pred as Pred
 import qualified Besra.Parser.Scheme as Scheme

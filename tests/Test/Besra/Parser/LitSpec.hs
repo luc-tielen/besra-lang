@@ -6,9 +6,7 @@ import Test.Hspec
 import Test.Hspec.Megaparsec hiding (shouldFailWith)
 import Besra.Parser.Lit (parser)
 import Test.Besra.Parser.Helpers
-import Besra.Types.IR1.Lit
-import Besra.Types.IR1.String
-import Besra.Types.IR1.Number
+import Besra.Types.IR1 ( Lit(..), Number(..), String(..) )
 
 
 parse :: Text -> ParseResult Lit

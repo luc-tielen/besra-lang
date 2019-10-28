@@ -7,7 +7,7 @@ import Protolude
 import Test.Hspec
 import Test.Hspec.Megaparsec hiding (shouldFailWith)
 import Besra.Parser.String (parser)
-import Besra.Types.IR1.String
+import Besra.Types.IR1 ( String(..) )
 import NeatInterpolation
 import Test.Besra.Parser.Helpers
 

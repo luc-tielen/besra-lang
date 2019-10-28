@@ -9,8 +9,8 @@ import Besra.Parser.ADT (parser)
 import Besra.Types.Id
 import Besra.Types.Ann
 import Besra.Types.Span
-import Besra.Types.IR1.ADT
-import Besra.Types.IR1.Type
+import Besra.Types.IR1 ( ADT(..), ADTHead(..), ADTBody, ConDecl(..)
+                       , Type(..), Tyvar(..), Tycon(..) )
 
 
 type ADT' = ADT Parsed

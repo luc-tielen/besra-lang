@@ -13,6 +13,7 @@ import Besra.Types.Span
 data Tycon (ph :: Phase)
   = Tycon (AnnTy ph) Id
 
+
 deriving instance Eq (AnnTy ph) => Eq (Tycon ph)
 deriving instance Show (AnnTy ph) => Show (Tycon ph)
 

@@ -13,6 +13,7 @@ import Besra.Types.Span
 data Tyvar (ph :: Phase)
   = Tyvar (AnnTy ph) Id
 
+
 deriving instance Eq (AnnTy ph) => Eq (Tyvar ph)
 deriving instance Show (AnnTy ph) => Show (Tyvar ph)
 

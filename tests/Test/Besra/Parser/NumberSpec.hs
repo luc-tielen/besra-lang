@@ -5,7 +5,7 @@ import Protolude
 import Test.Hspec
 import Test.Hspec.Megaparsec hiding (shouldFailWith, succeedsLeaving)
 import Besra.Parser.Number (parser)
-import Besra.Types.IR1.Number
+import Besra.Types.IR1 ( Number(..) )
 import Test.Besra.Parser.Helpers
 
 

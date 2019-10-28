@@ -21,6 +21,7 @@ type Binding' = Binding Parsed
 type Expr' = Expr Parsed
 type TypeAnn' = TypeAnn Parsed
 type Scheme' = Scheme Parsed
+type Pattern' = Pattern Parsed
 type Type' = Type Parsed
 type Tycon' = Tycon Parsed
 type Tyvar' = Tyvar Parsed
@@ -65,7 +66,7 @@ binding sp x = Binding sp (Id x)
 typeAnn :: Span -> Text -> Scheme' -> TypeAnn'
 typeAnn sp x = TypeAnn sp (Id x)
 
-lam :: Span -> [Pattern] -> Expr' -> Expr'
+lam :: Span -> [Pattern'] -> Expr' -> Expr'
 lam = ELam
 
 evar :: Span -> Text -> Expr'
@@ -111,11 +112,12 @@ spec = describe "IR1 -> IR2 pass" $ parallel $ do
 
   it "converts numbers in binding patterns" $ do
     let num sp = ELit sp . LNumber . Number
-        pnum = PLit . LNumber . Number
-    "x 0b0 = 0b0" ==> binding (Span 0 11) "x" (lam (Span 0 11) [pnum 0]
-                                                (num (Span 8 11) 0))
+        pnum sp = PLit sp . LNumber . Number
+    "x 0b0 = 0b0" ==> binding (Span 0 11) "x"
+                        (lam (Span 0 11) [pnum (Span 2 5) 0]
+                            (num (Span 8 11) 0))
     "x 0x101010 = 0b1101"
-      ==> binding (Span 0 19) "x" (lam (Span 0 19) [pnum 1052688]
+      ==> binding (Span 0 19) "x" (lam (Span 0 19) [pnum (Span 2 10) 1052688]
                                     (num (Span 13 19) 13))
 
   it "converts infix operators to normal function application" $ do

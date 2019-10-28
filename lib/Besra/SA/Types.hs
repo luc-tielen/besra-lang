@@ -13,12 +13,11 @@ module Besra.SA.Types
   ) where
 
 import Protolude
-import Besra.Types.IR1.Module
-import Besra.Types.IR1.Expr
+import qualified Besra.Types.IR1 as IR1
 import Besra.Types.Ann
 
-type Decl' = Decl Parsed
-type Binding' = Binding Parsed
+type Decl' = IR1.Decl Parsed
+type Binding' = IR1.Binding Parsed
 
 data ConflictingTypeAnnDecl
   = ConflictingTypeAnnDecl FilePath [Decl']
@@ -48,21 +47,21 @@ data SAError
 
 newtype SemanticError = SemanticError [SAError]
 
-deriving instance Eq (Decl Parsed) => Eq ConflictingTypeAnnDecl
-deriving instance Eq (Binding Parsed) => Eq ConflictingConstantDecl
-deriving instance Eq (Binding Parsed) => Eq ConflictingBindingDecls
-deriving instance Eq (Binding Parsed) => Eq ConflictingArgCounts
-deriving instance Eq (Decl Parsed) => Eq MissingTopLevelTypeAnnDecl
-deriving instance Eq (Decl Parsed) => Eq MissingTopLevelBindingDecl
-deriving instance Eq (Decl Parsed) => Eq SAError
-deriving instance Eq (Decl Parsed) => Eq SemanticError
+deriving instance Eq Decl' => Eq ConflictingTypeAnnDecl
+deriving instance Eq Binding' => Eq ConflictingConstantDecl
+deriving instance Eq Binding' => Eq ConflictingBindingDecls
+deriving instance Eq Binding' => Eq ConflictingArgCounts
+deriving instance Eq Decl' => Eq MissingTopLevelTypeAnnDecl
+deriving instance Eq Decl' => Eq MissingTopLevelBindingDecl
+deriving instance Eq Decl' => Eq SAError
+deriving instance Eq Decl' => Eq SemanticError
 
-deriving instance Show (Decl Parsed) => Show ConflictingTypeAnnDecl
-deriving instance Show (Binding Parsed) => Show ConflictingConstantDecl
-deriving instance Show (Binding Parsed) => Show ConflictingBindingDecls
-deriving instance Show (Binding Parsed) => Show ConflictingArgCounts
-deriving instance Show (Decl Parsed) => Show MissingTopLevelTypeAnnDecl
-deriving instance Show (Decl Parsed) => Show MissingTopLevelBindingDecl
-deriving instance Show (Decl Parsed) => Show SAError
-deriving instance Show (Decl Parsed) => Show SemanticError
+deriving instance Show Decl' => Show ConflictingTypeAnnDecl
+deriving instance Show Binding' => Show ConflictingConstantDecl
+deriving instance Show Binding' => Show ConflictingBindingDecls
+deriving instance Show Binding' => Show ConflictingArgCounts
+deriving instance Show Decl' => Show MissingTopLevelTypeAnnDecl
+deriving instance Show Decl' => Show MissingTopLevelBindingDecl
+deriving instance Show Decl' => Show SAError
+deriving instance Show Decl' => Show SemanticError
 

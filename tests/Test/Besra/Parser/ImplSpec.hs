@@ -8,14 +8,9 @@ import Test.Besra.Helpers
 import Besra.Types.Id
 import Besra.Types.Ann
 import Besra.Types.Span
-import Besra.Types.IR1.Lit
-import Besra.Types.IR1.Number
-import Besra.Types.IR1.String
-import Besra.Types.IR1.Pattern
-import Besra.Types.IR1.Pred
-import Besra.Types.IR1.Type
-import Besra.Types.IR1.Impl
-import Besra.Types.IR1.Expr
+import Besra.Types.IR1 ( Lit(..), Number(..), String(..), Pattern(..)
+                       , Pred(..), Type(..), Tycon(..), Tyvar(..), Impl(..)
+                       , Expr(..), Binding(..) )
 import Besra.Parser.Impl (parser)
 import Test.Hspec.Megaparsec hiding (shouldFailWith, succeedsLeaving)
 
@@ -57,7 +52,7 @@ a ~~> b = parse a `shouldParse` b
 t1 --> t2 = app (con "->") [t1, t2]
 
 lam :: [Text] -> Expr' -> Expr'
-lam vars = ELam emptyAnn (PVar . Id <$> vars)
+lam vars = ELam emptyAnn (PVar emptyAnn . Id <$> vars)
 
 evar :: Text -> Expr'
 evar = EVar emptyAnn . Id
@@ -172,7 +167,8 @@ spec = describe "impl parser" $ parallel $ do
   describe "annotations" $ parallel $ do
     let binding' ann x = Binding ann (Id x)
         num' ann = ELit ann . LNumber . SInt
-        lam' ann vars = ELam ann (PVar . Id <$> vars)
+        lam' = ELam
+        pvar ann = PVar ann . Id
         con' sp = TCon . Tycon sp . Id
         pred' sp clazz = IsIn sp (Id clazz)
 
@@ -188,9 +184,11 @@ spec = describe "impl parser" $ parallel $ do
       "impl MyClass Int where\n a b c = 1 "
         ~~> Impl (Span 0 33) [] (pred' (Span 5 16) "MyClass" [con' (Span 13 16) "Int"])
                 [binding' (Span 24 33) "a" $
-                  lam' (Span 24 33) ["b", "c"] $ num' (Span 32 33) 1]
+                  lam' (Span 24 33) [pvar (Span 26 27) "b", pvar (Span 28 29) "c"] $
+                    num' (Span 32 33) 1]
       "impl MyClass Int where\n abc def ghi = 123 "
         ~~> Impl (Span 0 41) [] (pred' (Span 5 16) "MyClass" [con' (Span 13 16) "Int"])
                 [binding' (Span 24 41) "abc" $
-                  lam' (Span 24 41) ["def", "ghi"] $ num' (Span 38 41) 123]
+                  lam' (Span 24 41) [pvar (Span 28 31) "def", pvar (Span 32 35) "ghi"] $
+                    num' (Span 38 41) 123]
 

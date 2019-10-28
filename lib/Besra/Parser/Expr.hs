@@ -9,8 +9,8 @@ import Besra.Types.Id
 import Besra.Types.Ann
 import Besra.Types.Span
 import Besra.Types.Fixity
-import Besra.Types.IR1.Expr
-import Besra.Types.IR1.TypeAnn
+import Besra.Types.IR1 ( Expr(..), ExprDecl(..), FixityInfo(..)
+                       , Binding(..), TypeAnn(..) )
 import Besra.Parser.Helpers
 import Control.Monad.Combinators.Expr
 import qualified Besra.Parser.Lit as Lit
@@ -132,7 +132,7 @@ caseParser = do
   let clauseParser' = withIndent indentation clauseParser <?> "case clause"
   clauses <- some clauseParser'
   notFollowedBy clauseParser <?> "properly indented case clause"
-  let sp = span $ fromJust $ nonEmpty clauses
+  let sp = span $ fromJust $ nonEmpty $ map snd clauses
   pure $ ECase (startPos .> sp) expr' clauses
   where
     clauseParser = withLineFold $ do

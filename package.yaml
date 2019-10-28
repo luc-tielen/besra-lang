@@ -24,6 +24,7 @@ dependencies:
   - prettyprinter >= 1.3.0 && < 2
   - optparse-applicative >= 0.14.3.0 && < 1
   - haskeline >= 0.7.4.3 && < 1
+  - monad-loops >= 0.4.3 && < 1
 
 default-extensions:
   - NoImplicitPrelude
@@ -37,6 +38,7 @@ default-extensions:
   - LambdaCase
   - MultiWayIf
   - TupleSections
+  - MultiWayIf
   - RankNTypes
   - TypeFamilies
   - GADTs
@@ -62,7 +64,8 @@ ghc-options:
   - -Wno-missing-deriving-strategies
   - -optP-Wno-nonportable-include-path
   - -fhide-source-paths
-  - -fmax-valid-hole-fits=0
+  - -fno-show-valid-hole-fits
+  - -fno-sort-valid-hole-fits
   - -O0
 
 library:

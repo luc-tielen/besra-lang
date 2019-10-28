@@ -9,14 +9,9 @@ import Besra.Types.Id
 import Besra.Types.Ann
 import Besra.Types.Span
 import Besra.Types.Fixity
-import Besra.Types.IR1.Expr
-import Besra.Types.IR1.Lit
-import Besra.Types.IR1.Type
-import Besra.Types.IR1.String
-import Besra.Types.IR1.Scheme
-import Besra.Types.IR1.Number
-import Besra.Types.IR1.Pattern
-import Besra.Types.IR1.TypeAnn
+import Besra.Types.IR1 ( Expr(..), ExprDecl(..), Binding(..), Lit(..)
+                       , Type(..), Tycon(..), String(..), FixityInfo(..)
+                       , Scheme(..), Number(..), Pattern(..), TypeAnn(..) )
 import Test.Hspec.Megaparsec hiding (shouldFailWith, succeedsLeaving)
 import Test.Besra.Helpers
 
@@ -61,7 +56,7 @@ sig x ty = ExprTypeAnnDecl $ TypeAnn emptyAnn (Id x) (Scheme emptyAnn [] ty)
 
 
 spec :: Spec
-spec = describe "expression parser" $ parallel $ do
+spec = describe "Expression parser" $ parallel $ do
   describe "literals" $ parallel $ do
     let str = ELit emptyAnn . LString . String
         char = ELit emptyAnn . LChar
@@ -149,7 +144,7 @@ spec = describe "expression parser" $ parallel $ do
 
   describe "let expressions" $ parallel $ do
     let num = ELit emptyAnn . LNumber . SInt
-        lam vars = ELam emptyAnn (PVar . Id <$> vars)
+        lam vars = ELam emptyAnn (PVar emptyAnn . Id <$> vars)
 
     it "can parse multi-line let expressions" $ do
       "let x = 1 in x" ==> let' [binding "x" (num 1)] (var "x")  -- special case, for now
@@ -207,7 +202,7 @@ spec = describe "expression parser" $ parallel $ do
         (utoks "y " <> elabel "properly indented declaration or 'in' keyword")
 
   describe "lambdas" $ parallel $ do
-    let lam vars = ELam emptyAnn (PVar . Id <$> vars)
+    let lam vars = ELam emptyAnn (PVar emptyAnn . Id <$> vars)
         num' = LNumber . SInt
         num = ELit emptyAnn . num'
         str' =  LString . String
@@ -223,8 +218,12 @@ spec = describe "expression parser" $ parallel $ do
       "\\ a b c -> 1" ==> lam ["a", "b", "c"] (num 1)
 
     it "can parse lambdas containing patterns" $ do
-      "\\1 \"abc\" -> 123" ==> ELam emptyAnn [PLit (num' 1), PLit (str' "abc")] (num 123)
-      "\\a@(X y) -> 123" ==> ELam emptyAnn [PAs (Id "a") $ PCon (Id "X") [PVar (Id "y")]] (num 123)
+      "\\1 \"abc\" -> 123" ==> ELam emptyAnn [ PLit emptyAnn (num' 1)
+                                             , PLit emptyAnn (str' "abc")] (num 123)
+      "\\a@(X y) -> 123"
+        ==> ELam emptyAnn
+              [PAs emptyAnn (Id "a") $
+                PCon emptyAnn (Id "X") [PVar emptyAnn (Id "y")]] (num 123)
 
     it "can parse lambda over multiple lines" $ do
       "\\a b -> \n a" ==> lam ["a", "b"] (var "a")
@@ -282,8 +281,8 @@ spec = describe "expression parser" $ parallel $ do
 
   describe "case expressions" $ parallel $ do
     let case' = ECase emptyAnn
-        pvar = PVar . Id
-        pcon x = PCon (Id x)
+        pvar = PVar emptyAnn . Id
+        pcon x = PCon emptyAnn (Id x)
         num' = LNumber . SInt
         num = ELit emptyAnn . num'
         str = ELit emptyAnn . LString . String
@@ -300,7 +299,9 @@ spec = describe "expression parser" $ parallel $ do
       "case bool of\n True ->\n  1\n False ->\n  0"
         ==> case' (var "bool") [(pcon "True" [], num 1), (pcon "False" [], num 0)]
       "case 1 of\n 0 -> 0\n 1 -> 1\n _ -> 0"
-        ==> case' (num 1) [(PLit (num' 0), num 0), (PLit (num' 1), num 1), (PWildcard, num 0)]
+        ==> case' (num 1) [ (PLit emptyAnn (num' 0), num 0)
+                          , (PLit emptyAnn (num' 1), num 1)
+                          , (PWildcard emptyAnn, num 0)]
 
     it "fails with readable error message" $ do
       (parse, "case") `shouldFailWith` err 4 (ueof <> elabel "whitespace")
@@ -422,13 +423,13 @@ spec = describe "expression parser" $ parallel $ do
         num' ann = ELit ann . LNumber
         var' ann = EVar ann . Id
         con' ann = ECon ann . Id
-        lam' ann vars = ELam ann (PVar . Id <$> vars)
+        lam' = ELam
         app' = EApp
         op' = EBinOp
         neg' = ENeg
         if' = EIf
         case' = ECase
-        pvar = PVar . Id
+        pvar ann = PVar ann . Id
 
     it "adds location information to the expression" $ do
       "(1  )" --> EParens (Span 0 5) $ num' (Span 1 2) (SInt 1)
@@ -490,8 +491,10 @@ spec = describe "expression parser" $ parallel $ do
       "- abc " --> neg' (Span 0 5) (var' (Span 2 5) "abc")
 
     it "adds location information for lambda expressions" $ do
-      "\\a b -> 1 " --> lam' (Span 0 9) ["a", "b"] $ num' (Span 8 9) (SInt 1)
-      "\\abc def -> 123 " --> lam' (Span 0 15) ["abc", "def"] $ num' (Span 12 15) (SInt 123)
+      "\\a b -> 1 " --> lam' (Span 0 9) [pvar (Span 1 2) "a", pvar (Span 3 4) "b"] $ num' (Span 8 9) (SInt 1)
+      "\\abc def -> 123 "
+        --> lam' (Span 0 15) [ pvar (Span 1 4) "abc"
+                             , pvar (Span 5 8) "def"] $ num' (Span 12 15) (SInt 123)
 
     it "adds location information to if expressions" $
       "if 123 then 456 else 789 "
@@ -502,11 +505,11 @@ spec = describe "expression parser" $ parallel $ do
     it "adds location information to case expression" $ do
       "case 1 of\n x -> x "
         --> case' (Span 0 17) (num' (Span 5 6) (SInt 1))
-              [(pvar "x", var' (Span 16 17) "x")]
+              [(pvar (Span 11 12) "x", var' (Span 16 17) "x")]
       "case 1 of\n 1 -> 2\n x -> x "
         --> case' (Span 0 25) (num' (Span 5 6) (SInt 1))
-              [ (PLit (LNumber $ SInt 1), num' (Span 16 17) (SInt 2))
-              , (pvar "x", var' (Span 24 25) "x")
+              [ (PLit (Span 11 12) (LNumber $ SInt 1), num' (Span 16 17) (SInt 2))
+              , (pvar (Span 19 20) "x", var' (Span 24 25) "x")
               ]
 
     it "adds location information to let expressions" $ do

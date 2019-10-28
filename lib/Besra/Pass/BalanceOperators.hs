@@ -1,7 +1,11 @@
 
 {-# LANGUAGE UndecidableInstances #-}
 
-module Besra.Pass.BalanceOperators ( BalanceError(..), FixitySpec(..), pass ) where
+module Besra.Pass.BalanceOperators
+  ( BalanceError(..)
+  , FixitySpec(..)
+  , pass
+  ) where
 
 {-
 Algorithm based on: https://github.com/haskell/haskell-report/blob/master/report/fixity.verb
@@ -14,9 +18,8 @@ convert the tokens back to an AST again.
 import Protolude hiding ( Fixity, pass )
 import qualified Data.List as List
 import Control.Parallel.Strategies
-import Besra.Types.IR1.Module
-import Besra.Types.IR1.Impl
-import Besra.Types.IR1.Expr
+import Besra.Types.IR1 ( Module(..), Decl(..), Expr(..)
+                       , ExprDecl(..), Binding(..), FixityInfo(..), Impl(..) )
 import Besra.Types.Fixity
 import Besra.Types.Id
 import Besra.Types.Ann

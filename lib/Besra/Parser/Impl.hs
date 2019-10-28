@@ -6,10 +6,7 @@ import Data.Maybe ( fromJust )
 import Besra.Types.Id
 import Besra.Types.Ann
 import Besra.Types.Span
-import Besra.Types.IR1.Expr
-import Besra.Types.IR1.Type
-import Besra.Types.IR1.Pred
-import Besra.Types.IR1.Impl
+import Besra.Types.IR1 ( Expr(..), Type(..), Pred(..), Impl(..), Binding(..) )
 import Besra.Parser.Helpers
 import qualified Besra.Parser.Scheme as Scheme
 import qualified Besra.Parser.Pattern as Pattern

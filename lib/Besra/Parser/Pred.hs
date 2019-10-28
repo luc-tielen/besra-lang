@@ -4,8 +4,7 @@ import Protolude hiding ( Type )
 import Data.Maybe ( fromJust )
 import Besra.Parser.Helpers
 import qualified Besra.Parser.Tyvar as Tyvar
-import Besra.Types.IR1.Pred
-import Besra.Types.IR1.Type
+import Besra.Types.IR1 ( Pred(..), Type(..) )
 import Besra.Types.Id
 import Besra.Types.Ann
 import Besra.Types.Span

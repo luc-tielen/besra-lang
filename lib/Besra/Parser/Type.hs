@@ -4,7 +4,7 @@ module Besra.Parser.Type ( parser ) where
 import Protolude hiding ( Type, try )
 import qualified Besra.Parser.Tycon as Tycon
 import qualified Besra.Parser.Tyvar as Tyvar
-import Besra.Types.IR1.Type
+import Besra.Types.IR1 ( Type(..), Tycon(..) )
 import Besra.Parser.Helpers
 import Besra.Types.Id
 import Besra.Types.Span

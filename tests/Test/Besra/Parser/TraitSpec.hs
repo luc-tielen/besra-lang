@@ -8,11 +8,8 @@ import Test.Besra.Parser.Helpers
 import Test.Besra.Helpers
 import Besra.Types.Id
 import Besra.Types.Ann
-import Besra.Types.IR1.Pred
-import Besra.Types.IR1.Type
-import Besra.Types.IR1.Trait
-import Besra.Types.IR1.Scheme
-import Besra.Types.IR1.TypeAnn
+import Besra.Types.IR1 ( Trait(..), Pred(..), Scheme(..), TypeAnn(..)
+                       , Type(..), Tycon(..), Tyvar(..) )
 import Besra.Parser.Trait (parser)
 
 

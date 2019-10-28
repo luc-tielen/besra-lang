@@ -2,6 +2,7 @@
 module Besra
   ( compile
   , compileFile
+  , typeCheckFile
   , wrapErr
   , BesraError(..)
   ) where
@@ -13,13 +14,16 @@ import qualified Data.Map as Map
 import Besra.Parser ( ParseError, parseFile )
 import qualified Besra.Types.IR1 as IR1
 import qualified Besra.Types.IR2 as IR2
+import qualified Besra.Types.IR3 as IR3
 import Besra.SA
 import Besra.Types.Id
 import Besra.Types.Ann
 import Besra.Types.Span
 import qualified Besra.Pass.BalanceOperators as BalanceOperators
 import qualified Besra.Pass.IR1To2 as IR1To2
+import qualified Besra.Pass.IR2To3 as IR2To3
 import qualified Besra.Pass.InferKinds as InferKinds
+import qualified Besra.Pass.TypeSystem as TypeSystem
 import Besra.Types.CompilerState
 import Besra.TypeSystem.KindSolver ( Env(..), IKind(..), KindError(..) )
 
@@ -27,12 +31,12 @@ import Besra.TypeSystem.KindSolver ( Env(..), IKind(..), KindError(..) )
 type Module1' = IR1.Module Parsed
 type BalanceError' = BalanceOperators.BalanceError Parsed
 
--- TODO pretty print error
 data BesraError
   = ParseErr ParseError
   | BalanceErr BalanceError'
   | SemanticErr SemanticError
   | InferKindErr KindError
+  | TypeErr TypeSystem.Error
   deriving (Eq, Show)
 
 
@@ -51,6 +55,9 @@ instance ToError SemanticError where
 instance ToError KindError where
   toError = InferKindErr
 
+instance ToError TypeSystem.Error where
+  toError = TypeErr
+
 instance ToError BesraError where
   toError = identity
 
@@ -60,44 +67,55 @@ parse path = do
   content <- liftIO $ TIO.readFile path
   liftEither $ parseFile path content
 
-semanticAnalysis :: MonadIO m => FilePath -> Module1' -> ExceptT SemanticError m Module1'
+semanticAnalysis :: Monad m => FilePath -> Module1' -> ExceptT SemanticError m Module1'
 semanticAnalysis path decls =
   case runSA path decls of
     Ok -> pure decls
     Err e -> throwError e
 
-ir1To2 :: Module1' -> (IR2.Module Parsed, CompilerState Parsed)
+ir1To2 :: Module1' -> (IR2.Module Parsed, CompilerState2 Parsed)
 ir1To2 x =
   let (ast, IR1To2.PassState adts traits impls) = IR1To2.pass x
-      sp = Span  0 0
+      sp = Span 0 0
       arrowK = IKArr sp (IStar sp) (IKArr sp (IStar sp) (IStar sp))
       kindEnv = Map.fromList [(Id "->", arrowK)]
       kEnv = Env kindEnv Map.empty
-  in (ast, CompilerState adts traits impls kEnv)
+  in (ast, CompilerState2 adts traits impls kEnv)
 
-wrapErr :: (MonadIO m, ToError e) => ExceptT e m a -> ExceptT BesraError m a
+wrapErr :: (Monad m, ToError e) => ExceptT e m a -> ExceptT BesraError m a
 wrapErr = withExceptT toError
 
 compileFile
   :: FilePath
   -> IO (Either BesraError
-                ( IR2.Module KindInferred
-                , CompilerState KindInferred))
-compileFile path = runExceptT pipeline where
-  pipeline = do
-    parsed <- wrapErr $ parse path
-    compile path parsed
+                ( IR3.Module PostTC
+                , CompilerState3 KindInferred))
+compileFile path = runExceptT $ do
+  parsed <- wrapErr $ parse path
+  compile path parsed
 
 compile
-  :: MonadIO m
+  :: Monad m
   => FilePath
   -> IR1.Module Parsed
   -> ExceptT BesraError m
-            ( IR2.Module KindInferred
-            , CompilerState KindInferred)
+            ( IR3.Module PostTC
+            , CompilerState3 KindInferred)
 compile path parsed = do
-    balanced <- wrapErr $ BalanceOperators.pass parsed
-    analyzed <- wrapErr $ semanticAnalysis path balanced
-    let (ir2, compState) = ir1To2 analyzed
-    wrapErr $ InferKinds.pass compState ir2
+  balanced <- wrapErr $ BalanceOperators.pass parsed
+  analyzed <- wrapErr $ semanticAnalysis path balanced
+  let (ir2, compState) = ir1To2 analyzed
+  (mod2, compState') <- wrapErr $ InferKinds.pass compState ir2
+  let (ir3, compState'') = IR2To3.pass compState' mod2
+  ir3' <- wrapErr $ TypeSystem.pass compState'' ir3
+  pure (ir3', compState'')
 
+typeCheckFile :: FilePath -> IO (Either BesraError ())
+typeCheckFile path = runExceptT $ do
+  parsed <- wrapErr $ parse path
+  balanced <- wrapErr $ BalanceOperators.pass parsed
+  analyzed <- wrapErr $ semanticAnalysis path balanced
+  let (ir2, compState) = ir1To2 analyzed
+  (mod2, compState') <- wrapErr $ InferKinds.pass compState ir2
+  let (ir3, compState'') = IR2To3.pass compState' mod2
+  void $ wrapErr $ TypeSystem.pass compState'' ir3

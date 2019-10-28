@@ -5,15 +5,16 @@ import Protolude hiding ( Type )
 import Test.Hspec
 import Test.Besra.Parser.Helpers
 import Besra.Parser.Pattern ( parser )
+import Besra.Types.Span
+import Besra.Types.Ann
 import Besra.Types.Id
-import Besra.Types.IR1.Lit
-import Besra.Types.IR1.String
-import Besra.Types.IR1.Number
-import Besra.Types.IR1.Pattern
+import Besra.Types.IR1 ( Pattern(..), Lit(..), Number(..), String(..) )
 import Test.Hspec.Megaparsec hiding (shouldFailWith, succeedsLeaving)
 
 
-parse :: Text -> ParseResult Pattern
+type Pattern' = Pattern Parsed
+
+parse :: Text -> ParseResult Pattern'
 parse = mkParser parser
 
 num :: Int -> Lit
@@ -25,43 +26,47 @@ str = LString . String
 var :: Text -> Id
 var = Id
 
-(==>) :: Text -> Pattern -> IO ()
+(==>) :: Text -> Pattern' -> IO ()
 a ==> b = parse a `shouldParse` b
 
 
 spec :: Spec
 spec = describe "pattern parser" $ parallel $ do
   it "can parse wildcard patterns" $
-    "_" ==> PWildcard
+    "_" ==> PWildcard (Span 0 1)
 
   it "can parse literal patterns" $ do
-    "123" ==> PLit (num 123)
-    "\"abc\"" ==> PLit (str "abc")
+    "123" ==> PLit (Span 0 3) (num 123)
+    "\"abc\"" ==> PLit (Span 0 5) (str "abc")
 
   it "can parse variables in pattern" $ do
-    "abc" ==> PVar (var "abc")
-    "abc123" ==> PVar (var "abc123")
+    "abc" ==> PVar (Span 0 3) (var "abc")
+    "abc123" ==> PVar (Span 0 6) (var "abc123")
 
   it "can parse constructors in pattern" $ do
-    let pcon x vars = PCon (Id x) $ PVar . var <$> vars
-    "True" ==> pcon "True" []
-    "(True)" ==> pcon "True" []
-    "(A b)" ==> pcon "A" ["b"]
-    "(A b c)" ==> pcon "A" ["b", "c"]
-    "(A b c D)" ==> PCon (Id "A") [ PVar (var "b")
-                                  , PVar (var "c")
-                                  , pcon "D" [] ]
+    let pcon sp x = PCon sp (Id x)
+        pvar sp = PVar sp . var
+    "True" ==> pcon (Span 0 4) "True" []
+    "(True)" ==> pcon (Span 1 5) "True" []
+    "(A b)" ==> pcon (Span 1 4) "A" [pvar (Span 3 4) "b"]
+    "(A b c)" ==> pcon (Span 1 6) "A" [pvar (Span 3 4) "b", pvar (Span 5 6) "c"]
+    "(A b c D)" ==> pcon (Span 1 8) "A" [ pvar (Span 3 4) "b"
+                                        , pvar (Span 5 6) "c"
+                                        , pcon (Span 7 8) "D" [] ]
 
   it "can parse as-patterns" $ do
-    "abc@def" ==> PAs (var "abc") (PVar (var "def"))
-    "a@1" ==> PAs (var "a") (PLit $ num 1)
-    "a@_" ==> PAs (var "a") PWildcard
+    "abc@def" ==> PAs (Span 0 7) (var "abc") (PVar (Span 4 7) (var "def"))
+    "a@1" ==> PAs (Span 0 3) (var "a") (PLit (Span 2 3) $ num 1)
+    "a@_" ==> PAs (Span 0 3) (var "a") (PWildcard (Span 2 3))
 
   it "can parse mix of everything" $ do
-    let aPat = PAs (var "a") aInnerPat
-        aInnerPat = PCon (Id "A") [bPat]
-        bPat = PAs (var "b") bInnerPat
-        bInnerPat = PCon (Id "B") [PWildcard, PLit $ num 1, PVar $ var "c"]
+    let aPat = PAs (Span 0 17) (var "a") aInnerPat
+        aInnerPat = PCon (Span 3 16) (Id "A") [bPat]
+        bPat = PAs (Span 5 16) (var "b") bInnerPat
+        bInnerPat = PCon (Span 8 15) (Id "B")
+                      [ PWildcard (Span 10 11)
+                      , PLit (Span 12 13) $ num 1
+                      , PVar (Span 14 15) $ var "c"]
     "a@(A b@(B _ 1 c))" ==> aPat
 
   it "fails with readable error message" $ do

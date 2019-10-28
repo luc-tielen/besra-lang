@@ -24,7 +24,7 @@ import Protolude hiding ( Constraint, Type, show )
 import Prelude ( Show(..) )
 import Unsafe ( unsafeHead )
 import Control.Monad.RWS.Strict
-import Besra.Types.IR2.Type
+import Besra.Types.IR2 ( Type(..), Tyvar(..), Tycon(..) )
 import Besra.Types.Kind
 import Besra.Types.Span
 import Besra.Types.Ann

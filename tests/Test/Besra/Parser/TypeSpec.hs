@@ -7,7 +7,7 @@ import Test.Besra.Parser.Helpers
 import Test.Besra.Helpers
 import Test.Hspec
 import Besra.Parser.Type (parser)
-import Besra.Types.IR1.Type
+import Besra.Types.IR1 ( Type(..), Tyvar(..), Tycon(..) )
 import Besra.Types.Id
 import Besra.Types.Ann
 

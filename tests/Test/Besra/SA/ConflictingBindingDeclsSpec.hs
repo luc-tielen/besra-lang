@@ -10,7 +10,8 @@ import Besra.SA.Types
 import Besra.Types.Id
 import Besra.Types.Ann
 import Besra.Types.Span
-import Besra.Types.IR1
+import Besra.Types.IR1 ( Module(..), Expr(..), Binding(..)
+                       , String(..), Number(..), Lit(..), Pattern(..) )
 import Besra.Parser
 import Test.Hspec
 
@@ -84,37 +85,37 @@ spec = describe "SA: bindings" $ parallel $ do
     it "reports error if bindings are not grouped together" $ do
       "f _ = 0\nf _ = 1\ng = 2\nf _ = 3"
         ==> Err [conflictErr [Span 0 7, Span 8 15] [Span 22 29] "f"
-                  [ ELam (Span 0 7) [PWildcard] $ num (Span 6 7) 0
-                  , ELam (Span 8 15) [PWildcard] $ num (Span 14 15) 1]
-                  [ ELam (Span 22 29) [PWildcard] $ num (Span 28 29) 3]
+                  [ ELam (Span 0 7) [PWildcard (Span 2 3)] $ num (Span 6 7) 0
+                  , ELam (Span 8 15) [PWildcard (Span 10 11)] $ num (Span 14 15) 1]
+                  [ ELam (Span 22 29) [PWildcard (Span 24 25)] $ num (Span 28 29) 3]
                 ]
       "f _ = 0\nf _ = 1\ng 0 = 1\ng _ = 2\nf _ = 3"
         ==> Err [conflictErr [Span 0 7, Span 8 15] [Span 32 39] "f"
-                  [ ELam (Span 0 7) [PWildcard] $ num (Span 6 7) 0
-                  , ELam (Span 8 15) [PWildcard] $ num (Span 14 15) 1]
-                  [ ELam (Span 32 39) [PWildcard] $ num (Span 38 39) 3]
+                  [ ELam (Span 0 7) [PWildcard (Span 2 3)] $ num (Span 6 7) 0
+                  , ELam (Span 8 15) [PWildcard (Span 10 11)] $ num (Span 14 15) 1]
+                  [ ELam (Span 32 39) [PWildcard (Span 34 35)] $ num (Span 38 39) 3]
                 ]
       "f _ = 0\nf _ = 1\ng = 2\nf _ = 3\nh = 4\nf _ = 5"
         ==> Err [conflictErr [Span 0 7, Span 8 15] [Span 22 29] "f"
-                  [ ELam (Span 0 7) [PWildcard] $ num (Span 6 7) 0
-                  , ELam (Span 8 15) [PWildcard] $ num (Span 14 15) 1]
-                  [ ELam (Span 22 29) [PWildcard] $ num (Span 28 29) 3],
+                  [ ELam (Span 0 7) [PWildcard (Span 2 3)] $ num (Span 6 7) 0
+                  , ELam (Span 8 15) [PWildcard (Span 10 11)] $ num (Span 14 15) 1]
+                  [ ELam (Span 22 29) [PWildcard (Span 24 25)] $ num (Span 28 29) 3],
                 conflictErr [Span 0 7, Span 8 15] [Span 36 43] "f"
-                  [ ELam (Span 0 7) [PWildcard] $ num (Span 6 7) 0
-                  , ELam (Span 8 15) [PWildcard] $ num (Span 14 15) 1]
-                  [ ELam (Span 36 43) [PWildcard] $ num (Span 42 43) 5]
+                  [ ELam (Span 0 7) [PWildcard (Span 2 3)] $ num (Span 6 7) 0
+                  , ELam (Span 8 15) [PWildcard (Span 10 11)] $ num (Span 14 15) 1]
+                  [ ELam (Span 36 43) [PWildcard (Span 38 39)] $ num (Span 42 43) 5]
                 ]
 
     it "reports error if multiple grouped decls separated by other decl" $ do
       "f _ = 0\nf : Bool -> Int\nf _ = 1"
         ==> Err [conflictErr [Span 0 7] [Span 24 31] "f"
-                  [ ELam (Span 0 7) [PWildcard] $ num (Span 6 7) 0 ]
-                  [ ELam (Span 24 31) [PWildcard] $ num (Span 30 31) 1 ]
+                  [ ELam (Span 0 7) [PWildcard (Span 2 3)] $ num (Span 6 7) 0 ]
+                  [ ELam (Span 24 31) [PWildcard (Span 26 27)] $ num (Span 30 31) 1 ]
                 ]
       "f _ = 0\ndata Bool = True | False\nf _ = 1"
         ==> Err [conflictErr [Span 0 7] [Span 33 40] "f"
-                  [ ELam (Span 0 7) [PWildcard] $ num (Span 6 7) 0 ]
-                  [ ELam (Span 33 40) [PWildcard] $ num (Span 39 40) 1 ]
+                  [ ELam (Span 0 7) [PWildcard (Span 2 3)] $ num (Span 6 7) 0 ]
+                  [ ELam (Span 33 40) [PWildcard (Span 35 36)] $ num (Span 39 40) 1 ]
                 ]
 
   describe "conflicting arg counts" $ parallel $ do
@@ -129,16 +130,16 @@ spec = describe "SA: bindings" $ parallel $ do
     it "reports errors if bindings have different arg count" $ do
       "x _ = 1\nx _ _ = 2"
         ==> Err [argCountErr [Span 0 7, Span 8 17] "x"
-                  [ ELam (Span 0 7) [PWildcard] $ num (Span 6 7) 1
-                  , ELam (Span 8 17) [PWildcard, PWildcard] $ num (Span 16 17) 2]]
+                  [ ELam (Span 0 7) [PWildcard (Span 2 3)] $ num (Span 6 7) 1
+                  , ELam (Span 8 17) [PWildcard (Span 10 11), PWildcard (Span 12 13)] $ num (Span 16 17) 2]]
       "x = \\_ -> 1\nx = \\_ _ -> 2"
         ==> Err [argCountErr [Span 0 11, Span 12 25] "x"
-                  [ ELam (Span 4 11) [PWildcard] $ num (Span 10 11) 1
-                  , ELam (Span 16 25) [PWildcard, PWildcard] $ num (Span 24 25) 2]]
+                  [ ELam (Span 4 11) [PWildcard (Span 5 6)] $ num (Span 10 11) 1
+                  , ELam (Span 16 25) [PWildcard (Span 17 18), PWildcard (Span 19 20)] $ num (Span 24 25) 2]]
       "x _ = 1\nx = \\_ _ -> 2"
         ==> Err [argCountErr [Span 0 7, Span 8 21] "x"
-                  [ ELam (Span 0 7) [PWildcard] $ num (Span 6 7) 1
-                  , ELam (Span 12 21) [PWildcard, PWildcard] $ num (Span 20 21) 2]]
+                  [ ELam (Span 0 7) [PWildcard (Span 2 3)] $ num (Span 6 7) 1
+                  , ELam (Span 12 21) [PWildcard (Span 13 14), PWildcard (Span 15 16)] $ num (Span 20 21) 2]]
 
   describe "constant binding decls" $ parallel $ do
     it "reports an error when 2 assignments to same constant are found" $ do
