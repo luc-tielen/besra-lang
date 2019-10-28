@@ -56,7 +56,7 @@ sig x ty = ExprTypeAnnDecl $ TypeAnn emptyAnn (Id x) (Scheme emptyAnn [] ty)
 
 
 spec :: Spec
-spec = describe "EXPRession parser" $ parallel $ do
+spec = describe "Expression parser" $ parallel $ do
   describe "literals" $ parallel $ do
     let str = ELit emptyAnn . LString . String
         char = ELit emptyAnn . LChar

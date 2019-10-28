@@ -1,5 +1,5 @@
 
-{-# LANGUAGE TypeApplications, ScopedTypeVariables, UndecidableInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Besra.Types.Tyvar ( Tyvar(..) ) where
 
