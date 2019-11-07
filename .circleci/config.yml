@@ -3,18 +3,26 @@ jobs:
   build:
     docker:
       - image: nixorg/nix:circleci
-
     steps:
       - checkout
       - run:
+          name: Setup Cachix
+          command: |
+            nix-env -iA cachix -f https://cachix.org/api/v1/install
+            USER=dummy cachix use luctielen
+      - run:
+          name: Build environment
+          command: |
+            nix-shell --pure --run :
+      - run:
           name: Linting
-          command: nix-shell --option sandbox false --run "make lint"
+          command: nix-shell --run "make lint"
           no_output_timeout: 60m
       - run:
           name: Unit tests
-          command: nix-shell --option sandbox false --run "make configure tests focus_check"
+          command: nix-shell --run "make configure tests focus_check"
           no_output_timeout: 60m
       - run:
           name: Build executable
-          command: nix-shell --option sandbox false --run "cabal build exe:besra"
+          command: nix-shell --run "cabal build exe:besra"
           no_output_timeout: 60m
