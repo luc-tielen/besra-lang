@@ -21,9 +21,10 @@ The easiest way to get started is as follows
 ```bash
 $ git clone git@github.com:luc-tielen/besra-lang.git
 $ cd besra-lang
+$ cachix use luctielen  # optional, but considerably speeds up first build
 $ nix-shell
-$ cabal configure # done inside the nix-shell
-$ cabal build     # done inside the nix-shell
+$ cabal configure  # done inside the nix-shell
+$ cabal build      # done inside the nix-shell
 ```
 
 The most often used commands are provided by a Makefile, so instead of
@@ -48,10 +49,6 @@ $ ghcid --command="cabal repl exe:besra"
 # Monitor all files inside the src & tests folder for changes:
 $ ghcid --command="cabal repl besra-test"
 ```
-
-There are ofcourse many more possibilities when using ghcid. For a full guide
-on how to use ghcid, please refer to the [ghcid
-README](https://github.com/ndmitchell/ghcid).
 
 
 ## Contributing

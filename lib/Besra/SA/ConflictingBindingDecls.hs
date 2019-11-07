@@ -85,7 +85,7 @@ withBinding f def = \case
   BindingDecl binding -> f binding
   _ -> def
 
-bindingName :: (Binding ph) -> Id
+bindingName :: Binding ph -> Id
 bindingName (Binding _ name _) = name
 
 -- NOTE: does not take pointfree style into account
