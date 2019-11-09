@@ -2,6 +2,7 @@
 module Besra
   ( compile
   , compileFile
+  , typeCheck
   , typeCheckFile
   , wrapErr
   , BesraError(..)
@@ -94,6 +95,11 @@ compileFile path = runExceptT $ do
   parsed <- wrapErr $ parse path
   compile path parsed
 
+typeCheckFile :: FilePath -> IO (Either BesraError (IR3.Module PostTC))
+typeCheckFile path = runExceptT $ do
+  parsed <- wrapErr $ parse path
+  typeCheck path parsed
+
 compile
   :: Monad m
   => FilePath
@@ -110,12 +116,16 @@ compile path parsed = do
   ir3' <- wrapErr $ TypeSystem.pass compState'' ir3
   pure (ir3', compState'')
 
-typeCheckFile :: FilePath -> IO (Either BesraError ())
-typeCheckFile path = runExceptT $ do
-  parsed <- wrapErr $ parse path
+typeCheck
+  :: Monad m
+  => FilePath
+  -> IR1.Module Parsed
+  -> ExceptT BesraError m (IR3.Module PostTC)
+typeCheck path parsed = do
   balanced <- wrapErr $ BalanceOperators.pass parsed
   analyzed <- wrapErr $ semanticAnalysis path balanced
   let (ir2, compState) = ir1To2 analyzed
   (mod2, compState') <- wrapErr $ InferKinds.pass compState ir2
   let (ir3, compState'') = IR2To3.pass compState' mod2
-  void $ wrapErr $ TypeSystem.pass compState'' ir3
+  wrapErr $ TypeSystem.pass compState'' ir3
+

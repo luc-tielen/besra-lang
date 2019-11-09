@@ -1,11 +1,17 @@
 
-module Besra.Types.Span ( Span(..), HasSpan(..), (.>) ) where
+module Besra.Types.Span ( Span(..), beginPos, endPos, HasSpan(..), (.>) ) where
 
 import Protolude
 
 
-data Span = Span { beginPos :: Int, endPos :: Int }
+data Span = Span {-# UNPACK #-} !Int !Int
   deriving (Eq, Ord, Show)
+
+beginPos :: Span -> Int
+beginPos (Span begin _) = begin
+
+endPos :: Span -> Int
+endPos (Span _ end) = end
 
 (.>) :: Int -> Span -> Span
 (.>) begin endSpan = Span begin begin <> endSpan
