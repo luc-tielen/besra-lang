@@ -101,10 +101,16 @@ spec = describe "Expression parser" $ parallel $ do
         num = ELit emptyAnn . LNumber . SInt
         str = ELit emptyAnn . LString . String
         char = ELit emptyAnn . LChar
+        con = ECon emptyAnn . Id
+        app = EApp emptyAnn
 
     it "can parse single-line if expressions" $ do
       "if 123 then 456 else 789" ==> if' (num 123) (num 456) (num 789)
       "if 'a' then \"abc\" else 1" ==> if' (char 'a') (str "abc") (num 1)
+      "if Just 1 == Nothing then Just 1 else Nothing"
+        ==> if' (op (var "==") (app (con "Just") [num 1]) (con "Nothing"))
+                (app (con "Just") [num 1])
+                (con "Nothing")
 
     it "can parse multi-line if expressions" $ do
       "if\n 123\n then\n 456\n else\n 789" ==> if' (num 123) (num 456) (num 789)
@@ -281,6 +287,8 @@ spec = describe "Expression parser" $ parallel $ do
 
   describe "case expressions" $ parallel $ do
     let case' = ECase emptyAnn
+        app = EApp emptyAnn
+        con = ECon emptyAnn . Id
         pvar = PVar emptyAnn . Id
         pcon x = PCon emptyAnn (Id x)
         num' = LNumber . SInt
@@ -292,6 +300,11 @@ spec = describe "Expression parser" $ parallel $ do
       "case 1 of\n x ->\n   x" ==> case' (num 1) [(pvar "x", var "x")]
       "case \"abc\" of\n x -> x" ==> case' (str "abc") [(pvar "x", var "x")]
       "case 1 of\n (X y) -> y" ==> case' (num 1) [(pcon "X" [pvar "y"], var "y")]
+      "case 1 of\n X y -> y" ==> case' (num 1) [(pcon "X" [pvar "y"], var "y")]
+      "case 1 of\n X Y y -> y" ==> case' (num 1) [(pcon "X" [pcon "Y" [], pvar "y"], var "y")]
+      "case 1 of\n X (Y y) -> y" ==> case' (num 1) [(pcon "X" [pcon "Y" [pvar "y"]], var "y")]
+      "case X 42 of\n x -> y" ==> case' (app (con "X") [num 42]) [(pvar "x", var "y")]
+      "case X 42 \"abc\" of\n x -> y" ==> case' (app (con "X") [num 42, str "abc"]) [(pvar "x", var "y")]
 
     it "can parse a case expression with multiple branches" $ do
       "case bool of\n True -> 1\n False -> 0"
@@ -312,6 +325,7 @@ spec = describe "Expression parser" $ parallel $ do
       (parse, "case 1 of\n1 -> 1") `shouldFailWith` errFancy 10 (badIndent 1 1)
       (parse, "case 1 of\n 1") `shouldFailWith` err 12 (ueof <> etoks "->")
       (parse, "case 1 of\n 1 ->") `shouldFailWith` err 15 (ueof <> elabel "expression")
+      (parse, "case 1 of\n (X 1 -> 0") `shouldFailWith` err 16 (utok '-' <> etok ')')
       (parse, "case 1 of\n  2 -> 2\n 1 -> 1") `shouldFailWith` err 20
         (utok '1' <> elabel "properly indented case clause")
       (parse, "case 1 of\n 1 -> 1\n  2 -> 2") `shouldFailWith` err 20

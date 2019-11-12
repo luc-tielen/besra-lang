@@ -1,5 +1,5 @@
 
-module Besra.Parser.Pattern ( parser ) where
+module Besra.Parser.Pattern ( parser, clauseParser ) where
 
 import Protolude
 import Besra.Parser.Helpers
@@ -19,6 +19,13 @@ parser = parser' <?> "pattern" where
          <|> varOrAsPattern
          <|> conPattern
 
+clauseParser :: Parser Pattern'
+clauseParser = parser' <?> "pattern" where
+  parser' =  wildcardPattern
+         <|> literalPattern
+         <|> varOrAsPattern
+         <|> clauseConPattern
+
 wildcardPattern :: Parser Pattern'
 wildcardPattern = PWildcard . fst <$> p
   where p = withSpan (char '_' <* notFollowedBy (letterChar <|> digitChar))
@@ -28,7 +35,6 @@ literalPattern = uncurry PLit <$> withSpan Lit.parser
 
 conPattern :: Parser Pattern'
 conPattern = singleCon <|> multiCon where
-  conParser = withSpan (Id <$> lexeme capitalIdentifier <?> "constructor")
   multiCon = do
     (sp, con, pats) <- sameLine $ betweenParens $ do
       (sp, con) <- conParser
@@ -38,6 +44,18 @@ conPattern = singleCon <|> multiCon where
   singleCon = do
     (sp, con) <- conParser
     pure $ PCon sp con []
+
+clauseConPattern :: Parser Pattern'
+clauseConPattern = betweenParens parser' <|> parser' where
+  parser' = do
+    (sp, con, pats) <- sameLine $ do
+      (sp, con) <- conParser
+      pats <- many (lexeme parser)
+      pure (sconcat $ sp :| map span pats, con, pats)
+    pure $ PCon sp con pats
+
+conParser :: Parser (Ann Parsed, Id)
+conParser = withSpan (Id <$> lexeme capitalIdentifier <?> "constructor")
 
 varOrAsPattern :: Parser Pattern'
 varOrAsPattern = do
