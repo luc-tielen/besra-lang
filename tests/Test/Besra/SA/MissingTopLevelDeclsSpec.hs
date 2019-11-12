@@ -10,7 +10,7 @@ import Besra.SA.Types
 import Besra.Types.Id
 import Besra.Types.Ann
 import Besra.Types.Span
-import Besra.Types.IR1 ( Module(..), Decl(..), Expr(..), Lit(..)
+import Besra.Types.IR1 ( Module(..), Expr(..), Lit(..)
                        , Type(..), Tycon(..), String(..), Number(..)
                        , Scheme(..), TypeAnn(..), Binding(..) )
 import Besra.Parser
@@ -30,14 +30,14 @@ analyze' = analyze [validate file]
 
 missingType :: Span -> Text -> Expr' -> SAError
 missingType sp var expr =
-  let bindingDecl = BindingDecl $ Binding sp (Id var) expr
-   in MissingTopLevelTypeAnnDeclErr $ MissingTopLevelTypeAnnDecl file bindingDecl
+  let binding = Binding sp (Id var) expr
+   in MissingTopLevelTypeAnnDeclErr $ MissingTopLevelTypeAnnDecl file binding
 
 missingBinding :: Span -> Text -> Type' -> SAError
 missingBinding sp var ty =
-  let toTypeAnnDecl = TypeAnnDecl . TypeAnn sp (Id var) . scheme
+  let toTypeAnn = TypeAnn sp (Id var) . scheme
       scheme t = Scheme (span t) [] t
-      err = MissingTopLevelBindingDeclErr . MissingTopLevelBindingDecl file . toTypeAnnDecl
+      err = MissingTopLevelBindingDeclErr . MissingTopLevelBindingDecl file . toTypeAnn
    in err ty
 
 num :: Ann' -> Int -> Expr'
@@ -66,6 +66,8 @@ spec = describe "SA: MissingTopLevelDecls" $ parallel $ do
   it "reports no errors when all bindings have type signatures and vice versa" $ do
     "x : Int\nx = 5" ==> Ok
     "x : Int\nx = 5\ny : String\ny = \"abc\"" ==> Ok
+    "x : Int\ny : String\nx = 5\ny = \"abc\"" ==> Ok
+    "x : Int\nx 0 = 5\nx _ = 10" ==> Ok
 
   it "reports an error for each missing type signature" $ do
     "x = 5" ==> Err [missingType (Span 0 5) "x" (num (Span 4 5) 5)]
@@ -76,4 +78,6 @@ spec = describe "SA: MissingTopLevelDecls" $ parallel $ do
     "x : Int" ==> Err [missingBinding (Span 0 7) "x" (c (Span 4 7) "Int")]
     "x : Int\ny : String" ==> Err [ missingBinding (Span 0 7) "x" (c (Span 4 7) "Int")
                                   , missingBinding (Span 8 18) "y" (c (Span 12 18) "String")]
+    "x : Int\ny : String\nx = 3"
+      ==> Err [missingBinding (Span 8 18) "y" (c (Span 12 18) "String")]
 
