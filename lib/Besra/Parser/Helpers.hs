@@ -11,7 +11,7 @@ module Besra.Parser.Helpers ( Parser, ParseError, ParseErr, ParseResult
                          , sepBy, sepBy1, endBy, endBy1
                          , L.indentLevel, withIndent, indented, sameLine
                          , withDefault, getOffset, withSpan
-                         , satisfy, takeWhileP
+                         , satisfy, takeWhileP, reservedKeywords
                          , try
                          , (<?>)
                          ) where
@@ -143,12 +143,19 @@ identifier = do
   firstChar <- lowerChar
   rest <- takeWhileP (Just "rest of identifier") isIdentifierChar
   let parsed = T.cons firstChar rest
-  when (parsed `V.elem` reserved) (fail . T.unpack $ "Reserved keyword: " <> parsed)
+  when (parsed `V.elem` reserved) $
+    fail . T.unpack $ "Reserved keyword: " <> parsed
   pure parsed
-  where reserved = [ "module", "type", "data", "trait", "impl"
-                   , "do", "let", "in", "where", "if", "else", "case", "of"
-                   , "infix", "infixl", "infixr"
-                   ]
+
+reserved :: V.Vector Text
+reserved =
+  [ "module", "type", "data", "trait", "impl"
+  , "do", "let", "in", "where", "if", "then", "else", "case", "of"
+  , "infix", "infixl", "infixr"
+  ]
+
+reservedKeywords :: Parser ()
+reservedKeywords = choice $ keyword <$> reserved
 
 capitalIdentifier :: Parser Text
 capitalIdentifier = do
@@ -164,11 +171,11 @@ opIdentifier = do
   first <- satisfy isOperatorChar <?> "operator"
   rest <- takeWhileP (Just "rest of operator") isOperatorChar
   let parsed = T.cons first rest
-  when (parsed `V.elem` reserved) (fail . T.unpack $ "Reserved operator: '" <> parsed <> "'")
+  when (parsed `V.elem` reservedOps) (fail . T.unpack $ "Reserved operator: '" <> parsed <> "'")
   notFollowedBy $ satisfy isDigit
   pure parsed
   where
-    reserved = [ "..", ":", "=", "\\", "|", "<-", "->", "=>", "@", "~" ]
+    reservedOps = [ "..", ":", "=", "\\", "|", "<-", "->", "=>", "@", "~" ]
 
 isOperatorChar :: Char -> Bool
 isOperatorChar c = c `VU.elem` opChars

@@ -281,6 +281,8 @@ spec = describe "Expression parser" $ parallel $ do
 
   describe "case expressions" $ parallel $ do
     let case' = ECase emptyAnn
+        app = EApp emptyAnn
+        con = ECon emptyAnn . Id
         pvar = PVar emptyAnn . Id
         pcon x = PCon emptyAnn (Id x)
         num' = LNumber . SInt
@@ -295,6 +297,8 @@ spec = describe "Expression parser" $ parallel $ do
       "case 1 of\n X y -> y" ==> case' (num 1) [(pcon "X" [pvar "y"], var "y")]
       "case 1 of\n X Y y -> y" ==> case' (num 1) [(pcon "X" [pcon "Y" [], pvar "y"], var "y")]
       "case 1 of\n X (Y y) -> y" ==> case' (num 1) [(pcon "X" [pcon "Y" [pvar "y"]], var "y")]
+      "case X 42 of\n x -> y" ==> case' (app (con "X") [num 42]) [(pvar "x", var "y")]
+      "case X 42 \"abc\" of\n x -> y" ==> case' (app (con "X") [num 42, str "abc"]) [(pvar "x", var "y")]
 
     it "can parse a case expression with multiple branches" $ do
       "case bool of\n True -> 1\n False -> 0"

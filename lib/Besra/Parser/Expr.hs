@@ -80,7 +80,8 @@ applyFuncParser = sameLine $ do
                   <|> constructor
                   <|> try prefixOp
                   <|> parens parser
-    arg =  litParser
+    arg = notFollowedBy reservedKeywords *> arg'
+    arg' = litParser
        <|> varParser
        <|> conParser
        <|> parens parser
