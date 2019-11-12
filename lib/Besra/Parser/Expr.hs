@@ -80,7 +80,8 @@ applyFuncParser = sameLine $ do
                   <|> constructor
                   <|> try prefixOp
                   <|> parens parser
-    arg =  litParser
+    arg = notFollowedBy reservedKeywords *> arg'
+    arg' = litParser
        <|> varParser
        <|> conParser
        <|> parens parser
@@ -136,7 +137,7 @@ caseParser = do
   pure $ ECase (startPos .> sp) expr' clauses
   where
     clauseParser = withLineFold $ do
-      pat <- lexeme' Pattern.parser
+      pat <- lexeme' Pattern.clauseParser
       void . lexeme' $ chunk "->"
       expr' <- parser
       pure (pat, expr')
