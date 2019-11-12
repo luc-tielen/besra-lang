@@ -18,6 +18,7 @@ import Besra.Types.Ann
 
 type Decl' = IR1.Decl Parsed
 type Binding' = IR1.Binding Parsed
+type TypeAnn' = IR1.TypeAnn Parsed
 
 data ConflictingTypeAnnDecl
   = ConflictingTypeAnnDecl FilePath [Decl']
@@ -32,10 +33,10 @@ data ConflictingArgCounts
   = ConflictingArgCounts FilePath [Binding']
 
 data MissingTopLevelTypeAnnDecl
-  = MissingTopLevelTypeAnnDecl FilePath Decl'
+  = MissingTopLevelTypeAnnDecl FilePath Binding'
 
 data MissingTopLevelBindingDecl
-  = MissingTopLevelBindingDecl FilePath Decl'
+  = MissingTopLevelBindingDecl FilePath TypeAnn'
 
 data SAError
   = ConflictingTypeAnnDeclErr ConflictingTypeAnnDecl
