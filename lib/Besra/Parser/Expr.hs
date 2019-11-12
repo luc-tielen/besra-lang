@@ -136,7 +136,7 @@ caseParser = do
   pure $ ECase (startPos .> sp) expr' clauses
   where
     clauseParser = withLineFold $ do
-      pat <- lexeme' Pattern.parser
+      pat <- lexeme' Pattern.clauseParser
       void . lexeme' $ chunk "->"
       expr' <- parser
       pure (pat, expr')

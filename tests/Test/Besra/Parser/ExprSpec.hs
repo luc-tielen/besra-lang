@@ -292,6 +292,9 @@ spec = describe "Expression parser" $ parallel $ do
       "case 1 of\n x ->\n   x" ==> case' (num 1) [(pvar "x", var "x")]
       "case \"abc\" of\n x -> x" ==> case' (str "abc") [(pvar "x", var "x")]
       "case 1 of\n (X y) -> y" ==> case' (num 1) [(pcon "X" [pvar "y"], var "y")]
+      "case 1 of\n X y -> y" ==> case' (num 1) [(pcon "X" [pvar "y"], var "y")]
+      "case 1 of\n X Y y -> y" ==> case' (num 1) [(pcon "X" [pcon "Y" [], pvar "y"], var "y")]
+      "case 1 of\n X (Y y) -> y" ==> case' (num 1) [(pcon "X" [pcon "Y" [pvar "y"]], var "y")]
 
     it "can parse a case expression with multiple branches" $ do
       "case bool of\n True -> 1\n False -> 0"
@@ -312,6 +315,7 @@ spec = describe "Expression parser" $ parallel $ do
       (parse, "case 1 of\n1 -> 1") `shouldFailWith` errFancy 10 (badIndent 1 1)
       (parse, "case 1 of\n 1") `shouldFailWith` err 12 (ueof <> etoks "->")
       (parse, "case 1 of\n 1 ->") `shouldFailWith` err 15 (ueof <> elabel "expression")
+      (parse, "case 1 of\n (X 1 -> 0") `shouldFailWith` err 16 (utok '-' <> etok ')')
       (parse, "case 1 of\n  2 -> 2\n 1 -> 1") `shouldFailWith` err 20
         (utok '1' <> elabel "properly indented case clause")
       (parse, "case 1 of\n 1 -> 1\n  2 -> 2") `shouldFailWith` err 20
