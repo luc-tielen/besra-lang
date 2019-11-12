@@ -101,10 +101,16 @@ spec = describe "Expression parser" $ parallel $ do
         num = ELit emptyAnn . LNumber . SInt
         str = ELit emptyAnn . LString . String
         char = ELit emptyAnn . LChar
+        con = ECon emptyAnn . Id
+        app = EApp emptyAnn
 
     it "can parse single-line if expressions" $ do
       "if 123 then 456 else 789" ==> if' (num 123) (num 456) (num 789)
       "if 'a' then \"abc\" else 1" ==> if' (char 'a') (str "abc") (num 1)
+      "if Just 1 == Nothing then Just 1 else Nothing"
+        ==> if' (op (var "==") (app (con "Just") [num 1]) (con "Nothing"))
+                (app (con "Just") [num 1])
+                (con "Nothing")
 
     it "can parse multi-line if expressions" $ do
       "if\n 123\n then\n 456\n else\n 789" ==> if' (num 123) (num 456) (num 789)
