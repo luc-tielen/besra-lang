@@ -72,7 +72,7 @@ library:
   source-dirs:        lib
 
 executables:
-  besra:
+  besra-exe:
     source-dirs:      src
     main:             Main.hs
     dependencies:

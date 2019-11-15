@@ -43,9 +43,9 @@ Some of the useful things you can do with ghcid are as follows:
 
 ```bash
 # Monitor all files inside the lib folder for changes:
-$ ghcid --command="cabal repl lib:besra"
+$ ghcid --command="cabal repl besra"
 # Monitor all files inside the src & lib folder for changes:
-$ ghcid --command="cabal repl exe:besra"
+$ ghcid --command="cabal repl besra-exe"
 # Monitor all files inside the src & tests folder for changes:
 $ ghcid --command="cabal repl besra-test"
 ```
