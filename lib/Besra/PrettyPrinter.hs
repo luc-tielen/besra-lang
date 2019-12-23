@@ -17,7 +17,6 @@ import Besra.Types.Span
 import Besra.Types.Kind
 import Besra.Parser ( formatError )
 import Besra.Parser.Helpers ( isOperatorChar )
-import qualified Besra.TypeSystem.Error as TS
 
 
 prettyFormat :: Pretty a => a -> Text
@@ -246,84 +245,10 @@ instance Pretty Kind where
 instance Pretty BesraError where
   pretty = \case
     ParseErr err -> pretty $ formatError err
-    TypeErr err -> pretty err
     -- TODO implement the following instances for much better error output
     BalanceErr err -> pretty . T.pack $ show err
     SemanticErr err -> pretty . T.pack $ show err
     InferKindErr err -> pretty . T.pack $ show err
-
-instance Pretty TS.Error where
-  pretty = \case
-    TS.MergeFail s1 s2 ->
-      "Failed to merge substitutions:" <> hardline <>
-      "Left:" <+> pretty s1 <> hardline <>
-      "Right:" <+> pretty s2
-    TS.UnificationFailure t1 t2 ->
-      errorAt (span t1) <>
-      "Failed to unify the following types:" <> hardline <>
-      "Left:" <+> pretty t1 <> hardline <>
-      "Right:" <+> pretty t2
-    TS.ListUnificationFailure length1 length2 ->
-      "Failed to unify 2 lists of uneven lengths" <> hardline <>
-      "Left:" <+> pretty length1 <> hardline <>
-      "Right:" <+> pretty length2
-    TS.OccursCheck v t ->
-      errorAt (span v) <>
-      "Occurs check triggered, failed to construct the infinite type:" <> hardline <>
-      pretty v <+> "~" <+> pretty t
-    TS.CyclicalSuperTraits traits ->
-      "Detected cycle in the following traits:" <> hardline <>
-        mconcat (intersperse hardline (map formatTraitName traits))
-        where formatTraitName (IR3.Trait ann _ (IR3.IsIn _ name _) _) =
-                "- At" <+> pretty ann <> ": trait" <+> pretty name
-    TS.TraitMismatch (IR3.IsIn sp name1 _) (IR3.IsIn _ name2 _) ->
-      errorAt (span sp) <>
-      "Failed to unify 2 different traits:" <+> pretty name1 <+> "~" <+> pretty name2
-    TS.KindMismatch v t k1 k2 ->
-      errorAt (span v) <>
-      "Kind mismatch detected during unification:" <> hardline <>
-      "Expected variable" <+> pretty v <+> "to have kind:" <+> pretty k1 <> hardline <>
-      "but type" <+> pretty t <+> "has kind:" <+> pretty k2
-    TS.TypeMismatch t1 t2 ->
-      errorAt (span t1) <>
-      "Expected type:" <+> pretty t1 <> hardline <>
-      "but got:" <+> pretty t2
-    TS.ExplicitTypeMismatch sch1 sch2 ->
-      errorAt (span sch1) <>
-      "Expected type:" <+> pretty sch2 <> hardline <>
-      "but got:" <+> pretty sch1
-    TS.UnboundIdentifier sp var ->
-      errorAt sp <>
-      "Found unbound identifier:" <+> pretty var
-    TS.UnknownTrait sp name ->
-      errorAt sp <>
-      "Unknown trait:" <+> pretty name
-    TS.NoTraitForImpl sp name ->
-      errorAt sp <>
-      "Tried to define impl for unknown trait " <> pretty name
-    TS.NoImplsForTrait (IR3.IsIn _ traitName _) ->
-      "No impls are defined for trait" <+> pretty traitName
-    TS.OverlappingImpls (IR3.IsIn _ traitName _) ps ->
-      "Detected overlapping impls for trait" <+> pretty traitName <> hardline <>
-      printOverlappingImpls ps
-    TS.TraitAlreadyDefined sp1 sp2 name ->
-      errorAt (span sp1) <>
-      "Trait" <+> pretty name <+> "already defined at" <+> pretty sp2
-    TS.SuperTraitNotDefined p@(IR3.IsIn _ name _) ->
-      errorAt (span p) <>
-      "Unknown supertrait:" <+> pretty name
-    TS.ContextTooWeak (IR3.Explicit name sch _) ps ->
-      "Could not determine the context:" <+> pretty ps <> hardline <>
-      "from declaration:" <+> squotes (pretty name) <+> "with type:" <+> pretty sch
-    TS.AmbiguousDefaults vs ps ->
-      "Found ambiguous type variables" <+> pretty vs <+>
-      "for predicates" <+> pretty (predNames ps)
-    where errorAt sp = "Type error at" <+> pretty sp <> ":" <> hardline <> hardline
-          predNames = map (\(IR3.IsIn _ name _) -> name)
-          printOverlappingImpls =
-            let overlappingImpl (IR3.IsIn ann name _) =
-                  "- at" <+> pretty (span ann) <> ":" <+> pretty name
-             in vsep . map overlappingImpl
 
 instance Pretty Span where
   pretty (Span begin end) =

@@ -18,10 +18,11 @@ import Besra.Types.Kind
 -- | Enumeration of the various phases in the compiler.
 --   Used by the type family below to provide extra annotations to each node
 --   in the AST in a flexible way (based on the "trees that grow" paper).
-data Phase = Parsed        -- ^ Phase right after AST is parsed
-           | KindInferred  -- ^ Phase right after kind inference
-           | PostTC        -- ^ Phase right after typechecking
-           | Testing       -- ^ Phase only used in the testsuite (for stripping out annotations)
+data Phase
+  = Parsed        -- ^ Phase right after AST is parsed
+  | KindInferred  -- ^ Phase right after kind inference
+  | PostTC        -- ^ Phase right after typechecking
+  | Testing       -- ^ Phase only used in the testsuite (for stripping out annotations)
 
 type Parsed = 'Parsed
 type KindInferred = 'KindInferred
