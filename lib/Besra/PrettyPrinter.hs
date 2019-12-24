@@ -254,15 +254,6 @@ instance Pretty Span where
   pretty (Span begin end) =
     pretty begin <> ".." <> pretty end
 
-instance Pretty (IR3.Scheme ph) where
-  pretty (IR3.ForAll _ _ qt) = pretty qt
-
-instance Pretty (a ph) => Pretty (IR3.Qual ph a) where
-  pretty (ps IR3.:=> a) =
-    if null ps
-      then pretty a
-      else printConstraints ps <+> pretty a
-
 instance Pretty (IR3.Pred ph) where
   pretty (IR3.IsIn _ name tys) =
     pretty name <+> hsep (prettyType <$> tys)
@@ -279,7 +270,9 @@ instance Pretty (IR3.Type ph) where
     IR3.TVar tyvar -> pretty tyvar
     TArrow3 _ t1 t2 -> pretty t1 <+> "->" <+> pretty t2
     IR3.TApp t1 t2 -> pretty t1 <+> pretty t2
-    IR3.TGen x -> braces $ pretty x
+    IR3.TUnknown x -> braces $ pretty x
+    IR3.TSkolem tyvar _ _ -> pretty tyvar
+    IR3.TForAll _ var _ ty -> "forall" <+> pretty var <> "." <+> pretty ty
 
 isOperatorId :: Text -> Bool
 isOperatorId = isOperatorChar . T.head
