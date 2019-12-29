@@ -11,7 +11,7 @@ import Besra.Types.Id
 import Besra.Types.Ann
 import Besra.Types.Span
 import Besra.Types.IR1 ( Module(..), Expr(..), Binding(..)
-                       , String(..), Number(..), Lit(..), Pattern(..) )
+                       , String(..), Number(..), Lit(..), Pattern(..), Ann )
 import Besra.Parser
 import Test.Hspec
 

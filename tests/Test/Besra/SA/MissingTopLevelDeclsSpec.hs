@@ -12,7 +12,7 @@ import Besra.Types.Ann
 import Besra.Types.Span
 import Besra.Types.IR1 ( Module(..), Expr(..), Lit(..)
                        , Type(..), Tycon(..), String(..), Number(..)
-                       , Scheme(..), TypeAnn(..), Binding(..) )
+                       , Scheme(..), TypeAnn(..), Binding(..), Ann )
 import Besra.Parser
 import Test.Hspec
 
