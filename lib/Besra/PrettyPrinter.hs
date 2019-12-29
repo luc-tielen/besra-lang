@@ -3,7 +3,7 @@
 
 module Besra.PrettyPrinter ( Pretty, prettyFormat ) where
 
-import Protolude
+import Protolude hiding ( TypeError )
 import qualified Data.Text as T
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Text
@@ -15,9 +15,9 @@ import Besra.Types.Id
 import Besra.Types.Ann
 import Besra.Types.Span
 import Besra.Types.Kind
+import Besra.TypeSystem.Monad ( TypeError(..) )
 import Besra.Parser ( formatError )
 import Besra.Parser.Helpers ( isOperatorChar )
-import qualified Besra.TypeSystem.Error as TS
 
 
 prettyFormat :: Pretty a => a -> Text
@@ -252,91 +252,9 @@ instance Pretty BesraError where
     SemanticErr err -> pretty . T.pack $ show err
     InferKindErr err -> pretty . T.pack $ show err
 
-instance Pretty TS.Error where
-  pretty = \case
-    TS.MergeFail s1 s2 ->
-      "Failed to merge substitutions:" <> hardline <>
-      "Left:" <+> pretty s1 <> hardline <>
-      "Right:" <+> pretty s2
-    TS.UnificationFailure t1 t2 ->
-      errorAt (span t1) <>
-      "Failed to unify the following types:" <> hardline <>
-      "Left:" <+> pretty t1 <> hardline <>
-      "Right:" <+> pretty t2
-    TS.ListUnificationFailure length1 length2 ->
-      "Failed to unify 2 lists of uneven lengths" <> hardline <>
-      "Left:" <+> pretty length1 <> hardline <>
-      "Right:" <+> pretty length2
-    TS.OccursCheck v t ->
-      errorAt (span v) <>
-      "Occurs check triggered, failed to construct the infinite type:" <> hardline <>
-      pretty v <+> "~" <+> pretty t
-    TS.CyclicalSuperTraits traits ->
-      "Detected cycle in the following traits:" <> hardline <>
-        mconcat (intersperse hardline (map formatTraitName traits))
-        where formatTraitName (IR3.Trait ann _ (IR3.IsIn _ name _) _) =
-                "- At" <+> pretty ann <> ": trait" <+> pretty name
-    TS.TraitMismatch (IR3.IsIn sp name1 _) (IR3.IsIn _ name2 _) ->
-      errorAt (span sp) <>
-      "Failed to unify 2 different traits:" <+> pretty name1 <+> "~" <+> pretty name2
-    TS.KindMismatch v t k1 k2 ->
-      errorAt (span v) <>
-      "Kind mismatch detected during unification:" <> hardline <>
-      "Expected variable" <+> pretty v <+> "to have kind:" <+> pretty k1 <> hardline <>
-      "but type" <+> pretty t <+> "has kind:" <+> pretty k2
-    TS.TypeMismatch t1 t2 ->
-      errorAt (span t1) <>
-      "Expected type:" <+> pretty t1 <> hardline <>
-      "but got:" <+> pretty t2
-    TS.ExplicitTypeMismatch sch1 sch2 ->
-      errorAt (span sch1) <>
-      "Expected type:" <+> pretty sch2 <> hardline <>
-      "but got:" <+> pretty sch1
-    TS.UnboundIdentifier sp var ->
-      errorAt sp <>
-      "Found unbound identifier:" <+> pretty var
-    TS.UnknownTrait sp name ->
-      errorAt sp <>
-      "Unknown trait:" <+> pretty name
-    TS.NoTraitForImpl sp name ->
-      errorAt sp <>
-      "Tried to define impl for unknown trait " <> pretty name
-    TS.NoImplsForTrait (IR3.IsIn _ traitName _) ->
-      "No impls are defined for trait" <+> pretty traitName
-    TS.OverlappingImpls (IR3.IsIn _ traitName _) ps ->
-      "Detected overlapping impls for trait" <+> pretty traitName <> hardline <>
-      printOverlappingImpls ps
-    TS.TraitAlreadyDefined sp1 sp2 name ->
-      errorAt (span sp1) <>
-      "Trait" <+> pretty name <+> "already defined at" <+> pretty sp2
-    TS.SuperTraitNotDefined p@(IR3.IsIn _ name _) ->
-      errorAt (span p) <>
-      "Unknown supertrait:" <+> pretty name
-    TS.ContextTooWeak (IR3.Explicit name sch _) ps ->
-      "Could not determine the context:" <+> pretty ps <> hardline <>
-      "from declaration:" <+> squotes (pretty name) <+> "with type:" <+> pretty sch
-    TS.AmbiguousDefaults vs ps ->
-      "Found ambiguous type variables" <+> pretty vs <+>
-      "for predicates" <+> pretty (predNames ps)
-    where errorAt sp = "Type error at" <+> pretty sp <> ":" <> hardline <> hardline
-          predNames = map (\(IR3.IsIn _ name _) -> name)
-          printOverlappingImpls =
-            let overlappingImpl (IR3.IsIn ann name _) =
-                  "- at" <+> pretty (span ann) <> ":" <+> pretty name
-             in vsep . map overlappingImpl
-
 instance Pretty Span where
   pretty (Span begin end) =
     pretty begin <> ".." <> pretty end
-
-instance Pretty (IR3.Scheme ph) where
-  pretty (IR3.ForAll _ _ qt) = pretty qt
-
-instance Pretty (a ph) => Pretty (IR3.Qual ph a) where
-  pretty (ps IR3.:=> a) =
-    if null ps
-      then pretty a
-      else printConstraints ps <+> pretty a
 
 instance Pretty (IR3.Pred ph) where
   pretty (IR3.IsIn _ name tys) =
@@ -344,17 +262,54 @@ instance Pretty (IR3.Pred ph) where
     where prettyType ty@(IR3.TApp _ _) = parens (pretty ty)
           prettyType ty = pretty ty
 
-pattern TArrCon3 ann = (IR3.TCon (IR3.Tycon ann (Id "->")))
-pattern TArrow3 ann t1 t2 <- IR3.TApp (IR3.TApp (TArrCon3 ann) t1) t2 where
-  TArrow3 ann t1 t2 = IR3.TApp (IR3.TApp (TArrCon3 ann) t1) t2
-
 instance Pretty (IR3.Type ph) where
   pretty = \case
     IR3.TCon tycon -> pretty tycon
     IR3.TVar tyvar -> pretty tyvar
-    TArrow3 _ t1 t2 -> pretty t1 <+> "->" <+> pretty t2
+    IR3.TArrow _ t1 t2 -> pretty t1 <+> "->" <+> pretty t2
     IR3.TApp t1 t2 -> pretty t1 <+> pretty t2
-    IR3.TGen x -> braces $ pretty x
+    IR3.TUnknown x -> braces $ pretty x
+    IR3.TSkolem _ var _ _ -> pretty var
+    IR3.TForAll _ var _ ty -> "forall" <+> pretty var <> "." <+> pretty ty
+
+instance Pretty TypeError where
+  pretty = \case
+    TypeMismatch expectedType actualType ->
+      "Expected type:" <+> pretty expectedType <> hardline <>
+      "  actual type:" <+> pretty actualType
+    ExpectedArrowType _ t ->
+      "Expected a function type, but got" <+> pretty t <+> "instead."
+    UnboundVariable v ->
+      "Unbound variable:" <+> pretty v
+    OccursCheck t1 t2 ->
+      "Occurs check: cannot create the infinite type:" <> hardline <>
+        pretty t1 <+> "~" <+> pretty t2
+    UnificationFailure t1 t2 ->
+      "Failed to unify the following types:" <> hardline <>
+        vcat ["-" <+> pretty t1, "-" <+> pretty t2]
+    EscapedSkolem _ var ty ->
+      "Found a rigid type variable" <+> squotes (pretty var) <+>
+        "that escaped it's scope in the type:" <> indentBlock (pretty ty)
+    PatternArityMismatch name ty expectedArity actualArity ->
+      "The constructor" <+> squotes (pretty name) <+>
+      "has an unexpected number of arguments." <> hardline <>
+      "Expected" <+> pretty expectedArity <+> "amount of arguments, but got" <+>
+      pretty actualArity <+> "instead." <> hardline <>
+      "Type:" <+> pretty ty <> hardline
+    MultipleErrors errors ->
+      vcat $ intersperse (hardline <> hardline) $ pretty <$> toList errors
+    -- TODO improve the following errors by doing a transform beforehand?
+    -- or remove entirely -> these are for debugging purposes mostly.
+    WhileChecking t e err ->
+      "While checking the expression at" <+> pretty (span e) <+>
+        "to have type" <+> pretty t <> ":" <> hardline <>
+        pretty err
+    WhileInferring e err ->
+      "While inferring the expression at" <+> pretty (span e) <> hardline <>
+        pretty err
+    WhileUnifyingTypes t1 t2 err ->
+      "While trying to unify the type" <+> pretty t1 <+> "with" <+> pretty t2 <> hardline <>
+        pretty err
 
 isOperatorId :: Text -> Bool
 isOperatorId = isOperatorChar . T.head

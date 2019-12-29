@@ -24,9 +24,11 @@ module Besra.Types.IR1
   , Lit(..)
   , Number(..)
   , Pattern(..)
+  , Ann
   ) where
 
 import Protolude hiding ( Type, Fixity )
+import qualified Protolude as P
 import Besra.Types.Id
 import Besra.Types.Ann
 import Besra.Types.Span
@@ -126,6 +128,15 @@ data Number
   | SHex Text
   | SBin Text
   deriving (Eq, Show)
+
+type family Ann (a :: Phase) where
+  Ann Parsed = Span
+  Ann KindInferred = Span
+  Ann TC = Span
+  Ann Testing = ()
+
+type AnnHas (f :: P.Type -> Constraint) (ph :: Phase)
+  = (f (Ann ph), f (AnnTy ph))
 
 instance AnnHas HasSpan ph => HasSpan (ADT ph) where
   span (ADT ann _ _) = span ann

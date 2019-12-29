@@ -11,7 +11,7 @@ import Besra.Types.Span
 import Besra.Types.Fixity
 import Besra.Types.IR1 ( Expr(..), ExprDecl(..), Binding(..), Lit(..)
                        , Type(..), Tycon(..), String(..), FixityInfo(..)
-                       , Scheme(..), Number(..), Pattern(..), TypeAnn(..) )
+                       , Scheme(..), Number(..), Pattern(..), TypeAnn(..), Ann )
 import Test.Hspec.Megaparsec hiding (shouldFailWith, succeedsLeaving)
 import Test.Besra.Helpers
 

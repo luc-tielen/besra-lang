@@ -8,7 +8,6 @@ module Test.Besra.Pass.IR2To3Spec
 import Protolude hiding ( Type, pass )
 import Test.Hspec
 import qualified Data.Map as Map
-import NeatInterpolation
 import Besra.Types.IR3
 import qualified Besra.Pass.IR1To2 as IR1To2
 import qualified Besra.Pass.IR2To3 as IR2To3
@@ -20,6 +19,7 @@ import Besra.Types.Ann
 import Besra.Types.Span
 import Besra.Types.Kind
 import Besra.Parser
+import NeatInterpolation
 
 type KI = KindInferred
 
@@ -62,27 +62,30 @@ c sp k x = TCon (Tycon (sp, k) (Id x))
 arrow :: Span -> Type KI -> Type KI -> Type KI
 arrow sp t1 = TApp (TApp (c sp (KArr Star (KArr Star Star)) "->") t1)
 
+forall' :: Ann ph -> Text -> Type ph -> Type ph
+forall' ann var = TForAll ann (Id var) Nothing
 
 spec :: Spec
 spec = describe "IR2 -> IR3 pass" $ parallel $ do
-  let schSomeType = ForAll (Span 36 44) [] ([] :=> c (Span 36 44) Star "SomeType")
-  let schSomeType' = ForAll (Span 41 49) [] ([] :=> c (Span 41 49) Star "SomeType")
+  let schSomeType = c (Span 36 44) Star "SomeType"
+  let schSomeType' = c (Span 41 49) Star "SomeType"
+  let schSomeType'' = c (Span 45 53) Star "SomeType"
 
   describe "binding groups" $ parallel $ do
     it "puts bindings with type signatures in explicit part" $ do
-      let expX = Explicit (Id "x") schX [([], eX)]
-          expY = Explicit (Id "y") schY [([], eY)]
-          schX = ForAll (Span 36 43) [] ([] :=> tX)
-          schY = ForAll (Span 60 67) [] ([] :=> tY)
+      let expX = Explicit (Id "x") schX [eX]
+          expY = Explicit (Id "y") schY [eY]
+          schX = forall' (Span 36 43) "a" tX
+          schY = forall' (Span 60 67) "a" tY
           tX = TApp (c (Span 36 41) (KArr Star Star) "Maybe")
                     (v (Span 42 43) Star "a")
           tY = TApp (c (Span 60 65) (KArr Star Star) "Maybe")
                     (v (Span 66 67) Star "a")
-          eX = ECon (Span 48 55) (Id "Nothing") schNothing
-          eY = EApp (Span 72 78) (ECon (Span 72 76) (Id "Just") schJust) eLit
+          eX = ECon (Span 48 55, schNothing) (Id "Nothing")
+          eY = EApp (Span 72 78) (ECon (Span 72 76, schJust) (Id "Just")) eLit
           eLit = num (Span 77 78) 1
-          schJust = ForAll (Span 15 21) [] ([] :=> tJust)
-          schNothing = ForAll (Span 24 31) [] ([] :=> tMaybe)
+          schJust = forall' (Span 15 21) "a" tJust
+          schNothing = forall' (Span 24 31) "a" tMaybe
           tJust = arrow (Span 15 21) (v (Span 20 21) Star "a") tMaybe
           tMaybe = TApp (c (Span 5 10) (KArr Star Star) "Maybe")
                         (v (Span 11 12) Star "a")
@@ -94,17 +97,17 @@ spec = describe "IR2 -> IR3 pass" $ parallel $ do
         y = Just 1
         |] ==> Module [expX, expY]
 
-    it "groups implicit bindings topologically" $ do
-      let expl = Explicit (Id "x") schSomeType [([], eLet)]
-          eLet = ELet (Span 51 158) ([dE], [impA, impBC, impD]) (num (Span 157 158) 1)
-          dE = Explicit (Id "e") schE [([], num (Span 149 151) 42)]
-          schE = ForAll (Span 135 138) [] ([] :=> c (Span 135 138) Star "Int")
-          impA = [Implicit (Id "a") [([], eNothing)]]
-          impBC = [ Implicit (Id "b") [([], eIf)]
-                  , Implicit (Id "c") [([], EVar (Span 123 124) (Id "b"))]]
-          impD = [Implicit (Id "d") [([], EVar (Span 59 60) (Id "a"))]]
-          eNothing = ECon (Span 71 78) (Id "Nothing") schNothing
-          schNothing = ForAll (Span 24 31) [] ([] :=> tMaybe)
+    it "puts bindings without type signatures in implicit part" $ do
+      let expl = Explicit (Id "x") schSomeType [eLet]
+          eLet = ELet (Span 51 158) ([dE], [impA, impB, impC, impD]) (num (Span 157 158) 1)
+          dE = Explicit (Id "e") schE [num (Span 149 151) 42]
+          schE = c (Span 135 138) Star "Int"
+          impA = Implicit (Id "a") [eNothing]
+          impB = Implicit (Id "b") [eIf]
+          impC = Implicit (Id "c") [EVar (Span 123 124) (Id "b")]
+          impD = Implicit (Id "d") [EVar (Span 59 60) (Id "a")]
+          eNothing = ECon (Span 71 78, schNothing) (Id "Nothing")
+          schNothing = forall' (Span 24 31) "a" tMaybe
           tMaybe = TApp (c (Span 5 10) (KArr Star Star) "Maybe")
                         (v (Span 11 12) Star "a")
           eIf = EIf (Span 89 112) (EApp (Span 92 98) (EApp (Span 92 98)
@@ -128,12 +131,12 @@ spec = describe "IR2 -> IR3 pass" $ parallel $ do
 
   describe "expressions" $ parallel $ do
     it "attaches typescheme to constructor functions" $ do
-      let expl = Explicit (Id "x") schSomeType [([], eJust)]
-          eJust = EApp (Span 49 61) (ECon (Span 49 53) (Id "Just") schJust) eNothing
-          schJust = ForAll (Span 15 21) [] ([] :=> tJust)
+      let expl = Explicit (Id "x") schSomeType [eJust]
+          eJust = EApp (Span 49 61) (ECon (Span 49 53, schJust) (Id "Just")) eNothing
+          schJust = forall' (Span 15 21) "a" tJust
           tJust = arrow (Span 15 21) (v (Span 20 21) Star "a") tMaybe
-          eNothing = ECon (Span 54 61) (Id "Nothing") schNothing
-          schNothing = ForAll (Span 24 31) [] ([] :=> tMaybe)
+          eNothing = ECon (Span 54 61, schNothing) (Id "Nothing")
+          schNothing = forall' (Span 24 31) "a" tMaybe
           tMaybe = TApp (c (Span 5 10) (KArr Star Star) "Maybe")
                         (v (Span 11 12) Star "a")
       [text|
@@ -143,11 +146,12 @@ spec = describe "IR2 -> IR3 pass" $ parallel $ do
         |] ==> Module [expl]
 
     it "converts nested expression in lambda" $ do
-      let expl = Explicit (Id "x") schSomeType [([PVar (Span 47 48) (Id "y")], eLam)]
-          eLam = ELam (Span 51 64) ([PVar (Span 52 53) (Id "z")], body)
-          body = EApp (Span 57 64) (ECon (Span 57 61) (Id "Just") schJust) eLit
+      let expl = Explicit (Id "x") schSomeType
+                  [ELam (Span 45 64) (PVar (Span 47 48) (Id "y")) eLam]
+          eLam = ELam (Span 51 64) (PVar (Span 52 53) (Id "z")) body
+          body = EApp (Span 57 64) (ECon (Span 57 61, schJust) (Id "Just")) eLit
           eLit = num (Span 62 64) 42
-          schJust = ForAll (Span 15 21) [] ([] :=> tJust)
+          schJust = forall' (Span 15 21) "a" tJust
           tJust = arrow (Span 15 21) (v (Span 20 21) Star "a") tMaybe
           tMaybe = TApp (c (Span 5 10) (KArr Star Star) "Maybe")
                         (v (Span 11 12) Star "a")
@@ -158,19 +162,19 @@ spec = describe "IR2 -> IR3 pass" $ parallel $ do
         |] ==> Module [expl]
 
     it "converts nested exprs in ifs" $ do
-      let expl = Explicit (Id "x") schSomeType [([], eIf)]
+      let expl = Explicit (Id "x") schSomeType [eIf]
           eIf = EIf (Span 49 96) (EApp (Span 52 70) (EApp (Span 52 70)
                                                     (EVar (Span 60 62) (Id "=="))
                                                     eJust)
                                   (eNothing (Span 63 70)))
                     (eNothing (Span 76 83))
                     (eNothing (Span 89 96))
-          eJust = EApp (Span 52 59) (ECon (Span 52 56) (Id "Just") schJust) e42
+          eJust = EApp (Span 52 59) (ECon (Span 52 56, schJust) (Id "Just")) e42
           e42 = num (Span 57 59) 42
-          schJust = ForAll (Span 15 21) [] ([] :=> tJust)
+          schJust = forall' (Span 15 21) "a" tJust
           tJust = arrow (Span 15 21) (v (Span 20 21) Star "a") tMaybe
-          eNothing sp = ECon sp (Id "Nothing") schNothing
-          schNothing = ForAll (Span 24 31) [] ([] :=> tMaybe)
+          eNothing sp = ECon (sp, schNothing) (Id "Nothing")
+          schNothing = forall' (Span 24 31) "a" tMaybe
           tMaybe = TApp (c (Span 5 10) (KArr Star Star) "Maybe")
                         (v (Span 11 12) Star "a")
       [text|
@@ -180,14 +184,14 @@ spec = describe "IR2 -> IR3 pass" $ parallel $ do
         |] ==> Module [expl]
 
     it "converts nested exprs in case" $ do
-      let expl = Explicit (Id "x") schSomeType [([], eCase)]
-          eCase = ECase (Span 49 89) (ECon (Span 54 61) (Id "Nothing") schNothing)
+      let expl = Explicit (Id "x") schSomeType [eCase]
+          eCase = ECase (Span 49 89) (ECon (Span 54 61, schNothing) (Id "Nothing"))
                                      [(pNothing, eJust42)]
-          pNothing = PCon (Span 71 79) (Id "Nothing") schNothing []
-          eJust42 = EApp (Span 82 89) (ECon (Span 82 86) (Id "Just") schJust) e42
+          pNothing = PCon (Span 71 79, schNothing) (Id "Nothing") []
+          eJust42 = EApp (Span 82 89) (ECon (Span 82 86, schJust) (Id "Just")) e42
           e42 = num (Span 87 89) 42
-          schJust = ForAll (Span 15 21) [] ([] :=> tJust)
-          schNothing = ForAll (Span 24 31) [] ([] :=> tMaybe)
+          schJust = forall' (Span 15 21) "a" tJust
+          schNothing = forall' (Span 24 31) "a" tMaybe
           tJust = arrow (Span 15 21) (v (Span 20 21) Star "a") tMaybe
           tMaybe = TApp (c (Span 5 10) (KArr Star Star) "Maybe")
                         (v (Span 11 12) Star "a")
@@ -199,16 +203,16 @@ spec = describe "IR2 -> IR3 pass" $ parallel $ do
         |] ==> Module [expl]
 
     it "converts decls in let to binding group" $ do
-      let expl = Explicit (Id "x") schSomeType [([], eLet)]
-          eLet = ELet (Span 51 158) ([dE], [impA, impBC, impD]) (num (Span 157 158) 1)
-          dE = Explicit (Id "e") schE [([], num (Span 149 151) 42)]
-          schE = ForAll (Span 135 138) [] ([] :=> c (Span 135 138) Star "Int")
-          impA = [Implicit (Id "a") [([], eNothing)]]
-          impBC = [ Implicit (Id "b") [([], eIf)]
-                  , Implicit (Id "c") [([], EVar (Span 111 112) (Id "b"))]]
-          impD = [Implicit (Id "d") [([], EVar (Span 123 124) (Id "a"))]]
-          eNothing = ECon (Span 59 66) (Id "Nothing") schNothing
-          schNothing = ForAll (Span 24 31) [] ([] :=> tMaybe)
+      let expl = Explicit (Id "x") schSomeType [eLet]
+          eLet = ELet (Span 51 158) ([dE], [impA, impB, impC, impD]) (num (Span 157 158) 1)
+          dE = Explicit (Id "e") schE [num (Span 149 151) 42]
+          schE = c (Span 135 138) Star "Int"
+          impA = Implicit (Id "a") [eNothing]
+          impB = Implicit (Id "b") [eIf]
+          impC = Implicit (Id "c") [EVar (Span 111 112) (Id "b")]
+          impD = Implicit (Id "d") [EVar (Span 123 124) (Id "a")]
+          eNothing = ECon (Span 59 66, schNothing) (Id "Nothing")
+          schNothing = forall' (Span 24 31) "a" tMaybe
           tMaybe = TApp (c (Span 5 10) (KArr Star Star) "Maybe")
                         (v (Span 11 12) Star "a")
           eIf = EIf (Span 77 100) (EApp (Span 80 86) (EApp (Span 80 86)
@@ -231,11 +235,11 @@ spec = describe "IR2 -> IR3 pass" $ parallel $ do
         |] ==> Module [expl]
 
     it "converts nested expr in let" $ do
-      let expl = Explicit (Id "x") schSomeType [([], eLet)]
-          eLet = ELet (Span 51 73) ([], [[dY]]) eNothing
-          dY = Implicit (Id "y") [([], num (Span 59 60) 1)]
-          eNothing = ECon (Span 66 73) (Id "Nothing") schNothing
-          schNothing = ForAll (Span 24 31) [] ([] :=> tMaybe)
+      let expl = Explicit (Id "x") schSomeType [eLet]
+          eLet = ELet (Span 51 73) ([], [dY]) eNothing
+          dY = Implicit (Id "y") [num (Span 59 60) 1]
+          eNothing = ECon (Span 66 73, schNothing) (Id "Nothing")
+          schNothing = forall' (Span 24 31) "a" tMaybe
           tMaybe = TApp (c (Span 5 10) (KArr Star Star) "Maybe")
                         (v (Span 11 12) Star "a")
       [text|
@@ -247,36 +251,37 @@ spec = describe "IR2 -> IR3 pass" $ parallel $ do
         |] ==> Module [expl]
 
   it "attaches typescheme to pattern constructors" $ do
-    let expl = Explicit (Id "isJust") schSomeType' [aJust, aNothing]
-        aJust = ([PCon (Span 58 64) (Id "Just")
-                        (ForAll (Span 15 21) [] ([] :=> tJust))
-                        [PWildcard (Span 63 64)]]
-                , num (Span 68 69) 0)
-        aNothing = ([PCon (Span 77 85) (Id "Nothing")
-                    (ForAll (Span 24 31) [] ([] :=> tMaybe)) []]
-                   , num (Span 87 88) 1)
-        tMaybe = TApp (c (Span 5 10) (KArr Star Star) "Maybe")
-                      (v (Span 11 12) Star "a")
-        tJust = arrow (Span 15 21) (v (Span 20 21) Star "a") tMaybe
+    let expl = Explicit (Id "isRight") schSomeType'' [aLeft, aRight]
+        tPatLeft = forall' (Span 18 24) "a" $ forall' (Span 18 24) "b" tLeft
+        aLeft = (ELam (Span 54 74) (PCon (Span 63 69, tPatLeft) (Id "Left")
+                        [PWildcard (Span 68 69)])
+                $ num (Span 73 74) 0)
+        aRight = (ELam (Span 75 96) (PCon (Span 84 91, tPatRight) (Id "Right")
+                        [PWildcard (Span 90 91)])
+                 $ num (Span 95 96) 1)
+        tEither = TApp (TApp (c (Span 5 11) (KArr Star (KArr Star Star)) "Either")
+                      (v (Span 12 13) Star "a")) (v (Span 14 15) Star "b")
+        tLeft = arrow (Span 18 24) (v (Span 23 24) Star "a") tEither
+        tPatRight = forall' (Span 27 34) "a" $ forall' (Span 27 34) "b" tRight
+        tRight = arrow (Span 27 34) (v (Span 33 34) Star "b") tEither
     [text|
-      data Maybe a = Just a | Nothing
-      isJust : SomeType
-      isJust (Just _) = 0
-      isJust Nothing = 1
+      data Either a b = Left a | Right b
+      isRight : SomeType
+      isRight (Left _) = 0
+      isRight (Right _) = 1
       |] ==> Module [expl]
 
   it "adds typeschemes to nested pattern constructors" $ do
     let expl = Explicit (Id "isJust") schSomeType' [aJust, aNothing]
-        aJust = ([PCon (Span 58 70) (Id "Just")
-                        (ForAll (Span 15 21) [] ([] :=> tJust))
-                        [aJust']]
-                 , num (Span 75 76) 0)
-        aJust' = PCon (Span 64 70) (Id "Just")
-                      (ForAll (Span 15 21) [] ([] :=> tJust))
+        tPatJust = forall' (Span 15 21) "a" tJust
+        aJust = (ELam (Span 50 76) (PCon (Span 58 70, tPatJust) (Id "Just")
+                        [aJust'])
+                 $ num (Span 75 76) 0)
+        aJust' = PCon (Span 64 70, forall' (Span 15 21) "a" tJust) (Id "Just")
                       [PWildcard (Span 69 70)]
-        aNothing = ([PCon (Span 84 92) (Id "Nothing")
-                    (ForAll (Span 24 31) [] ([] :=> tMaybe)) []]
-                    , num (Span 94 95) 1)
+        tPatNothing = forall' (Span 24 31) "a" tMaybe
+        aNothing = (ELam (Span 77 95) (PCon (Span 84 92, tPatNothing) (Id "Nothing") [])
+                   $ num (Span 94 95) 1)
         tMaybe = TApp (c (Span 5 10) (KArr Star Star) "Maybe")
                       (v (Span 11 12) Star "a")
         tJust = arrow (Span 15 21) (v (Span 20 21) Star "a") tMaybe
@@ -287,3 +292,4 @@ spec = describe "IR2 -> IR3 pass" $ parallel $ do
       isJust Nothing = 1
       |] ==> Module [expl]
 
+  -- TODO test traits and impls

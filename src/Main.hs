@@ -18,7 +18,7 @@ main = do
   args <- getArgs
   ArgParser.parse args >>= \case
     Fmt fmtArgs -> fmt fmtArgs
-    TypeCheck path -> typeCheck path
+    TypeCheck path -> runTC path
     Repl -> Repl.run
 
 fmt :: FmtArgs -> IO ()
@@ -38,8 +38,8 @@ fmt = \case
         WriteMode Inplace -> writeFile path formatted
         WriteMode Stdout -> putStrLn formatted
 
-typeCheck :: FilePath -> IO ()
-typeCheck path = typeCheckFile path >>= \case
+runTC :: FilePath -> IO ()
+runTC path = typeCheckFile path >>= \case
   Right _ -> disp "OK." *> exitSuccess
   Left err -> do
     disp $ prettyFormat err

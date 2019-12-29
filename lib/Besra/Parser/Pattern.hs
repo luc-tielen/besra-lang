@@ -3,7 +3,7 @@ module Besra.Parser.Pattern ( parser, clauseParser ) where
 
 import Protolude
 import Besra.Parser.Helpers
-import Besra.Types.IR1 ( Pattern(..) )
+import Besra.Types.IR1 ( Pattern(..), Ann )
 import Besra.Types.Span
 import Besra.Types.Ann
 import Besra.Types.Id

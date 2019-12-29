@@ -10,7 +10,7 @@ import Besra.Types.Ann
 import Besra.Types.Span
 import Besra.Types.Fixity
 import Besra.Types.IR1 ( Expr(..), ExprDecl(..), FixityInfo(..)
-                       , Binding(..), TypeAnn(..) )
+                       , Binding(..), TypeAnn(..), Ann )
 import Besra.Parser.Helpers
 import Control.Monad.Combinators.Expr
 import qualified Besra.Parser.Lit as Lit

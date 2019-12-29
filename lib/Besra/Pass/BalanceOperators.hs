@@ -19,7 +19,8 @@ import Protolude hiding ( Fixity, pass )
 import qualified Data.List as List
 import Control.Parallel.Strategies
 import Besra.Types.IR1 ( Module(..), Decl(..), Expr(..)
-                       , ExprDecl(..), Binding(..), FixityInfo(..), Impl(..) )
+                       , ExprDecl(..), Binding(..)
+                       , FixityInfo(..), Impl(..), Ann )
 import Besra.Types.Fixity
 import Besra.Types.Id
 import Besra.Types.Ann

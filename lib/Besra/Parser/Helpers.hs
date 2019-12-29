@@ -1,23 +1,25 @@
 
-module Besra.Parser.Helpers ( Parser, ParseError, ParseErr, ParseResult
-                         , ParseState(..), ParseMode(..), KeywordResult(..)
-                         , lexeme, lexeme', whitespace, whitespace', withLineFold
-                         , eof, between, betweenParens, betweenOptionalParens
-                         , singleQuote, digitChar, hexDigitChars, binDigitChars
-                         , letterChar, opIdentifier, isOperatorChar
-                         , keyword, keyword', chunk, char
-                         , identifier, capitalIdentifier
-                         , notFollowedBy, lookAhead, hidden
-                         , sepBy, sepBy1, endBy, endBy1
-                         , L.indentLevel, withIndent, indented, sameLine
-                         , withDefault, getOffset, withSpan
-                         , satisfy, takeWhileP, reservedKeywords
-                         , try
-                         , (<?>)
-                         ) where
+module Besra.Parser.Helpers
+  ( Parser, ParseError, ParseErr, ParseResult
+  , ParseState(..), ParseMode(..), KeywordResult(..)
+  , lexeme, lexeme', whitespace, whitespace', withLineFold
+  , eof, between, betweenParens, betweenOptionalParens
+  , singleQuote, digitChar, hexDigitChars, binDigitChars
+  , letterChar, opIdentifier, isOperatorChar
+  , keyword, keyword', chunk, char
+  , identifier, capitalIdentifier
+  , notFollowedBy, lookAhead, hidden
+  , sepBy, sepBy1, endBy, endBy1
+  , L.indentLevel, withIndent, indented, sameLine
+  , withDefault, getOffset, withSpan
+  , satisfy, takeWhileP, reservedKeywords
+  , try
+  , (<?>)
+  ) where
 
 import Protolude hiding (try, first)
 import Control.Monad ( fail )
+import Besra.Types.IR1 ( Ann )
 import Besra.Types.Ann
 import Besra.Types.Span
 import qualified Data.Vector.Unboxed as VU

@@ -19,8 +19,10 @@ data CompilerState2 ph
 data CompilerState3 ph
   = CompilerState3 [IR2.ADT ph] [IR3.Trait ph] [IR3.Impl ph] K.Env
 
-deriving instance AnnHas Eq ph => Eq (CompilerState2 ph)
-deriving instance AnnHas Eq ph => Eq (CompilerState3 ph)
-deriving instance AnnHas Show ph => Show (CompilerState2 ph)
-deriving instance AnnHas Show ph => Show (CompilerState3 ph)
+deriving instance (Eq (IR2.Ann ph), Eq (AnnTy ph)) => Eq (CompilerState2 ph)
+deriving instance ( Eq (IR2.Ann ph), Eq (IR3.Ann ph)
+                  , Eq (IR3.AnnCon ph), Eq (AnnTy ph)) => Eq (CompilerState3 ph)
+deriving instance (Show (IR2.Ann ph), Show (AnnTy ph)) => Show (CompilerState2 ph)
+deriving instance ( Show (IR2.Ann ph), Show (IR3.Ann ph)
+                  , Show (IR3.AnnCon ph), Show (AnnTy ph)) => Show (CompilerState3 ph)
 
