@@ -19,12 +19,14 @@ module Besra.Types.IR2
   , Tyvar(..)
   , Tycon(..)
   , Pattern(..)
+  , Ann
   , module Besra.Types.Lit
   , adtName
   , adtRefersTo
   ) where
 
 import Protolude hiding ( Type )
+import qualified Protolude as P
 import Unsafe ( unsafeHead )
 import Besra.Types.Id
 import Besra.Types.Ann
@@ -92,6 +94,14 @@ data Type (ph :: Phase)
   | TVar (Tyvar ph)
   | TApp (Type ph) (Type ph)
 
+type family Ann (a :: Phase) where
+  Ann Parsed = Span
+  Ann KindInferred = Span
+  Ann TC = Span
+  Ann Testing = ()
+
+type AnnHas (f :: P.Type -> Constraint) (ph :: Phase)
+  = (f (Ann ph), f (AnnTy ph))
 
 instance HasSpan (Ann ph) => HasSpan (Pred ph) where
   span (IsIn ann _ _) = span ann

@@ -9,18 +9,21 @@ module Besra.Types.IR3
   , Explicit(..)
   , Implicit(..)
   , Expr(..)
-  , Alt
   , Pred(..)
   , Type(..)
+  , pattern TArrow
   , Tyvar(..)
   , Tycon(..)
   , Pattern(..)
   , Skolem(..)
   , SkolemScope(..)
+  , Ann
+  , AnnCon
   , module Besra.Types.Lit
   ) where
 
-import Protolude hiding ( Type, Alt )
+import Protolude hiding ( Type )
+import qualified Protolude as P
 import Besra.Types.Id
 import Besra.Types.Ann
 import Besra.Types.Span
@@ -33,17 +36,16 @@ newtype Module (ph :: Phase)
   = Module [Explicit ph]
 
 -- | A group of bindings, separated into explicitly and implicitly typed bindings.
-type BindGroup ph = ([Explicit ph], [Implicit ph])
+type BindGroup (ph :: Phase) = ([Explicit ph], [Implicit ph])
 
 -- | An explicitly typed binding for a variable
-data Explicit ph = Explicit Id (Type ph) [Alt ph]
+-- TODO cleanup type?
+data Explicit (ph :: Phase)
+  = Explicit Id (Type KindInferred) [Expr ph]
 
 -- | An implicitly typed binding for a variable
-data Implicit ph = Implicit Id [Alt ph]
-
--- | Type representing a function binding
---   (left and right part of a function definition)
-type Alt ph = ([Pattern ph], Expr ph)
+data Implicit (ph :: Phase)
+  = Implicit Id [Expr ph]
 
 data Trait (ph :: Phase)
   = Trait (Ann ph) [Pred ph] (Pred ph) (Map Id (Type ph))
@@ -54,18 +56,18 @@ data Impl (ph :: Phase)
 data Expr (ph :: Phase)
   = ELit (Ann ph) Lit
   | EVar (Ann ph) Id
-  | ECon (Ann ph) Id (Type ph)
-  | ELam (Ann ph) (Alt ph)
+  | ECon (AnnCon ph) Id
+  | ELam (Ann ph) (Pattern ph) (Expr ph)
   | EApp (Ann ph) (Expr ph) (Expr ph)
   | EIf (Ann ph) (Expr ph) (Expr ph) (Expr ph)
   | ECase (Ann ph) (Expr ph) [(Pattern ph, Expr ph)]
   | ELet (Ann ph) (BindGroup ph) (Expr ph)
 
-data Pattern ph
+data Pattern (ph :: Phase)
   = PWildcard (Ann ph)
   | PLit (Ann ph) Lit
   | PVar (Ann ph) Id
-  | PCon (Ann ph) Id (Type ph) [Pattern ph]
+  | PCon (AnnCon ph) Id [Pattern ph]
   | PAs (Ann ph) Id (Pattern ph)
 
 data Pred (ph :: Phase)
@@ -81,16 +83,37 @@ data Type (ph :: Phase)
   = TCon (Tycon ph)
   | TVar (Tyvar ph)
   | TApp (Type ph) (Type ph)
-  | TUnknown Int                           -- Used only during unification, when having to guess a type
-  | TSkolem (Tyvar ph) SkolemScope Skolem  -- Rigid type variable, only available in a specific scope
+  | TUnknown Int                            -- Used only during unification, when having to guess a type
+  | TSkolem (Ann ph) Id SkolemScope Skolem  -- Rigid type variable, only available in a specific scope
   | TForAll (Ann ph) Id (Maybe SkolemScope) (Type ph)
 
-instance HasSpan (Ann ph) => HasSpan (Expr ph) where
+pattern TArrCon ann = (TCon (Tycon ann (Id "->")))
+
+pattern TArrow :: AnnTy ph -> Type ph -> Type ph -> Type ph
+pattern TArrow ann t1 t2 <- TApp (TApp (TArrCon ann) t1) t2 where
+  TArrow ann t1 t2 = TApp (TApp (TArrCon ann) t1) t2
+
+type family Ann (ph :: Phase) where
+  Ann Parsed = Span
+  Ann KindInferred = Span
+  Ann TC = (Span, Type KindInferred)  -- TODO cleanup, in tidyup pass?
+  Ann Testing = ()
+
+type family AnnCon (ph :: Phase) where
+  AnnCon Parsed = Span
+  AnnCon KindInferred = (Span, Type KindInferred)
+  AnnCon TC = (Span, Type KindInferred)  -- TODO cleanup, in tidyup pass?
+  AnnCon Testing = ()
+
+type AnnHas (f :: P.Type -> Constraint) (ph :: Phase)
+  = (f (Ann ph), f (AnnCon ph), f (AnnTy ph))
+
+instance (HasSpan (Ann ph), HasSpan (AnnCon ph)) => HasSpan (Expr ph) where
   span = \case
     ELit ann _ -> span ann
     EVar ann _ -> span ann
-    ECon ann _ _ -> span ann
-    ELam ann _ -> span ann
+    ECon ann _ -> span ann
+    ELam ann _ _ -> span ann
     EApp ann _ _ -> span ann
     EIf ann _ _ _ -> span ann
     ECase ann _ _ -> span ann
@@ -104,7 +127,7 @@ instance AnnHas HasSpan ph => HasSpan (Type ph) where
     TCon tycon -> span tycon
     TVar tyvar -> span tyvar
     TApp t1 t2 -> span t1 <> span t2
-    TSkolem tyvar _ _ -> span tyvar
+    TSkolem ann _ _ _ -> span ann
     TForAll ann _ _ _ -> span ann
     TUnknown _ -> panic "Attempt to call span on TUnknown"
 

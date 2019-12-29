@@ -76,13 +76,14 @@ instance Desugar (IR2.Expr KI) where
     IR2.ELit ann lit -> pure $ IR3.ELit ann lit
     IR2.EVar ann var -> pure $ IR3.EVar ann var
     IR2.ECon ann name -> do
-      sch <- unsafeFromJust <$> asks (Map.lookup name . typeMap)
-      pure $ IR3.ECon ann name sch
-    IR2.ELam ann pats body ->
-      -- NOTE: this only applies to anonymous lambdas,
-      -- named functions are already handled with toBG
-      let alt = (,) <$> desugar pats <*> desugar body
-       in IR3.ELam ann <$> alt
+      ty <- unsafeFromJust <$> asks (Map.lookup name . typeMap)
+      pure $ IR3.ECon (ann, ty) name
+    IR2.ELam ann pats body -> do
+      -- TODO move this transform to IR1->2
+      pats' <- desugar pats
+      body' <- desugar body
+      let lam = IR3.ELam ann
+      pure $ foldr lam body' pats'
     IR2.EApp ann f arg ->
       IR3.EApp ann <$> desugar f <*> desugar arg
     IR2.EIf ann c t f ->
@@ -101,22 +102,22 @@ instance Desugar (IR2.Pattern KI) where
     IR2.PLit ann lit -> pure $ IR3.PLit ann lit
     IR2.PVar ann var -> pure $ IR3.PVar ann var
     IR2.PCon ann name pats -> do
-      sch <- unsafeFromJust <$> asks (Map.lookup name . typeMap)
-      IR3.PCon ann name sch <$> desugar pats
+      ty <- unsafeFromJust <$> asks (Map.lookup name . typeMap)
+      IR3.PCon (ann, ty) name <$> desugar pats
     IR2.PAs ann name pat -> IR3.PAs ann name <$> desugar pat
 
-desugarPred :: IR2.Pred ph -> IR3.Pred ph
+desugarPred :: IR2.Pred KI -> IR3.Pred KI
 desugarPred (IR2.IsIn ann name tys) =
   IR3.IsIn ann name $ map desugarType tys
 
-desugarTrait :: IR2.Trait ph -> IR3.Trait ph
+desugarTrait :: IR2.Trait KI -> IR3.Trait KI
 desugarTrait (IR2.Trait ann ps p ts) =
   let ps' = map desugarPred ps
       p' = desugarPred p
       ts' = Map.fromList $ map desugarTypeAnn ts
    in IR3.Trait ann ps' p' ts'
 
-desugarTypeAnn :: IR2.TypeAnn ph -> (Id, IR3.Type ph)
+desugarTypeAnn :: IR2.TypeAnn KI -> (Id, IR3.Type KI)
 desugarTypeAnn (IR2.TypeAnn _ name (IR2.Scheme ann ps ty)) =
   case ps of
     [] -> (name, addMissingForAlls ann ty)
@@ -154,15 +155,13 @@ toExplicit :: (Id, (Maybe (IR2.Scheme KI), [IR2.Binding KI]))
            -> PassM (IR3.Explicit KI)
 toExplicit (name, (Just (IR2.Scheme ann ps ty), bs)) = do
   when (ps /= []) typeclassesNotImplementedError
-  bs' <- traverse convertBinding bs
-  pure $ IR3.Explicit name (addMissingForAlls ann ty) bs'
+  exprs <- traverse convertBinding bs
+  pure $ IR3.Explicit name (addMissingForAlls ann ty) exprs
 toExplicit (Id name, (Nothing, _)) =
   panic $ "Error in 'toExplicit' in IR2->3 pass for id = " <> name
 
-convertBinding :: IR2.Binding KI -> PassM (IR3.Alt KI)
-convertBinding (IR2.Binding _ _ e) = case e of
-  IR2.ELam _ pats body -> (,) <$> desugar pats <*> desugar body
-  _ -> ([], ) <$> desugar e
+convertBinding :: IR2.Binding KI -> PassM (IR3.Expr KI)
+convertBinding (IR2.Binding _ _ e) = desugar e
 
 toImplicits :: [(Id, (Maybe a, [IR2.Binding KI]))]
             -> PassM [IR3.Implicit KI]
@@ -217,7 +216,7 @@ typeclassesNotImplementedError =
   panic "Typeclasses not implemented yet in IR3 / typesystem."
 
 -- TODO move this to an earlier pass once scheme has been refactored there
-addMissingForAlls :: Ann ph -> IR2.Type ph -> IR3.Type ph
+addMissingForAlls :: IR3.Ann ph -> IR2.Type ph -> IR3.Type ph
 addMissingForAlls ann ty =
   let vars = ftv ty
       ty' = desugarType ty

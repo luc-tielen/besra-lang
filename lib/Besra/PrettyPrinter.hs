@@ -3,7 +3,7 @@
 
 module Besra.PrettyPrinter ( Pretty, prettyFormat ) where
 
-import Protolude
+import Protolude hiding ( TypeError )
 import qualified Data.Text as T
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Text
@@ -15,6 +15,7 @@ import Besra.Types.Id
 import Besra.Types.Ann
 import Besra.Types.Span
 import Besra.Types.Kind
+import Besra.TypeSystem.Monad ( TypeError(..) )
 import Besra.Parser ( formatError )
 import Besra.Parser.Helpers ( isOperatorChar )
 
@@ -260,19 +261,54 @@ instance Pretty (IR3.Pred ph) where
     where prettyType ty@(IR3.TApp _ _) = parens (pretty ty)
           prettyType ty = pretty ty
 
-pattern TArrCon3 ann = (IR3.TCon (IR3.Tycon ann (Id "->")))
-pattern TArrow3 ann t1 t2 <- IR3.TApp (IR3.TApp (TArrCon3 ann) t1) t2 where
-  TArrow3 ann t1 t2 = IR3.TApp (IR3.TApp (TArrCon3 ann) t1) t2
-
 instance Pretty (IR3.Type ph) where
   pretty = \case
     IR3.TCon tycon -> pretty tycon
     IR3.TVar tyvar -> pretty tyvar
-    TArrow3 _ t1 t2 -> pretty t1 <+> "->" <+> pretty t2
+    IR3.TArrow _ t1 t2 -> pretty t1 <+> "->" <+> pretty t2
     IR3.TApp t1 t2 -> pretty t1 <+> pretty t2
     IR3.TUnknown x -> braces $ pretty x
-    IR3.TSkolem tyvar _ _ -> pretty tyvar
+    IR3.TSkolem _ var _ _ -> pretty var
     IR3.TForAll _ var _ ty -> "forall" <+> pretty var <> "." <+> pretty ty
+
+instance Pretty TypeError where
+  pretty = \case
+    TypeMismatch expectedType actualType ->
+      "Expected type:" <+> pretty expectedType <> hardline <>
+      "  actual type:" <+> pretty actualType
+    ExpectedArrowType _ t ->
+      "Expected a function type, but got" <+> pretty t <+> "instead."
+    UnboundVariable v ->
+      "Unbound variable:" <+> pretty v
+    OccursCheck t1 t2 ->
+      "Occurs check: cannot create the infinite type:" <> hardline <>
+        pretty t1 <+> "~" <+> pretty t2
+    UnificationFailure t1 t2 ->
+      "Failed to unify the following types:" <> hardline <>
+        vcat ["-" <+> pretty t1, "-" <+> pretty t2]
+    EscapedSkolem _ var ty ->
+      "Found a rigid type variable" <+> squotes (pretty var) <+>
+        "that escaped it's scope in the type:" <> indentBlock (pretty ty)
+    PatternArityMismatch name ty expectedArity actualArity ->
+      "The constructor" <+> squotes (pretty name) <+>
+      "has an unexpected number of arguments." <> hardline <>
+      "Expected" <+> pretty expectedArity <+> "amount of arguments, but got" <+>
+      pretty actualArity <+> "instead." <> hardline <>
+      "Type:" <+> pretty ty <> hardline
+    MultipleErrors errors ->
+      vcat $ intersperse (hardline <> hardline) $ pretty <$> toList errors
+    -- TODO improve the following errors by doing a transform beforehand?
+    -- or remove entirely -> these are for debugging purposes mostly.
+    WhileChecking t e err ->
+      "While checking the expression at" <+> pretty (span e) <+>
+        "to have type" <+> pretty t <> ":" <> hardline <>
+        pretty err
+    WhileInferring e err ->
+      "While inferring the expression at" <+> pretty (span e) <> hardline <>
+        pretty err
+    WhileUnifyingTypes t1 t2 err ->
+      "While trying to unify the type" <+> pretty t1 <+> "with" <+> pretty t2 <> hardline <>
+        pretty err
 
 isOperatorId :: Text -> Bool
 isOperatorId = isOperatorChar . T.head
