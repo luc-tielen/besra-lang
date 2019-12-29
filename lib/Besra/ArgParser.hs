@@ -47,14 +47,13 @@ data WriteOpts
 
 
 parse :: [String] -> IO Args
-parse = handleParseResult . execParserPure defaultPrefs parserInfo
+parse = handleParseResult . execParserPure parserPrefs parserInfo
   where desc = fullDesc <> progDesc "CLI interface to the Besra compiler"
-        parserInfo = info parser desc
+        parserPrefs = prefs $ showHelpOnError <> showHelpOnEmpty
+        parserInfo = info (parser <**> helper) desc
 
 parser :: Parser Args
-parser = subparser fmtCommand
-      <|> subparser tcCommand
-      <|> subparser replCommand
+parser = hsubparser $ fmtCommand <> tcCommand <> replCommand
   where fmtCommand = command "fmt" $ info fmtParser fmtDesc
         fmtDesc = fullDesc
                 <> header "besra fmt - a pretty printer/formatter for Besra files"
