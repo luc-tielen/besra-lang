@@ -2,24 +2,30 @@
 module Besra
   ( compile
   , compileFile
+  , typeCheck
+  , typeCheckFile
   , wrapErr
   , BesraError(..)
   ) where
 
-import Protolude
+import Protolude hiding ( TypeError )
 import Control.Monad.Except
 import Data.Text.IO as TIO
 import qualified Data.Map as Map
 import Besra.Parser ( ParseError, parseFile )
 import qualified Besra.Types.IR1 as IR1
 import qualified Besra.Types.IR2 as IR2
+import qualified Besra.Types.IR3 as IR3
 import Besra.SA
 import Besra.Types.Id
 import Besra.Types.Ann
 import Besra.Types.Span
 import qualified Besra.Pass.BalanceOperators as BalanceOperators
 import qualified Besra.Pass.IR1To2 as IR1To2
+import qualified Besra.Pass.IR2To3 as IR2To3
 import qualified Besra.Pass.InferKinds as InferKinds
+import qualified Besra.Pass.TypeSystem as TypeSystem
+import Besra.TypeSystem.Monad ( TypeError )
 import Besra.Types.CompilerState
 import Besra.TypeSystem.KindSolver ( Env(..), IKind(..), KindError(..) )
 
@@ -32,6 +38,7 @@ data BesraError
   | BalanceErr BalanceError'
   | SemanticErr SemanticError
   | InferKindErr KindError
+  | TypeErr TypeError
   deriving (Eq, Show)
 
 
@@ -49,6 +56,9 @@ instance ToError SemanticError where
 
 instance ToError KindError where
   toError = InferKindErr
+
+instance ToError TypeError where
+  toError = TypeErr
 
 instance ToError BesraError where
   toError = identity
@@ -80,23 +90,43 @@ wrapErr = withExceptT toError
 compileFile
   :: FilePath
   -> IO (Either BesraError
-                ( IR2.Module KindInferred
-                , CompilerState2 KindInferred))
+                ( IR3.Module TC
+                , CompilerState3 KindInferred))
 compileFile path = runExceptT $ do
   parsed <- wrapErr $ parse path
   compile path parsed
+
+typeCheckFile :: FilePath -> IO (Either BesraError (IR3.Module TC))
+typeCheckFile path = runExceptT $ do
+  parsed <- wrapErr $ parse path
+  typeCheck path parsed
 
 compile
   :: Monad m
   => FilePath
   -> IR1.Module Parsed
   -> ExceptT BesraError m
-            ( IR2.Module KindInferred
-            , CompilerState2 KindInferred)
+            ( IR3.Module TC
+            , CompilerState3 KindInferred)
 compile path parsed = do
   balanced <- wrapErr $ BalanceOperators.pass parsed
   analyzed <- wrapErr $ semanticAnalysis path balanced
   let (ir2, compState) = ir1To2 analyzed
   (mod2, compState') <- wrapErr $ InferKinds.pass compState ir2
-  pure (mod2, compState')
+  let (ir3, compState'') = IR2To3.pass compState' mod2
+  ir3' <- wrapErr $ TypeSystem.pass ir3
+  pure (ir3', compState'')
+
+typeCheck
+  :: Monad m
+  => FilePath
+  -> IR1.Module Parsed
+  -> ExceptT BesraError m (IR3.Module TC)
+typeCheck path parsed = do
+  balanced <- wrapErr $ BalanceOperators.pass parsed
+  analyzed <- wrapErr $ semanticAnalysis path balanced
+  let (ir2, compState) = ir1To2 analyzed
+  (mod2, compState') <- wrapErr $ InferKinds.pass compState ir2
+  let (ir3, _) = IR2To3.pass compState' mod2
+  wrapErr $ TypeSystem.pass ir3
 

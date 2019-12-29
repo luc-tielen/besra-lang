@@ -246,6 +246,7 @@ instance Pretty Kind where
 instance Pretty BesraError where
   pretty = \case
     ParseErr err -> pretty $ formatError err
+    TypeErr err -> pretty err
     -- TODO implement the following instances for much better error output
     BalanceErr err -> pretty . T.pack $ show err
     SemanticErr err -> pretty . T.pack $ show err

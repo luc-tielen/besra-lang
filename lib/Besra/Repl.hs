@@ -97,7 +97,7 @@ kindInfo = withParsedType $ \ty1 -> do
   mod <- gets decls
   runExceptT (Besra.compile "<interactive>" mod) >>= \case
     Left err -> printlnRepl $ show err
-    Right (_, CompilerState2 _ _ _ (K.Env kEnv _)) -> do
+    Right (_, CompilerState3 _ _ _ (K.Env kEnv _)) -> do
       -- TODO expose different function iso desugar (is an internal function)
       let (ty2, _) = runState (IR1To2.desugar ty1) (IR1To2.PassState [] [] [])
       printlnRepl . prettyFormat . kind $ runReader (IK.enrich ty2) kEnv
